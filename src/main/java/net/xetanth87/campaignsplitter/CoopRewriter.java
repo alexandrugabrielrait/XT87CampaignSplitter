@@ -211,8 +211,8 @@ public class CoopRewriter extends ScriptRewriter {
 				final float anglePerPlayer = 360f / (allPlayerNumbers.size() - 1);
 				for (int playerNum : allPlayerNumbers) {
 					append("set " + PLAYER_ID_ARRAY + "[" + index + "]=" + playerNum + JASS_DELIM +
-							"set " + PLAYER_INDEX_ARRAY + "[" + playerNum + "]=" + index + JASS_DELIM
-									// +
+									"set " + PLAYER_INDEX_ARRAY + "[" + playerNum + "]=" + index + JASS_DELIM
+							// +
 							//"set " + PLAYER_ANGLE_ARRAY + "[" + playerNum + "]=" + (index * anglePerPlayer)
 							, sb);
 					index++;
@@ -291,7 +291,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"        exitwhen i>=n" + JASS_DELIM +
 						"        set k0=LoadStr(coopCache,StringHashBJ(\"" + CACHE_INTEGER_KEY + "\"),2*i)" + JASS_DELIM +
 						"        set k2=LoadStr(coopCache,StringHashBJ(\"" + CACHE_INTEGER_KEY + "\"),2*i+1)" + JASS_DELIM +
-						"        call " + ARCHON_PREFIX + "WriteString(cacheName,k0+\"\\\\\"+k2,I2S(LoadInteger(coopCache,StringHashBJ(k0),StringHashBJ(k2))))" + JASS_DELIM +
+						"        call " + ARCHON_PREFIX + "WriteString(cacheName,k0+\"\\\\\"+k2," + ARCHON_PREFIX + "IS62(LoadInteger(coopCache,StringHashBJ(k0),StringHashBJ(k2))))" + JASS_DELIM +
 						"        set i=i+1" + JASS_DELIM +
 						"    endloop" + JASS_DELIM +
 						// save bools to files
@@ -322,21 +322,21 @@ public class CoopRewriter extends ScriptRewriter {
 						"        set k0=LoadStr(coopCache,StringHashBJ(\"" + CACHE_UNIT_KEY + "\"),2*i)" + JASS_DELIM +
 						"        set k2=LoadStr(coopCache,StringHashBJ(\"" + CACHE_UNIT_KEY + "\"),2*i+1)" + JASS_DELIM +
 						"        set k0h=StringHash(k0)" + JASS_DELIM +
-						"        set uD=IS62(LoadInteger(coopCache,k0h,StringHashBJ(k2+\"" + CACHE_ID_SUFIX + "\")))" + JASS_DELIM +
+						"        set uD=" + ARCHON_PREFIX + "IS62(LoadInteger(coopCache,k0h,StringHashBJ(k2+\"" + CACHE_ID_SUFIX + "\")))" + JASS_DELIM +
 						"        set h=LoadBoolean(coopCache,k0h,StringHashBJ(k2+\"" + CACHE_IS_HERO_SUFIX + "\"))" + JASS_DELIM +
 						//"        set uD=uD+\"\\n\"+" + CUSTOM_PREFIX + "B2S(h)" + JASS_DELIM +
 						"        if h then", sb);
 				for (String sufix : Arrays.asList(CACHE_XP_SUFIX, CACHE_STR_SUFIX, CACHE_AGI_SUFIX, CACHE_INT_SUFIX, CACHE_UNSPEND_POINTS_SUFIX))
-					append("            set uD=uD+\"\\n\"+IS62(LoadInteger(coopCache,k0h,StringHashBJ(k2+\"" + sufix + "\")))", sb);
+					append("            set uD=uD+\"\\n\"+" + ARCHON_PREFIX + "IS62(LoadInteger(coopCache,k0h,StringHashBJ(k2+\"" + sufix + "\")))", sb);
 				for (String sufix : Arrays.asList(CACHE_HEALTH_MAX_SUFIX, CACHE_MANA_MAX_SUFIX))
-					append("            set uD=uD+\"\\n\"+IS62(R2I(LoadReal(coopCache,k0h,StringHashBJ(k2+\"" + sufix + "\"))))", sb);
+					append("            set uD=uD+\"\\n\"+" + ARCHON_PREFIX + "IS62(R2I(LoadReal(coopCache,k0h,StringHashBJ(k2+\"" + sufix + "\"))))", sb);
 				append("            set c=LoadInteger(coopCache,k0h,StringHashBJ(k2+\"" + CACHE_ABILITY_COUNT_SUFIX + "\"))" + JASS_DELIM +
-						"            set uD=uD+\"\\n\"+IS62(c)" + JASS_DELIM +
+						"            set uD=uD+\"\\n\"+" + ARCHON_PREFIX + "IS62(c)" + JASS_DELIM +
 						"            set j=0" + JASS_DELIM +
 						"            loop" + JASS_DELIM +
 						"            exitwhen j>=c", sb);
 				for (String sufix : Arrays.asList(CACHE_ABILITY_ID_SUFIX, CACHE_ABILITY_LVL_SUFIX))
-					append("            set uD=uD+\"\\n\"+IS62(LoadInteger(coopCache,k0h,StringHashBJ(k2+\"" + sufix + "\"+I2S(j))))", sb);
+					append("            set uD=uD+\"\\n\"+" + ARCHON_PREFIX + "IS62(LoadInteger(coopCache,k0h,StringHashBJ(k2+\"" + sufix + "\"+I2S(j))))", sb);
 				append("            set j=j+1" + JASS_DELIM +
 						"            endloop" + JASS_DELIM +
 						"        endif" + JASS_DELIM +
@@ -344,9 +344,9 @@ public class CoopRewriter extends ScriptRewriter {
 						"        loop" + JASS_DELIM +
 						"        exitwhen j>5" + JASS_DELIM +
 						"        set it=LoadInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_ITEM_ID_SUFIX + "\"+I2S(j)))" + JASS_DELIM +
-						"        set uD=uD+\"\\n\"+IS62(it)" + JASS_DELIM +
+						"        set uD=uD+\"\\n\"+" + ARCHON_PREFIX + "IS62(it)" + JASS_DELIM +
 						"        if it!=0 then" + JASS_DELIM +
-						"        set uD=uD+\"\\n\"+IS62(LoadInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_ITEM_CHARGE_SUFIX + "\"+I2S(j))))" + JASS_DELIM +
+						"        set uD=uD+\"\\n\"+" + ARCHON_PREFIX + "IS62(LoadInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_ITEM_CHARGE_SUFIX + "\"+I2S(j))))" + JASS_DELIM +
 						"        endif" + JASS_DELIM +
 						"        set j=j+1" + JASS_DELIM +
 						"        endloop" + JASS_DELIM +
@@ -363,17 +363,16 @@ public class CoopRewriter extends ScriptRewriter {
 						"    call SaveStr(coopCache,StringHashBJ(k),2*c+1,k2)" + JASS_DELIM +
 						"    call SaveInteger(coopCache,StringHashBJ(k),StringHashBJ(\"" + CACHE_COUNT_KEY + "\"),c+1)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "StoreReal takes hashtable coopCache,string k0,string k1,real v returns nothing" + JASS_DELIM +
-						"    local string k2=\"" + CACHE_VALUE_PREFIX + "\"+k1" + JASS_DELIM +
-						"    call DisplayTextToForce(GetPlayersAll(),\"StoreReal \"+LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)+\"|\"+k0+\"|\"+k1)" + JASS_DELIM +
-						"    call " + ARCHON_PREFIX + "StoreReference(coopCache,\"" + CACHE_REAL_KEY + "\",k0,k2)" + JASS_DELIM +
-						"    call SaveReal(coopCache,StringHashBJ(k0),StringHashBJ(k2),v)" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
 						"function " + ARCHON_PREFIX + "StoreInteger takes hashtable coopCache,string k0,string k1,integer v returns nothing" + JASS_DELIM +
 						"    local string k2=\"" + CACHE_VALUE_PREFIX + "\"+k1" + JASS_DELIM +
 						"    call DisplayTextToForce(GetPlayersAll(),\"StoreInteger \"+LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)+\"|\"+k0+\"|\"+k1)" + JASS_DELIM +
 						"    call " + ARCHON_PREFIX + "StoreReference(coopCache,\"" + CACHE_INTEGER_KEY + "\",k0,k2)" + JASS_DELIM +
 						"    call SaveInteger(coopCache,StringHashBJ(k0),StringHashBJ(k2),v)" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM + "function " + ARCHON_PREFIX + "StoreReal takes hashtable coopCache,string k0,string k1,real v returns nothing" + JASS_DELIM +
+						"    local string k2=\"" + CACHE_VALUE_PREFIX + "\"+k1" + JASS_DELIM +
+						"    call DisplayTextToForce(GetPlayersAll(),\"StoreReal \"+LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)+\"|\"+k0+\"|\"+k1)" + JASS_DELIM +
+						"    call " + ARCHON_PREFIX + "StoreReference(coopCache,\"" + CACHE_REAL_KEY + "\",k0,k2)" + JASS_DELIM +
+						"    call SaveReal(coopCache,StringHashBJ(k0),StringHashBJ(k2),v)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function " + ARCHON_PREFIX + "StoreBoolean takes hashtable coopCache,string k0,string k1,boolean v returns nothing" + JASS_DELIM +
 						"    local string k2=\"" + CACHE_VALUE_PREFIX + "\"+k1" + JASS_DELIM +
@@ -439,21 +438,40 @@ public class CoopRewriter extends ScriptRewriter {
 						END_FUNCTION, sb);
 				// endregion
 				// region load natives
-				append("function " + ARCHON_PREFIX + "GetStoredReal takes hashtable coopCache,string k0,string k1 returns real" + JASS_DELIM +
-						"    call DisplayTextToForce(GetPlayersAll(),\"GetStoredReal \"+LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)+\"|\"+k0+\"|\"+k1)" + JASS_DELIM +
-						"    return LoadReal(coopCache,StringHashBJ(k0),StringHashBJ(\"" + CACHE_VALUE_PREFIX + "\"+k1))" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "GetStoredInteger takes hashtable coopCache,string k0,string k1 returns integer" + JASS_DELIM +
+				append("function " + ARCHON_PREFIX + "GetStoredInteger takes hashtable coopCache,string k0,string k1 returns integer" + JASS_DELIM +
+						"    local string k2=\"" + CACHE_VALUE_PREFIX + "\"+k1" + JASS_DELIM +
+						"    local string cacheName=LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)" + JASS_DELIM +
+						"    if HaveSavedInteger(coopCache,StringHashBJ(k0),StringHashBJ(k2)) then" + JASS_DELIM +
 						"    call DisplayTextToForce(GetPlayersAll(),\"GetStoredInteger \"+LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)+\"|\"+k0+\"|\"+k1)" + JASS_DELIM +
-						"    return LoadInteger(coopCache,StringHashBJ(k0),StringHashBJ(\"" + CACHE_VALUE_PREFIX + "\"+k1))" + JASS_DELIM +
+						"    return LoadInteger(coopCache,StringHashBJ(k0),StringHashBJ(k2))" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"return " + ARCHON_PREFIX + "S62I(" + ARCHON_PREFIX + "ReadString(cacheName,k0+\"\\\\\"+k2))" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM + "function " + ARCHON_PREFIX + "GetStoredReal takes hashtable coopCache,string k0,string k1 returns real" + JASS_DELIM +
+						"    local string k2=\"" + CACHE_VALUE_PREFIX + "\"+k1" + JASS_DELIM +
+						"    local string cacheName=LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)" + JASS_DELIM +
+						"    if HaveSavedReal(coopCache,StringHashBJ(k0),StringHashBJ(k2)) then" + JASS_DELIM +
+						"    call DisplayTextToForce(GetPlayersAll(),\"GetStoredReal \"+LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)+\"|\"+k0+\"|\"+k1)" + JASS_DELIM +
+						"    return LoadReal(coopCache,StringHashBJ(k0),StringHashBJ(k2))" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"return S2R(" + ARCHON_PREFIX + "ReadString(cacheName,k0+\"\\\\\"+k2))" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function " + ARCHON_PREFIX + "GetStoredBoolean takes hashtable coopCache,string k0,string k1 returns boolean" + JASS_DELIM +
+						"    local string k2=\"" + CACHE_VALUE_PREFIX + "\"+k1" + JASS_DELIM +
+						"    local string cacheName=LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)" + JASS_DELIM +
+						"    if HaveSavedBoolean(coopCache,StringHashBJ(k0),StringHashBJ(k2)) then" + JASS_DELIM +
 						"    call DisplayTextToForce(GetPlayersAll(),\"GetStoredBoolean \"+LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)+\"|\"+k0+\"|\"+k1)" + JASS_DELIM +
-						"    return LoadBoolean(coopCache,StringHashBJ(k0),StringHashBJ(\"" + CACHE_VALUE_PREFIX + "\"+k1))" + JASS_DELIM +
+						"    return LoadBoolean(coopCache,StringHashBJ(k0),StringHashBJ(k2))" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"return " + ARCHON_PREFIX + "S2B(" + ARCHON_PREFIX + "ReadString(cacheName,k0+\"\\\\\"+k2))" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function " + ARCHON_PREFIX + "GetStoredString takes hashtable coopCache,string k0,string k1 returns string" + JASS_DELIM +
+						"    local string k2=\"" + CACHE_VALUE_PREFIX + "\"+k1" + JASS_DELIM +
+						"    local string cacheName=LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)" + JASS_DELIM +
+						"    if HaveSavedString(coopCache,StringHashBJ(k0),StringHashBJ(k2)) then" + JASS_DELIM +
 						"    call DisplayTextToForce(GetPlayersAll(),\"GetStoredString \"+LoadStringBJ(StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),StringHashBJ(\"" + CACHE_CAMPAIGNFILE_KEY + "\"),coopCache)+\"|\"+k0+\"|\"+k1)" + JASS_DELIM +
-						"    return LoadStr(coopCache,StringHashBJ(k0),StringHashBJ(\"" + CACHE_VALUE_PREFIX + "\"+k1))" + JASS_DELIM +
+						"    return LoadStr(coopCache,StringHashBJ(k0),StringHashBJ(k2))" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"return " + ARCHON_PREFIX + "ReadString(cacheName,k0+\"\\\\\"+k2)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function " + ARCHON_PREFIX + "RestoreUnit takes hashtable coopCache,string k0,string k1,player owner,real x,real y,real facing returns unit" + JASS_DELIM +
 						"    local integer i" + JASS_DELIM +
@@ -482,8 +500,8 @@ public class CoopRewriter extends ScriptRewriter {
 				int lineIndex = 0;
 				for (String sufix : Arrays.asList(CACHE_ID_SUFIX, CACHE_XP_SUFIX, CACHE_STR_SUFIX, CACHE_AGI_SUFIX, CACHE_INT_SUFIX, CACHE_UNSPEND_POINTS_SUFIX,
 						CACHE_HEALTH_MAX_SUFIX, CACHE_MANA_MAX_SUFIX))
-					append("call SaveInteger(coopCache,k0h,StringHash(k2+\"" + sufix + "\"),S62I(XT87ReadLines[" + (lineIndex++) + "]))", sb);
-				append("call SaveInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_ABILITY_COUNT_SUFIX + "\"),S62I(XT87ReadLines[" + (lineIndex++) + "]))", sb);
+					append("call SaveInteger(coopCache,k0h,StringHash(k2+\"" + sufix + "\")," + ARCHON_PREFIX + "S62I(XT87ReadLines[" + (lineIndex++) + "]))", sb);
+				append("call SaveInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_ABILITY_COUNT_SUFIX + "\")," + ARCHON_PREFIX + "S62I(XT87ReadLines[" + (lineIndex++) + "]))", sb);
 				append(END_IF + JASS_DELIM +
 						"        call SetHeroXP(u,LoadInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_XP_SUFIX + "\")),false)" + JASS_DELIM +
 						"        call SetHeroStr(u,LoadInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_STR_SUFIX + "\")),true)" + JASS_DELIM +
@@ -500,7 +518,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"if r then", sb);
 				int lineIndexAfterAbilityCount = lineIndex;
 				for (String sufix : Arrays.asList(CACHE_ABILITY_ID_SUFIX, CACHE_ABILITY_LVL_SUFIX))
-					append("call SaveInteger(coopCache,k0h,StringHash(k2+\"" + sufix + "\"+I2S(i)),S62I(XT87ReadLines[" + (lineIndex++) + "+2*i]))", sb);
+					append("call SaveInteger(coopCache,k0h,StringHash(k2+\"" + sufix + "\"+I2S(i))," + ARCHON_PREFIX + "S62I(XT87ReadLines[" + (lineIndex++) + "+2*i]))", sb);
 				append(END_IF + JASS_DELIM +
 						"            set a=LoadInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_ABILITY_ID_SUFIX + "\"+I2S(i)))" + JASS_DELIM +
 						"            set l=LoadInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_ABILITY_LVL_SUFIX + "\"+I2S(i)))" + JASS_DELIM +
@@ -523,11 +541,11 @@ public class CoopRewriter extends ScriptRewriter {
 						"    loop" + JASS_DELIM +
 						"        exitwhen i>5" + JASS_DELIM +
 						"if r then" + JASS_DELIM +
-						"set c=S62I(XT87ReadLines[j])" + JASS_DELIM +
+						"set c=" + ARCHON_PREFIX + "S62I(XT87ReadLines[j])" + JASS_DELIM +
 						"set j=j+1" + JASS_DELIM +
 						"call SaveInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_ITEM_ID_SUFIX + "\"+I2S(i)),c)" + JASS_DELIM +
 						"if c!=0 then" + JASS_DELIM +
-						"call SaveInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_ITEM_CHARGE_SUFIX + "\"+I2S(i)),S62I(XT87ReadLines[j]))" + JASS_DELIM +
+						"call SaveInteger(coopCache,k0h,StringHash(k2+\"" + CACHE_ITEM_CHARGE_SUFIX + "\"+I2S(i))," + ARCHON_PREFIX + "S62I(XT87ReadLines[j]))" + JASS_DELIM +
 						"set j=j+1" + JASS_DELIM +
 						END_IF + JASS_DELIM +
 						END_IF + JASS_DELIM +
@@ -554,11 +572,10 @@ public class CoopRewriter extends ScriptRewriter {
 						END_FUNCTION, sb);
 				// endregion
 				// region save functions
-				append("function " + ARCHON_PREFIX + "StoreRealBJ takes real val,string k1,string k0,hashtable coopCache returns nothing" + JASS_DELIM +
-						"    call " + ARCHON_PREFIX + "StoreReal(coopCache,k0,k1,val)" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "StoreIntegerBJ takes integer val,string k1,string k0,hashtable coopCache returns nothing" + JASS_DELIM +
+				append("function " + ARCHON_PREFIX + "StoreIntegerBJ takes integer val,string k1,string k0,hashtable coopCache returns nothing" + JASS_DELIM +
 						"    call " + ARCHON_PREFIX + "StoreInteger(coopCache,k0,k1,val)" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM + "function " + ARCHON_PREFIX + "StoreRealBJ takes real val,string k1,string k0,hashtable coopCache returns nothing" + JASS_DELIM +
+						"    call " + ARCHON_PREFIX + "StoreReal(coopCache,k0,k1,val)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function " + ARCHON_PREFIX + "StoreBooleanBJ takes boolean val,string k1,string k0,hashtable coopCache returns nothing" + JASS_DELIM +
 						"    call " + ARCHON_PREFIX + "StoreBoolean(coopCache,k0,k1,val)" + JASS_DELIM +
@@ -571,11 +588,11 @@ public class CoopRewriter extends ScriptRewriter {
 						END_FUNCTION, sb);
 				// endregion
 				// region load functions
-				append("function " + ARCHON_PREFIX + "GetStoredRealBJ takes string k1,string k0,hashtable coopCache returns real" + JASS_DELIM +
-						"    return " + ARCHON_PREFIX + "GetStoredReal(coopCache,k0,k1)" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "GetStoredIntegerBJ takes string k1,string k0,hashtable coopCache returns integer" + JASS_DELIM +
+				append("function " + ARCHON_PREFIX + "GetStoredIntegerBJ takes string k1,string k0,hashtable coopCache returns integer" + JASS_DELIM +
 						"    return " + ARCHON_PREFIX + "GetStoredInteger(coopCache,k0,k1)" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "GetStoredRealBJ takes string k1,string k0,hashtable coopCache returns real" + JASS_DELIM +
+						"    return " + ARCHON_PREFIX + "GetStoredReal(coopCache,k0,k1)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function " + ARCHON_PREFIX + "GetStoredBooleanBJ takes string k1,string k0,hashtable coopCache returns boolean" + JASS_DELIM +
 						"    return " + ARCHON_PREFIX + "GetStoredBoolean(coopCache,k0,k1)" + JASS_DELIM +
@@ -1018,10 +1035,10 @@ public class CoopRewriter extends ScriptRewriter {
 						"    endif" + JASS_DELIM +
 						"    return \"f\"" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function ModI takes integer n, integer b returns integer" + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "ModI takes integer n, integer b returns integer" + JASS_DELIM +
 						"return n-(n/b)*b" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function IS62 takes integer n returns string" + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "IS62 takes integer n returns string" + JASS_DELIM +
 						"    local string result=\"\"" + JASS_DELIM +
 						"    local integer remainder" + JASS_DELIM +
 						"    local integer b=62" + JASS_DELIM +
@@ -1029,14 +1046,14 @@ public class CoopRewriter extends ScriptRewriter {
 						"    " + JASS_DELIM +
 						"    loop" + JASS_DELIM +
 						"        exitwhen n<=0" + JASS_DELIM +
-						"        set digit=ModI(n,b)" + JASS_DELIM +
+						"        set digit=" + ARCHON_PREFIX + "ModI(n,b)" + JASS_DELIM +
 						"        set result=SubString(\"" + XT87Utils.BASE62_CHARS + "\",digit,digit+1)+result" + JASS_DELIM +
 						"        set n=n/b" + JASS_DELIM +
 						"    endloop" + JASS_DELIM +
 						"    " + JASS_DELIM +
 						"    return result" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function S62I takes string s returns integer" + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "S62I takes string s returns integer" + JASS_DELIM +
 						"    local integer result=0" + JASS_DELIM +
 						"    local integer b=62" + JASS_DELIM +
 						"    local string digit" + JASS_DELIM +
@@ -1086,8 +1103,11 @@ public class CoopRewriter extends ScriptRewriter {
 						"    endloop" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function " + ARCHON_PREFIX + "ReadString takes string cacheName,string title returns string" + JASS_DELIM +
-						"    call " + ARCHON_PREFIX + "SyncContents(\"XT87CampaignSplitter\\\\\"+cacheName+\"\\\\\"+title+\".pld\")" + JASS_DELIM +
-						"    return XT87ReadLines[0]" + JASS_DELIM +
+						"local string s" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "SyncContents(\"XT87CampaignSplitter\\\\\"+cacheName+\"\\\\\"+title+\".pld\")" + JASS_DELIM +
+						"set s=XT87ReadLines[0]" + JASS_DELIM +
+						"set XT87ReadLinesAreRead=true" + JASS_DELIM +
+						"return s" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function " + ARCHON_PREFIX + "ReadUnit takes string cacheName,string title returns integer" + JASS_DELIM +
 						"    local integer i" + JASS_DELIM +
@@ -1101,7 +1121,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"    call DisplayTextToForce(GetPlayersAll(),\"0)\"+XT87ReadLines[0])" + JASS_DELIM +
 						"    call DisplayTextToForce(GetPlayersAll(),\"1)\"+XT87ReadLines[1])" + JASS_DELIM +
 						"    call DisplayTextToForce(GetPlayersAll(),\"2)\"+XT87ReadLines[2])" + JASS_DELIM +
-						"    return S62I(XT87ReadLines[0])" + JASS_DELIM +
+						"    return " + ARCHON_PREFIX + "S62I(XT87ReadLines[0])" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function Trig_" + ARCHON_PREFIX + "SyncData_Actions takes nothing returns nothing" + JASS_DELIM +
 						"    local string contents=BlzGetTriggerSyncData()" + JASS_DELIM +
