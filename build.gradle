@@ -13,10 +13,23 @@ repositories {
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
-    implementation 'com.github.inwc3:JMPQ3:1.7.14'
+    implementation 'com.github.alexandrugabrielrait:JMPQ3:-SNAPSHOT'
     implementation 'com.github.inwc3:wc3libs:-SNAPSHOT'
 }
 
 test {
     useJUnitPlatform()
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'net.xetanth87.campaignsplitter.SplitterFrame'
+    }
+    from {
+        compileJava.classpath.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
 }

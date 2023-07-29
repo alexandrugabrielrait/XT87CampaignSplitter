@@ -49,15 +49,15 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 			} else if (isInitFunction(line))
 				insideInitialization = true;
 
+			if (line.contains(ELAPSED_TIME_REGISTER)) {
+				String[] params = elapsedTimeParams(line);
+				if (!elapsedTimeIndices.containsKey(params[1]))
+					elapsedTimeIndices.put(params[1], elapsedTimeIndices.size());
+			}
 			if (insideTriggerCreation) {
 				if (line.equals(END_FUNCTION)) {
 					insideTriggerCreation = false;
 					disabledTrigger = false;
-				}
-				else if (line.contains(ELAPSED_TIME_REGISTER)) {
-					String[] params = elapsedTimeParams(line);
-					if (!elapsedTimeIndices.containsKey(params[1]))
-						elapsedTimeIndices.put(params[1], elapsedTimeIndices.size());
 				}
 				else if (line.contains(XT87Utils.DISABLE_TRIGGER))
 					disabledTrigger = true;

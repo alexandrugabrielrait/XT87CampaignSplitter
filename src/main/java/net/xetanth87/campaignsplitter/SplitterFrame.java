@@ -6,6 +6,8 @@ import javax.swing.filechooser.FileSystemView;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -35,8 +37,9 @@ public class SplitterFrame extends JFrame {
 	private final JCheckBox nextLevelCheck = new JCheckBox();
 	private final JCheckBox legacyAssetsCheck = new JCheckBox();
 	private final JCheckBox upkeepRemovalCheck = new JCheckBox();
+	private final JCheckBox toDownloadFolderCheck = new JCheckBox();
 	private final JComboBox<ArchonModeAddedSlotsVariant> archonModeAddedSlotsDropdown = new JComboBox<>();
-	private final List<? extends JComponent> componentList = Arrays.asList(browse, campaignPreviewCheck, nextLevelCheck, legacyAssetsCheck, upkeepRemovalCheck);
+	private final List<? extends JComponent> componentList = Arrays.asList(browse, campaignPreviewCheck, nextLevelCheck, legacyAssetsCheck, upkeepRemovalCheck, toDownloadFolderCheck);
 
 	private static class ArchonModeAddedSlotsVariant {
 		private final int value;
@@ -134,6 +137,14 @@ public class SplitterFrame extends JFrame {
 		for (int i = 0; i < 24; i++)
 			archonModeAddedSlotsDropdown.addItem(new ArchonModeAddedSlotsVariant(i));
 		archonModeAddedSlotsDropdown.setToolTipText("Select the number of player slots, limited by the amount of unused slots of every map.");
+		archonModeAddedSlotsDropdown.addItemListener(e -> {
+			enableDisableToDownloadFolderCheck();
+		});
+		panel.add(new JLabel("Extract to Download folder?"));
+		toDownloadFolderCheck.setSelected(false);
+		panel.add(toDownloadFolderCheck);
+		toDownloadFolderCheck.setToolTipText("Extracts the maps to the Warcraft III Download folder. (Check if you play Archon Mode and are not the host)");
+		enableDisableToDownloadFolderCheck();
 
 		browse.addActionListener(new BrowseL());
 		split.addActionListener(new SplitL());
@@ -196,7 +207,7 @@ public class SplitterFrame extends JFrame {
 			try {
 				File directory;
 				if (filePathField.getText().isEmpty())
-					directory = new File(FileSystemView.getFileSystemView().getDefaultDirectory().getAbsolutePath() + "/Warcraft III/Maps");
+					directory = new File(XT87Utils.MAPS_FOLDER);
 				else
 					directory = new File(filePathField.getText());
 				if (!directory.isDirectory())
@@ -292,6 +303,21 @@ public class SplitterFrame extends JFrame {
 		}
 	}
 
+	private int getArchonModeAddedSlotsVariant()
+	{
+		return ((ArchonModeAddedSlotsVariant) Objects.requireNonNull(archonModeAddedSlotsDropdown.getSelectedItem())).getValue();
+	}
+
+	private void enableDisableToDownloadFolderCheck()
+	{
+		if (getArchonModeAddedSlotsVariant() > 0)
+			toDownloadFolderCheck.setEnabled(!running);
+		else {
+			toDownloadFolderCheck.setEnabled(false);
+			toDownloadFolderCheck.setSelected(false);
+		}
+	}
+
 	class CampaignSplitterThread extends Thread {
 		public final Instant startTime;
 
@@ -308,7 +334,8 @@ public class SplitterFrame extends JFrame {
 				cs.withNextLevel = nextLevelCheck.isSelected();
 				cs.withUpkeepRemoval = upkeepRemovalCheck.isSelected();
 				cs.withLegacyAssets = legacyAssetsCheck.isSelected();
-				cs.archonModeAddedSlots = ((ArchonModeAddedSlotsVariant) Objects.requireNonNull(archonModeAddedSlotsDropdown.getSelectedItem())).getValue();
+				cs.archonModeAddedSlots = getArchonModeAddedSlotsVariant();
+				cs.toDownloadFolder = toDownloadFolderCheck.isSelected() && cs.archonModeAddedSlots > 0;
 				cs.splitCampaign();
 				String timeSpan = formatDuration(Duration.between(startTime, Instant.now()));
 				JOptionPane.showMessageDialog(null, "Campaign \"" + file.getName() + "\" has been split successfully! (" + timeSpan + ")", APP_TITLE, JOptionPane.INFORMATION_MESSAGE);
@@ -318,6 +345,7 @@ public class SplitterFrame extends JFrame {
 					if (file.exists()) {
 						CampaignSplitter cs = new CampaignSplitter(file);
 						cs.difficultySelectorOption = XT87Utils.TriOption.NO;
+						cs.toDownloadFolder = toDownloadFolderCheck.isSelected() && getArchonModeAddedSlotsVariant() > 0;
 						cs.removeTemporaryFiles();
 					}
 				} catch (IOException e) {

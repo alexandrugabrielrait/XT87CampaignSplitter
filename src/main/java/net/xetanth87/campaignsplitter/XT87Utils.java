@@ -9,6 +9,7 @@ import net.moonlightflower.wc3libs.port.MpqPort;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.MPQOpenOption;
 
+import javax.swing.filechooser.FileSystemView;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -31,6 +32,9 @@ public class XT87Utils {
 	public static final String THIS_TRIGGER = "GetTriggeringTrigger()";
 	public static final int MAX_PLAYER_COUNT = 24;
 	public static final String BASE62_CHARS = "XlvWV7GmwyH5M9YsNhJkCUzAZT6roxOLnqIe0KjcFiDQdtpaP2S3uE1bRg84fB";
+	public static final String GAME_FOLDER = FileSystemView.getFileSystemView().getDefaultDirectory().getAbsolutePath() + "/Warcraft III";
+	public static final String MAPS_FOLDER = GAME_FOLDER + "/Maps";
+	public static final String DOWNLOAD_FOLDER = MAPS_FOLDER + "/Download";
 	static {
 		assert BASE62_CHARS.length() == 62 && BASE62_CHARS.length() == BASE62_CHARS.chars().distinct().count();
 	}

@@ -15,6 +15,7 @@ import net.moonlightflower.wc3libs.txt.app.SkinTXT;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.MPQOpenOption;
 
+import javax.swing.filechooser.FileSystemView;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -22,31 +23,30 @@ import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static net.xetanth87.campaignsplitter.XT87Utils.DOWNLOAD_FOLDER;
 import static net.xetanth87.campaignsplitter.XT87Utils.STRING_PREFIX;
 import static net.xetanth87.campaignsplitter.XT87Utils.buttonText;
 import static net.xetanth87.campaignsplitter.XT87Utils.getWithoutExtension;
 import static net.xetanth87.campaignsplitter.XT87Utils.stringIndexToInt;
 
 public class CampaignSplitter {
-	public static final String TEMP_DIR_NAME = "temp";
 	public static final String IMPORTS_DIR_NAME = "imports";
 	private static final int STEPS_CAMP_DATA = 4;
 	public static final String MAP_COUNT_FORMAT = "Maps converted: {0}/{1}.";
 	public final File campFile;
 	public final String splitPath;
+	public final String tempDirName;
 	public int buttonCount, archonModeAddedSlots, archonModeRealAddedSlots;
 	public XT87Utils.TriOption difficultySelectorOption = XT87Utils.TriOption.SMART;
-	public boolean withCampaignPreview = false, withUpkeepRemoval = false, withLegacyAssets = true, withNextLevel = true, hasSkins = false;
+	public boolean withCampaignPreview = false, withUpkeepRemoval = false, withLegacyAssets = true, withNextLevel = true, hasSkins = false, toDownloadFolder = false;
 	public W3F campaignData;
 	protected boolean initializedProgressBar = false;
 	public WTS campStrings = null;
@@ -69,7 +69,7 @@ public class CampaignSplitter {
 	}
 
 	public String getTempPath() {
-		return splitPath + "/" + TEMP_DIR_NAME;
+		return getSplitPath() + "/" + tempDirName;
 	}
 
 	public String getTempPath(String filename) {
@@ -90,12 +90,21 @@ public class CampaignSplitter {
 		if (!campFile.exists())
 			throw new FileNotFoundException("Campaign file not found!");
 		this.campFile = campFile;
-		splitPath = campFile.getParentFile().getAbsolutePath() + "/" + getWithoutExtension(campFile.getName());
+		String campaignName = getWithoutExtension(campFile.getName());
+		splitPath = campFile.getParentFile().getAbsolutePath() + "/" + campaignName;
+		tempDirName  = "temp_" + campaignName;
+	}
+
+	public String getSplitPath()
+	{
+		if (toDownloadFolder)
+			return DOWNLOAD_FOLDER;
+		return splitPath;
 	}
 
 	public void removeTemporaryFiles() {
 		try {
-			String importsPath = splitPath + "/" + TEMP_DIR_NAME;
+			String importsPath = getSplitPath() + "/" + tempDirName;
 			File importsDir = new File(importsPath);
 			if (importsDir.exists())
 				XT87Utils.deleteDirectory(importsDir);
@@ -218,7 +227,7 @@ public class CampaignSplitter {
 		buttonCount = campaignData.getMaps().size();
 		SetValueProgressBar(0);
 		{
-			File splitDir = new File(splitPath);
+			File splitDir = new File(getSplitPath());
 			splitDir.mkdirs();
 		}
 		boolean withDifficultySelector = difficultySelectorOption.equals(XT87Utils.TriOption.YES) ||
@@ -247,7 +256,7 @@ public class CampaignSplitter {
 			for (int i = 0; i < buttonCount; i++) {
 				W3F.MapEntry mapEntry = campaignData.getMaps().get(i);
 				String fileName = mapEntry.getMapPath();
-				String mapPath = splitPath + "/" + fileName;
+				String mapPath = getSplitPath() + "/" + fileName;
 //			if (i != 0)
 //				campEditor = new JMpqEditor(campFile, MPQOpenOption.READ_ONLY);
 				if (!campEditor.hasFile(fileName))
