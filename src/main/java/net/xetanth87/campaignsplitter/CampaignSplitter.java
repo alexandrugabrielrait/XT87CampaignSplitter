@@ -15,7 +15,6 @@ import net.moonlightflower.wc3libs.txt.app.SkinTXT;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.MPQOpenOption;
 
-import javax.swing.filechooser.FileSystemView;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -46,7 +45,7 @@ public class CampaignSplitter {
 	public final String tempDirName;
 	public int buttonCount, archonModeAddedSlots, archonModeRealAddedSlots;
 	public XT87Utils.TriOption difficultySelectorOption = XT87Utils.TriOption.SMART;
-	public boolean withCampaignPreview = false, withUpkeepRemoval = false, withLegacyAssets = true, withNextLevel = true, hasSkins = false, toDownloadFolder = false;
+	public boolean withDifficultySelector = false, withCampaignPreview = false, withUpkeepRemoval = false, withLegacyAssets = true, withNextLevel = true, hasSkins = false, toDownloadFolder = false;
 	public W3F campaignData;
 	protected boolean initializedProgressBar = false;
 	public WTS campStrings = null;
@@ -116,16 +115,17 @@ public class CampaignSplitter {
 	{
 		String featureDescription = "Xetanth87's Campaign Splitter v" + "2.00";// getClass().getPackage().getImplementationVersion();
 		if (archonModeAddedSlots > 0)
-			featureDescription += "\nArchon Mode (" + (archonModeRealAddedSlots + 1) + " slots)";
-		featureDescription += "\nDifficulty Selector: " + XT87Utils.beautifyEnum(difficultySelectorOption);
+			featureDescription += "\n- Archon Mode (" + (archonModeRealAddedSlots + 1) + " slots)";
+		if (withDifficultySelector)
+			featureDescription += "\n- Difficulty Selector";
 		if (withCampaignPreview)
-			featureDescription += "\nWith campaign preview";
+			featureDescription += "\n- Campaign Preview";
 		if (withNextLevel)
-			featureDescription += "\nWith next level name";
+			featureDescription += "\n- Next Level Name";
 		if (withLegacyAssets)
-			featureDescription += "\nWith legacy assets";
+			featureDescription += "\n- Legacy Assets";
 		if (withUpkeepRemoval)
-			featureDescription += "\nUpkeep removed";
+			featureDescription += "\n-Upkeep removed";
 		return featureDescription;
 	}
 
@@ -230,7 +230,7 @@ public class CampaignSplitter {
 			File splitDir = new File(getSplitPath());
 			splitDir.mkdirs();
 		}
-		boolean withDifficultySelector = difficultySelectorOption.equals(XT87Utils.TriOption.YES) ||
+		withDifficultySelector = difficultySelectorOption.equals(XT87Utils.TriOption.YES) ||
 				(difficultySelectorOption.equals(XT87Utils.TriOption.SMART) && campaignData.getFlag(W3F.Flags.Flag.VAR_DIFFICULTY));
 		List<File> mapFiles = new ArrayList<>();
 		archonModeRealAddedSlots = archonModeAddedSlots;

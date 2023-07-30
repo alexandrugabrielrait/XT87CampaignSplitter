@@ -6,6 +6,7 @@ import org.antlr.v4.runtime.misc.Triple;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -30,6 +31,7 @@ public class CoopRewriter extends ScriptRewriter {
 	public static final String GH_HAS_ABILITY = "hasAbility";
 	public static final String ABILITY_ARRAY = ARCHON_PREFIX + "AbilityArray";
 	public static final String ABILITY_ARRAY_SIZE = ABILITY_ARRAY + "SIZE";
+	private static final String READ_LOCK = ARCHON_PREFIX + "ReadLock";
 
 	// coop cache
 	public static final String CACHE_INTEGER_PREFIX = "i";
@@ -169,12 +171,21 @@ public class CoopRewriter extends ScriptRewriter {
 	public void onReadLine(String line, StringBuffer sb) {
 		line = line.replace("bj_FORCE_PLAYER[" + mainPlayer.getNum() + "]", FORCE_NAME);
 		line = line.replace("GetLocalPlayer()", ARCHON_PREFIX + "GetMainPlayer()");
+		line = line.replace("call SetSoundDuration(", "//call SetSoundDuration(");
+		// region replace specific calls
+//		for (String specificFunction : Arrays.asList(
+//				"CreateSound",
+//		))
+//			for (String suffix : Arrays.asList("(", " ")) {
+//				String specificCall = specificFunction + suffix;
+//				line = line.replace(specificCall, ARCHON_PREFIX + specificCall);
+//			}
 		if (withCustomGameCache) {
 			line = line.replace("bj_lastCreatedGameCache", LAST_CREATED_COOP_CACHE);
 			line = line.replace("GetLastCreatedGameCacheBJ()", LAST_CREATED_COOP_CACHE);
 			for (String prefix : Arrays.asList(",", " "))
 				line = line.replace(prefix + "gamecache ", prefix + "hashtable ");
-			// region replace GameCache calls
+			// region replace straight forward calls
 			for (String gameCacheFunction : Arrays.asList(
 					"InitGameCache",
 					"SaveGameCache",
@@ -223,12 +234,19 @@ public class CoopRewriter extends ScriptRewriter {
 
 					"FlushGameCacheBJ",
 					"FlushStoredMissionBJ",
-					"HaveStoredValue"
+					"HaveStoredValue",
+
+					"TriggerExecute",
+					"TriggerExecuteWait",
+					"TriggerEvaluate",
+					"ConditionalTriggerExecute",
+					"TriggerExecuteBJ"
 			))
-				for (String suffix : Arrays.asList("(", " ")) {
-					String gameCacheCall = gameCacheFunction + suffix;
-					line = line.replace(gameCacheCall, ARCHON_PREFIX + gameCacheCall);
-				}
+				for (String prefix : Arrays.asList("(", " ", ",", "="))
+					for (String suffix : Arrays.asList("(", " ")) {
+						String gameCacheCall = gameCacheFunction + suffix;
+						line = line.replace(prefix + gameCacheCall, prefix + ARCHON_PREFIX + gameCacheCall);
+					}
 			// endregion
 			// region replace SyncStored calls
 			for (String gameCacheFunction : Arrays.asList(
@@ -238,8 +256,9 @@ public class CoopRewriter extends ScriptRewriter {
 					"SyncStoredUnit",
 					"SyncStoredString"
 			))
-				for (String suffix : Arrays.asList("(", " "))
-					line = line.replace(gameCacheFunction + suffix, ARCHON_PREFIX + "SyncStoredUnused" + suffix);
+				for (String prefix : Collections.singletonList(" "))
+					for (String suffix : Arrays.asList("(", " "))
+						line = line.replace(prefix + gameCacheFunction + suffix, prefix + ARCHON_PREFIX + "SyncStoredUnused" + suffix);
 			// endregion
 			String call = getCallFromLine(line);
 			if (call != null) {
@@ -307,6 +326,7 @@ public class CoopRewriter extends ScriptRewriter {
 		if (!triggersAdded && line.contains("function Trig")) {
 			// define functions
 			if (withCustomGameCache) {
+				// region GameCache functions
 				// region game cache basics natives
 				append("function " + ARCHON_PREFIX + "InitGameCache takes string campaignFile returns hashtable" + JASS_DELIM +
 						"    local hashtable q = InitHashtable()" + JASS_DELIM +
@@ -616,12 +636,14 @@ public class CoopRewriter extends ScriptRewriter {
 						"    set id=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_ID_SUFIX + "\"))" + JASS_DELIM +
 						"if id==0 then" + JASS_DELIM +
 						"        set id=" + ARCHON_PREFIX + "ReadUnit(cacheName,m+\"\\\\\"+k2)" + JASS_DELIM +
-						"set r=true" + JASS_DELIM +
-						"    endif" + JASS_DELIM +
 						"    if id==0 then" + JASS_DELIM +
+						"set XT87ReadLinesAreRead=false" + JASS_DELIM +
+						"set XT87ReadLinesLock=false" + JASS_DELIM +
 						"        return null" + JASS_DELIM +
-						"    endif" + JASS_DELIM +
-						"    set u=CreateUnit(p,id,x,y,facing)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"set r=true" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"set u=CreateUnit(p,id,x,y,facing)" + JASS_DELIM +
 						"if(IsUnitType(u,UNIT_TYPE_HERO))then" + JASS_DELIM + // if hero
 						"if r then", sb); // if read
 				int lineIndex = 1;
@@ -636,7 +658,9 @@ public class CoopRewriter extends ScriptRewriter {
 						"        call SetHeroInt(u,LoadInteger(q,mh,StringHash(k2+\"" + CACHE_INT_SUFIX + "\")),true)" + JASS_DELIM +
 						"        call ModifyHeroSkillPoints(u,bj_MODIFYMETHOD_SET,LoadInteger(q,mh,StringHash(k2+\"" + CACHE_UNSPEND_POINTS_SUFIX + "\")))" + JASS_DELIM +
 						"        call BlzSetUnitMaxHP(u,LoadInteger(q,mh,StringHash(k2+\"" + CACHE_HEALTH_MAX_SUFIX + "\")))" + JASS_DELIM +
+						"        call SetUnitLifePercentBJ(u,100)" + JASS_DELIM +
 						"        call BlzSetUnitMaxMana(u,LoadInteger(q,mh,StringHash(k2+\"" + CACHE_MANA_MAX_SUFIX + "\")))" + JASS_DELIM +
+						"        call SetUnitManaPercentBJ(u,100)" + JASS_DELIM +
 						"        set c=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_ABILITY_COUNT_SUFIX + "\"))" + JASS_DELIM +
 						"        set i=0" + JASS_DELIM +
 						DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"AUX i \"+I2S(i)+\" c \"+I2S(c))" + JASS_DELIM) +
@@ -727,6 +751,40 @@ public class CoopRewriter extends ScriptRewriter {
 						"function  " + ARCHON_PREFIX + "SaveGameCacheBJ takes hashtable q returns boolean" + JASS_DELIM +
 						"    return " + ARCHON_PREFIX + "SaveGameCache(q)" + JASS_DELIM +
 						END_FUNCTION, sb);
+				// endregion
+				// endregion
+				// region Trigger functions
+				{
+					for (String o : Arrays.asList(
+							"TriggerExecute",
+							"TriggerExecuteWait",
+							"ConditionalTriggerExecute"
+					))
+						append("function " + ARCHON_PREFIX + o + " takes trigger t returns nothing" + JASS_DELIM +
+								"call " + READ_LOCK + "()" + JASS_DELIM +
+								"call " + o + "(t)" + JASS_DELIM +
+								//"call " + READ_LOCK + "()" + JASS_DELIM +
+								END_FUNCTION, sb);
+					for (Triple<String, String, String> o : Arrays.asList(
+							new Triple<>("TriggerExecuteBJ", "trigger t,boolean b returns boolean", "(t,b)")
+					))
+						append("function " + ARCHON_PREFIX + o.a + " takes " + o.b + JASS_DELIM +
+								//"boolean r" + JASS_DELIM +
+								//"call " + READ_LOCK + "()" + JASS_DELIM +
+								//"set r=" + o.a + o.c + JASS_DELIM +
+								//"call " + READ_LOCK + "()" + JASS_DELIM +
+								//"return r" + JASS_DELIM +
+								"call " + READ_LOCK + "()" + JASS_DELIM +
+								"return " + o.a + o.c + JASS_DELIM +
+								END_FUNCTION, sb);
+					for (Triple<String, String, String> o : Arrays.asList(
+							new Triple<>("TriggerEvaluate", "trigger t returns boolean", "(t)")
+					))
+						append("function " + ARCHON_PREFIX + o.a + " takes " + o.b + JASS_DELIM +
+								"call " + READ_LOCK + "()" + JASS_DELIM +
+								"return " + o.a + o.c + JASS_DELIM +
+								END_FUNCTION, sb);
+				}
 				// endregion
 			}
 			// region gold and lumber synchronization
@@ -1111,7 +1169,13 @@ public class CoopRewriter extends ScriptRewriter {
 						"    endfunction", sb);
 				// endregion
 				// region custom functions
-				append("function " + ARCHON_PREFIX + "WatchSkill takes integer a returns boolean" + JASS_DELIM +
+				append("function " + READ_LOCK + " takes nothing returns nothing" + JASS_DELIM +
+						"    loop" + JASS_DELIM +
+						"        exitwhen not XT87ReadLinesLock" + JASS_DELIM +
+						"        call TriggerSleepAction(bj_WAIT_FOR_COND_MIN_INTERVAL)" + JASS_DELIM +
+						"    endloop" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "WatchSkill takes integer a returns boolean" + JASS_DELIM +
 						"    if not(LoadBooleanBJ(StringHash(\"" + GH_HAS_ABILITY + "\"),a," + GENERAL_HASHTABLE + ")) then" + JASS_DELIM +
 						"        set " + ABILITY_ARRAY + "[" + ABILITY_ARRAY_SIZE + "]=a" + JASS_DELIM +
 						"        call SaveBooleanBJ(true,StringHash(\"" + GH_HAS_ABILITY + "\"),a," + GENERAL_HASHTABLE + ")" + JASS_DELIM +
@@ -1254,10 +1318,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"    local integer j=0" + JASS_DELIM +
 						"    local integer len" + JASS_DELIM +
 						"    local string content=null" + JASS_DELIM +
-						"    loop" + JASS_DELIM +
-						"        exitwhen not XT87ReadLinesLock" + JASS_DELIM +
-						"        call TriggerSleepAction(bj_WAIT_FOR_COND_MIN_INTERVAL)" + JASS_DELIM +
-						"    endloop" + JASS_DELIM +
+						"call " + READ_LOCK + "()" + JASS_DELIM +
 						"set XT87ReadLinesLock=true" + JASS_DELIM +
 						"    if GetLocalPlayer()==" + toMainPlayerFunc() + " then" + JASS_DELIM +
 						"        set content=(s__File_readEx(s__File_open((path)),true)) // INLINED!!" + JASS_DELIM +
