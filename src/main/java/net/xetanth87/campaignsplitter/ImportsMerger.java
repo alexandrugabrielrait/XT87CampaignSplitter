@@ -5,14 +5,10 @@ import net.moonlightflower.wc3libs.bin.app.IMP;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.StandardCopyOption;
-import java.security.CodeSource;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Enumeration;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 public class ImportsMerger {
 	private static List<String> assetList;

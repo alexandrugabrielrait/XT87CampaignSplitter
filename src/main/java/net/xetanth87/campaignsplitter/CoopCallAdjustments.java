@@ -76,14 +76,14 @@ public class CoopCallAdjustments {
 		addCallParameters("UnitShareVision", 1);
 		addCallParameters("SetPlayerState", 0);
 		addCallParameters("RemovePlayer", 0);
-		addCallParameters("SetFogStateRect", 0);
-		addCallParameters("SetFogStateRadius", 0);
-		addCallParameters("SetFogStateRadiusLoc", 0).withPoint(2);
-		addCallParameters("CreateFogModifierRect", 0);
-		addCallParameters("CreateFogModifierRadius", 0);
-		addCallParameters("CreateFogModifierRadiusLoc", 0).withPoint(2);
-		addCallParameters("DisplayTextToPlayer", 0);
-		addCallParameters("DisplayTimedTextToPlayer", 0);
+		addCallParameters("SetFogStateRect", 0).setLocal();
+		addCallParameters("SetFogStateRadius", 0).setLocal();
+		addCallParameters("SetFogStateRadiusLoc", 0).setLocal();
+		addCallParameters("CreateFogModifierRect", 0).setLocal();
+		addCallParameters("CreateFogModifierRadius", 0).setLocal();
+		addCallParameters("CreateFogModifierRadiusLoc", 0).setLocal();
+		addCallParameters("DisplayTextToPlayer", 0).setLocal();
+		addCallParameters("DisplayTimedTextToPlayer", 0).setLocal();
 		//skipping leaderboard stuff
 		//skipping AI stuff
 		//skipping request/sync stuff
@@ -117,10 +117,10 @@ public class CoopCallAdjustments {
 		addCallParameters("TriggerRegisterPlayerMouseEventBJ", 1);
 		addCallParameters("TriggerRegisterPlayerEventLeave", 1);
 		addCallParameters("TriggerRegisterPlayerEventEndCinematic", 1);
-		addCallParameters("CreateFogModifierRectSimple", 0);
-		addCallParameters("CreateFogModifierRadiusLocSimple", 0).withPoint(2);
-		addCallParameters("CreateFogModifierRectBJ", 1);
-		addCallParameters("CreateFogModifierRadiusLocBJ", 1).withPoint(3);
+		addCallParameters("CreateFogModifierRectSimple", 0).setLocal();
+		addCallParameters("CreateFogModifierRadiusLocSimple", 0).setLocal();
+		addCallParameters("CreateFogModifierRectBJ", 1).setLocal();
+		addCallParameters("CreateFogModifierRadiusLocBJ", 1).setLocal();
 		addCallParameters("StartSoundForPlayerBJ", 0).setLocal();
 		addCallParameters("VolumeGroupSetVolumeForPlayerBJ", 0).setLocal();
 		addCallParameters("ClearSelectionForPlayer", 0).setLocal();

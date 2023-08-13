@@ -73,7 +73,7 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final boolean IS_DEBUG = false;
 
 	public static final List<String> ALL_RESOURCE_NAMES = Arrays.asList("Gold", "Lumber", "FoodUsed", "FoodCap", "FoodCeiling");
-	public boolean triggersAdded, initGlobalsAdded, insideInitialization, insideInitGlobals, insideConfig, insideCustomPlayerSlots, withCustomGameCache;
+	public boolean triggersAdded, initGlobalsAdded, insideInitGlobals, insideConfig, insideCustomPlayerSlots, withCustomGameCache;
 	public W3I info;
 	public W3I.Player mainPlayer;
 	public List<W3I.Player> secondaryPlayers;
@@ -104,10 +104,10 @@ public class CoopRewriter extends ScriptRewriter {
 	public void onStartRead(String text, StringBuffer sb) {
 		triggersAdded = false;
 		initGlobalsAdded = false;
-		insideInitialization = false;
 		insideInitGlobals = false;
 		insideConfig = false;
 		insideCustomPlayerSlots = false;
+		insideFunction = null;
 	}
 
 	public static String toPlayerFunc(int i) {
@@ -185,7 +185,7 @@ public class CoopRewriter extends ScriptRewriter {
 			line = line.replace("GetLastCreatedGameCacheBJ()", LAST_CREATED_COOP_CACHE);
 			for (String prefix : Arrays.asList(",", " "))
 				line = line.replace(prefix + "gamecache ", prefix + "hashtable ");
-			// region replace straight forward calls
+			// region replace game cache calls
 			for (String gameCacheFunction : Arrays.asList(
 					"InitGameCache",
 					"SaveGameCache",
@@ -234,13 +234,7 @@ public class CoopRewriter extends ScriptRewriter {
 
 					"FlushGameCacheBJ",
 					"FlushStoredMissionBJ",
-					"HaveStoredValue",
-
-					"TriggerExecute",
-					"TriggerExecuteWait",
-					"TriggerEvaluate",
-					"ConditionalTriggerExecute",
-					"TriggerExecuteBJ"
+					"HaveStoredValue"
 			))
 				for (String prefix : Arrays.asList("(", " ", ",", "="))
 					for (String suffix : Arrays.asList("(", " ")) {
@@ -248,6 +242,22 @@ public class CoopRewriter extends ScriptRewriter {
 						line = line.replace(prefix + gameCacheCall, prefix + ARCHON_PREFIX + gameCacheCall);
 					}
 			// endregion
+			// region replace trigger execution calls
+			if (!Arrays.asList("main", "RunInitializationTriggers").contains(insideFunction)) {
+				for (String gameCacheFunction : Arrays.asList(
+//					"TriggerExecute",
+//					"TriggerExecuteWait",
+						"TriggerEvaluate",
+//					"ConditionalTriggerExecute",
+						"TriggerExecuteBJ"
+				))
+					for (String prefix : Arrays.asList("(", " ", ",", "="))
+						for (String suffix : Arrays.asList("(", " ")) {
+							String gameCacheCall = gameCacheFunction + suffix;
+							line = line.replace(prefix + gameCacheCall, prefix + ARCHON_PREFIX + gameCacheCall);
+						}
+				// endregion
+			}
 			// region replace SyncStored calls
 			for (String gameCacheFunction : Arrays.asList(
 					"SyncStoredInteger",
@@ -270,8 +280,15 @@ public class CoopRewriter extends ScriptRewriter {
 			}
 		}
 
-		if (insideInitialization) {
-			if (line.equals(END_FUNCTION)) {
+		// variable declarations
+		{
+			String trimmedLine = line.trim();
+			if (trimmedLine.startsWith("gamecache ") || trimmedLine.startsWith("local "))
+				line = line.replaceFirst("gamecache ", "hashtable ");
+		}
+
+		if ("main".equals(insideFunction)) {
+			if (line.contains(END_FUNCTION)) {
 				append("    " + SETPLAYERCOLORBJ + toMainPlayerFunc() + "," + CONVERTPLAYERCOLOR + mainPlayer.getNum() + "),true)", sb);
 				for (W3I.Player player : secondaryPlayers) {
 					String playerFunc = toPlayerFunc(player.getNum());
@@ -279,20 +296,15 @@ public class CoopRewriter extends ScriptRewriter {
 							"call SetPlayerOnScoreScreen(" + playerFunc + ",false)", sb);
 				}
 				int index = 0;
-				final float anglePerPlayer = 360f / (allPlayerNumbers.size() - 1);
 				for (int playerNum : allPlayerNumbers) {
 					append("set " + PLAYER_ID_ARRAY + "[" + index + "]=" + playerNum + JASS_DELIM +
-									"set " + PLAYER_INDEX_ARRAY + "[" + playerNum + "]=" + index + JASS_DELIM
-							// +
-							//"set " + PLAYER_ANGLE_ARRAY + "[" + playerNum + "]=" + (index * anglePerPlayer)
-							, sb);
+									"set " + PLAYER_INDEX_ARRAY + "[" + playerNum + "]=" + index, sb);
 					index++;
 				}
 				append("call " + ENFORCE_ARCHON + "()" + JASS_DELIM +
 						"if (GetLocalPlayer()!=" + toMainPlayerFunc() + ") then" + JASS_DELIM +
 						"call SetReservedLocalHeroButtons(0)" + JASS_DELIM +
 						END_IF, sb);
-				insideInitialization = false;
 			}
 		} else if (insideInitGlobals) {
 			if (line.contains(END_FUNCTION)) {
@@ -302,15 +314,11 @@ public class CoopRewriter extends ScriptRewriter {
 				for (int playerNumber : allPlayerNumbers)
 					append("    call ForceAddPlayer(" + FORCE_NAME + "," + toPlayerFunc(playerNumber) + ")", sb);
 				initGlobalsAdded = true;
-			} else if (line.trim().startsWith("cache ")) {
-				line = line.replaceFirst("cache ", "hashtable ");
 			}
 		} else if (line.contains("function InitGlobals takes"))
 			insideInitGlobals = true;
-		else if (line.contains("function RunInitializationTriggers takes") || line.contains("function main takes"))
-			insideInitialization = true;
 
-		if (insideConfig || insideCustomPlayerSlots) {
+		if (Arrays.asList("config", "InitCustomPlayerSlots").contains(insideFunction)) {
 			if (line.contains(SETPLAYERCOLOR + toMainPlayerFunc())) {
 				String[] params = getParamsFromLine(line);
 				// recolor players to blue and yellow
@@ -323,9 +331,500 @@ public class CoopRewriter extends ScriptRewriter {
 				return;
 			}
 		}
-		if (!triggersAdded && line.contains("function Trig")) {
-			// define functions
+		//if (!triggersAdded && line.contains("function Trig")) {
+		// define functions
+		//triggersAdded = true;
+		//}
+
+		boolean appendLine = true;
+
+		{
+			String call = getCallFromLine(line);
+			String[] params;
+			String trimmedCall = null;
+			if (call != null) {
+				params = getParamsFromLine(line, call);
+				trimmedCall = getTrimmedCallFromLine(call);
+				if (trimmedCall != null) {
+					for (String playerNumberCall : Arrays.asList("SetPlayers", "SetTeams"))
+						if (trimmedCall.equals(playerNumberCall)) {
+							line = "call " + trimmedCall + "(" + info.getPlayers().size() + ")";
+							break;
+						}
+				}
+				if (params != null) {
+					CoopCallAdjustments.AdjustmentDetails ad = CoopCallAdjustments.callParameters.get(trimmedCall);
+					if (ad != null) {
+						appendLine = false;
+
+						if (ad.pointIndex != null) {
+							append("set " + TEMP_POINT_NAME + "=" + params[ad.pointIndex], sb);
+							params[ad.pointIndex] = TEMP_POINT_NAME;
+							line = toCallString(trimmedCall, params);
+						}
+
+						if (!ad.isLocal)
+							append(line, sb);
+
+						appendCallWithReplacement(trimmedCall, params, ad, sb);
+					}
+				}
+			}
+
+			if (appendLine)
+				append(line, sb);
+
+			if (trimmedCall != null)
+				if (!Arrays.asList("main", "RunInitializationTriggers").contains(insideFunction))
+					for (String function : Arrays.asList("TriggerExecute", "TriggerExecuteWait", "ConditionalTriggerExecute"))
+						if (trimmedCall.equals(function)) {
+							append("call " + READ_LOCK + "()", sb);
+							break;
+						}
+		}
+
+		if (line.equals("globals")) {
+			for (String resourceName : ALL_RESOURCE_NAMES)
+				append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync=null", sb);
+			append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare=null" + JASS_DELIM +
+							"force " + FORCE_NAME + JASS_DELIM +
+							"location " + TEMP_POINT_NAME + JASS_DELIM +
+							"integer array " + PLAYER_ID_ARRAY + JASS_DELIM +
+							"integer array " + PLAYER_INDEX_ARRAY + JASS_DELIM +
+							//"real array " + PLAYER_ANGLE_ARRAY + JASS_DELIM +
+							"player " + AUX_PLAYER + JASS_DELIM +
+							"hashtable " + GENERAL_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
+							"hashtable " + SELECTION_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select=null"
+//							+ JASS_DELIM +
+//					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Deselect=null" + JASS_DELIM +
+//					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DeselectOnDeath=null"
+					, sb);
 			if (withCustomGameCache) {
+				append("hashtable " + LAST_CREATED_COOP_CACHE + "=null" + JASS_DELIM +
+						"integer array " + ABILITY_ARRAY + JASS_DELIM +
+						"integer " + ABILITY_ARRAY_SIZE + "=0" + JASS_DELIM +
+						"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill" + JASS_DELIM +
+						"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData" + JASS_DELIM +
+						"constant integer s__File_AbilityCount=10" + JASS_DELIM +
+						"constant integer s__File_PreloadLimit=200" + JASS_DELIM +
+						"integer s__File_Counter=0" + JASS_DELIM +
+						"integer array s__File_List" + JASS_DELIM +
+						"integer array s__File_AbilityList" + JASS_DELIM +
+						"boolean s__File_ReadEnabled=false" + JASS_DELIM +
+						"string array s__File_filename" + JASS_DELIM +
+						"string array s__File_buffer" + JASS_DELIM +
+						"string array XT87ReadLines" + JASS_DELIM +
+						"boolean XT87ReadLinesAreRead=false" + JASS_DELIM +
+						"boolean XT87ReadLinesLock=false" + JASS_DELIM +
+						"integer XT87ReadLinesWaiting=0", sb);
+			}
+		} else if (line.equals("endglobals")) {
+			if (withCustomGameCache) {
+				// region FileIO library
+				append("        function s__File_open takes string filename returns integer" + JASS_DELIM +
+						"            local integer this= s__File_List[0]" + JASS_DELIM +
+						"            if ( this==0 ) then" + JASS_DELIM +
+						"                set this=s__File_Counter+1" + JASS_DELIM +
+						"                set s__File_Counter=this" + JASS_DELIM +
+						"            else" + JASS_DELIM +
+						"                set s__File_List[0]=s__File_List[this]" + JASS_DELIM +
+						"            endif" + JASS_DELIM +
+						"            " + JASS_DELIM +
+						"            set s__File_filename[this]=filename" + JASS_DELIM +
+						"            set s__File_buffer[this]=null" + JASS_DELIM +
+						"            " + JASS_DELIM +
+						"            " + JASS_DELIM +
+						"            return this" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"        // This is used to detect invalid characters which aren't supported in preload files." + JASS_DELIM +
+						"        function s__File_write takes integer this,string contents returns integer" + JASS_DELIM +
+						"            local integer i= 0" + JASS_DELIM +
+						"            local integer c= 0" + JASS_DELIM +
+						"            local integer len= StringLength(contents)" + JASS_DELIM +
+						"            local integer lev= 0" + JASS_DELIM +
+						"            local string prefix= \"-\"" + JASS_DELIM +
+						"            local string chunk" + JASS_DELIM +
+						"            set s__File_buffer[this]=null" + JASS_DELIM +
+						"            // Check if the string is empty. If null,the contents will be cleared." + JASS_DELIM +
+						"            if ( contents==\"\" ) then" + JASS_DELIM +
+						"                set len=len+1" + JASS_DELIM +
+						"            endif" + JASS_DELIM +
+						"            // Begin to generate the file" + JASS_DELIM +
+						"            call PreloadGenClear()" + JASS_DELIM +
+						"            call PreloadGenStart()" + JASS_DELIM +
+						"            loop" + JASS_DELIM +
+						"                exitwhen i >= len" + JASS_DELIM +
+						"                set lev=0" + JASS_DELIM +
+						"                set chunk=SubString(contents,i,i+s__File_PreloadLimit)" + JASS_DELIM +
+						"                call Preload(\"\\\" )\\ncall BlzSetAbilityTooltip(\"+I2S(s__File_AbilityList[c])+\",\\\"\"+prefix+chunk+\"\\\",\"+I2S(lev)+\")\\n//\")" + JASS_DELIM +
+						"                set i=i+s__File_PreloadLimit" + JASS_DELIM +
+						"                set c=c+1" + JASS_DELIM +
+						"            endloop" + JASS_DELIM +
+						"            call Preload(\"\\\" )\\nendfunction\\nfunction a takes nothing returns nothing\\n //\")" + JASS_DELIM +
+						"            call PreloadGenEnd(s__File_filename[this])" + JASS_DELIM +
+						"            return this" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"        function s__File_clear takes integer this returns integer" + JASS_DELIM +
+						"            return s__File_write(this,null)" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"        function s__File_readPreload takes integer this returns string" + JASS_DELIM +
+						"            local integer i= 0" + JASS_DELIM +
+						"            local integer lev= 0" + JASS_DELIM +
+						"            local string array original" + JASS_DELIM +
+						"            local string chunk= \"\"" + JASS_DELIM +
+						"            local string output= \"\"" + JASS_DELIM +
+						"            loop" + JASS_DELIM +
+						"                exitwhen i==s__File_AbilityCount" + JASS_DELIM +
+						"                set original[i]=BlzGetAbilityTooltip(s__File_AbilityList[i],0)" + JASS_DELIM +
+						"                set i=i+1" + JASS_DELIM +
+						"            endloop" + JASS_DELIM +
+						"            // Execute the preload file" + JASS_DELIM +
+						"            call Preloader(s__File_filename[this])" + JASS_DELIM +
+						"            // Read the output" + JASS_DELIM +
+						"            set i=0" + JASS_DELIM +
+						"            loop" + JASS_DELIM +
+						"                exitwhen i==s__File_AbilityCount" + JASS_DELIM +
+						"                " + JASS_DELIM +
+						"                set lev=0" + JASS_DELIM +
+						"                // Read from ability index 1 instead of 0 if " + JASS_DELIM +
+						"                // backwards compatability is enabled" + JASS_DELIM +
+						"                // Make sure the tooltip has changed" + JASS_DELIM +
+						"                set chunk=BlzGetAbilityTooltip(s__File_AbilityList[i],lev)" + JASS_DELIM +
+						"                if ( chunk==original[i] ) then" + JASS_DELIM +
+						"                    if ( i==0 and output==\"\" ) then" + JASS_DELIM +
+						"                        return null // empty file" + JASS_DELIM +
+						"                    endif" + JASS_DELIM +
+						"                    return output" + JASS_DELIM +
+						"                endif" + JASS_DELIM +
+						"                // Check if the file is an empty string or null" + JASS_DELIM +
+						"                    if ( i==0 ) then" + JASS_DELIM +
+						"                        if ( SubString(chunk,0,1) != \"-\" ) then" + JASS_DELIM +
+						"                            return null // empty file" + JASS_DELIM +
+						"                        endif" + JASS_DELIM +
+						"                        set chunk=SubString(chunk,1,StringLength(chunk))" + JASS_DELIM +
+						"                    endif" + JASS_DELIM +
+						"                // Remove the prefix" + JASS_DELIM +
+						"                if ( i > 0 ) then" + JASS_DELIM +
+						"                    set chunk=SubString(chunk,1,StringLength(chunk))" + JASS_DELIM +
+						"                endif" + JASS_DELIM +
+						"                " + JASS_DELIM +
+						"                // Restore the tooltip and append the chunk" + JASS_DELIM +
+						"                call BlzSetAbilityTooltip(s__File_AbilityList[i],original[i],lev)" + JASS_DELIM +
+						"                " + JASS_DELIM +
+						"                set output=output+chunk" + JASS_DELIM +
+						"                " + JASS_DELIM +
+						"                set i=i+1" + JASS_DELIM +
+						"            endloop" + JASS_DELIM +
+						"            return output" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"        function s__File_close takes integer this returns nothing" + JASS_DELIM +
+						"            if ( s__File_buffer[this] != null ) then" + JASS_DELIM +
+						"                call s__File_write(this,s__File_readPreload(this)+s__File_buffer[this])" + JASS_DELIM +
+						"                set s__File_buffer[this]=null" + JASS_DELIM +
+						"            endif" + JASS_DELIM +
+						"            set s__File_List[this]=s__File_List[0]" + JASS_DELIM +
+						"            set s__File_List[0]=this" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"        function s__File_readEx takes integer this,boolean close returns string" + JASS_DELIM +
+						"            local string output= s__File_readPreload(this)" + JASS_DELIM +
+						"            local string buf= s__File_buffer[this]" + JASS_DELIM +
+						"            if close then" + JASS_DELIM +
+						"                call s__File_close(this)" + JASS_DELIM +
+						"            endif" + JASS_DELIM +
+						"            if output==null then" + JASS_DELIM +
+						"                return buf" + JASS_DELIM +
+						"            endif" + JASS_DELIM +
+						"            if buf != null then" + JASS_DELIM +
+						"                set output=output+buf" + JASS_DELIM +
+						"            endif" + JASS_DELIM +
+						"            return output" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"        function s__File_read takes integer this returns string" + JASS_DELIM +
+						"            return s__File_readEx(this,false)" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"        function s__File_readAndClose takes integer this returns string" + JASS_DELIM +
+						"            return s__File_readEx(this,true)" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"        function s__File_appendBuffer takes integer this,string contents returns integer" + JASS_DELIM +
+						"            set s__File_buffer[this]=s__File_buffer[this]+contents" + JASS_DELIM +
+						"            return this" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"        function s__File_readBuffer takes integer this returns string" + JASS_DELIM +
+						"            return s__File_buffer[this]" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"        function s__File_writeBuffer takes integer this,string contents returns nothing" + JASS_DELIM +
+						"            set s__File_buffer[this]=contents" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"        function s__File_create takes string filename returns integer" + JASS_DELIM +
+						"            return s__File_write(s__File_open(filename),\"\")" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"//Implemented from module FileIO___FileInit:" + JASS_DELIM +
+						"        function s__File_FileIO___FileInit__onInit takes nothing returns nothing" + JASS_DELIM +
+						"            local string originalTooltip" + JASS_DELIM +
+						"            // We can't use a single ability with multiple levels because" + JASS_DELIM +
+						"            // tooltips return the first level's value if the value hasn't" + JASS_DELIM +
+						"            // been set. This way we don't need to edit any object editor data." + JASS_DELIM +
+						"            set s__File_AbilityList[0]='Amls'" + JASS_DELIM +
+						"            set s__File_AbilityList[1]='Aroc'" + JASS_DELIM +
+						"            set s__File_AbilityList[2]='Amic'" + JASS_DELIM +
+						"            set s__File_AbilityList[3]='Amil'" + JASS_DELIM +
+						"            set s__File_AbilityList[4]='Aclf'" + JASS_DELIM +
+						"            set s__File_AbilityList[5]='Acmg'" + JASS_DELIM +
+						"            set s__File_AbilityList[6]='Adef'" + JASS_DELIM +
+						"            set s__File_AbilityList[7]='Adis'" + JASS_DELIM +
+						"            set s__File_AbilityList[8]='Afbt'" + JASS_DELIM +
+						"            set s__File_AbilityList[9]='Afbk'" + JASS_DELIM +
+						"            set s__File_ReadEnabled=(s__File_readEx((s__File_write(s__File_open(\"FileTester.pld\"),\"FileIO_\")),true))==\"FileIO_\" // INLINED!!" + JASS_DELIM +
+						"        endfunction" + JASS_DELIM +
+						"    function FileIO_Write takes string filename,string contents returns nothing" + JASS_DELIM +
+						"        call s__File_close(s__File_write(s__File_open(filename),contents))" + JASS_DELIM +
+						"    endfunction" + JASS_DELIM +
+						"    function FileIO_Read takes string filename returns string" + JASS_DELIM +
+						"        return s__File_readEx(s__File_open(filename),true)" + JASS_DELIM +
+						"    endfunction", sb);
+				// endregion
+				// region custom functions
+				append("function " + READ_LOCK + " takes nothing returns nothing" + JASS_DELIM +
+						"    loop" + JASS_DELIM +
+						"        exitwhen XT87ReadLinesWaiting==0" + JASS_DELIM +
+						"        call TriggerSleepAction(bj_WAIT_FOR_COND_MIN_INTERVAL)" + JASS_DELIM +
+						"    endloop" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "WatchSkill takes integer a returns boolean" + JASS_DELIM +
+						"    if not(LoadBooleanBJ(StringHash(\"" + GH_HAS_ABILITY + "\"),a," + GENERAL_HASHTABLE + ")) then" + JASS_DELIM +
+						"        set " + ABILITY_ARRAY + "[" + ABILITY_ARRAY_SIZE + "]=a" + JASS_DELIM +
+						"        call SaveBooleanBJ(true,StringHash(\"" + GH_HAS_ABILITY + "\"),a," + GENERAL_HASHTABLE + ")" + JASS_DELIM +
+						"        set " + ABILITY_ARRAY_SIZE + "=" + ABILITY_ARRAY_SIZE + "+1" + JASS_DELIM +
+						"        return true" + JASS_DELIM +
+						"    else" + JASS_DELIM +
+						"        return false" + JASS_DELIM +
+						"    " + END_IF + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function Trig_" + ARCHON_PREFIX + "WatchLearnedSkill_Actions takes nothing returns nothing" + JASS_DELIM +
+						"    local integer i=0" + JASS_DELIM +
+						"    local integer a=GetLearnedSkill()" + JASS_DELIM +
+						"    if " + ARCHON_PREFIX + "WatchSkill(a)==true then" + JASS_DELIM +
+						DebugOnly("call DisplayTextToForce(GetPlayersAll(),I2S(i)+\"] \"+I2S(a)+\" _\"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
+						"        loop" + JASS_DELIM +
+						"            exitwhen i>=" + ABILITY_ARRAY_SIZE + JASS_DELIM +
+						DebugOnly("call DisplayTextToForce(GetPlayersAll(),I2S(i)+\") \"+I2S(" + ABILITY_ARRAY + "[i])+\" \"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
+						"            set i = i+1" + JASS_DELIM +
+						"        endloop" + JASS_DELIM +
+						"    " + END_IF + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function InitTrig_" + ARCHON_PREFIX + "WatchLearnedSkill takes nothing returns nothing" + JASS_DELIM +
+						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill = CreateTrigger()" + JASS_DELIM +
+						"    call TriggerRegisterAnyUnitEventBJ(" + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill,EVENT_PLAYER_HERO_SKILL)" + JASS_DELIM +
+						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill,function Trig_" + ARCHON_PREFIX + "WatchLearnedSkill_Actions)" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "S2B takes string s returns boolean" + JASS_DELIM +
+						"    if s==\"t\" then" + JASS_DELIM +
+						"        return true" + JASS_DELIM +
+						"    endif" + JASS_DELIM +
+						"    return false" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "B2S takes boolean b returns string" + JASS_DELIM +
+						"    if b then" + JASS_DELIM +
+						"        return \"t\"" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"    return \"f\"" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "ModI takes integer n, integer b returns integer" + JASS_DELIM +
+						"return n-(n/b)*b" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "IS62 takes integer n returns string" + JASS_DELIM +
+						"    local string result=\"\"" + JASS_DELIM +
+						"    local integer remainder" + JASS_DELIM +
+						"    local integer b=62" + JASS_DELIM +
+						"    local integer digit" + JASS_DELIM +
+						"    if n<0 then" + JASS_DELIM +
+						"    return \"-\" + " + ARCHON_PREFIX + "IS62(-n)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"    loop" + JASS_DELIM +
+						"        exitwhen n<=0" + JASS_DELIM +
+						"        set digit=" + ARCHON_PREFIX + "ModI(n,b)" + JASS_DELIM +
+						"        set result=SubString(\"" + XT87Utils.BASE62_CHARS + "\",digit,digit+1)+result" + JASS_DELIM +
+						"        set n=n/b" + JASS_DELIM +
+						"    endloop" + JASS_DELIM +
+						"    " + JASS_DELIM +
+						"    return result" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "RS62 takes real r returns string" + JASS_DELIM +
+						"    local string s=R2S(r)" + JASS_DELIM +
+						"    local integer i=0" + JASS_DELIM +
+						"    local integer len=StringLength(s)" + JASS_DELIM +
+						"    loop" + JASS_DELIM +
+						"    exitwhen i>=len" + JASS_DELIM +
+						"    if SubString(s,i,i+1)==\".\" then" + JASS_DELIM +
+						"    return " + ARCHON_PREFIX + "IS62(S2I(SubString(s,0,i)))+\".\"+" + ARCHON_PREFIX + "IS62(S2I(SubString(s,i+1,len)))" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"set i=i+1" + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						"    return " + ARCHON_PREFIX + "IS62(0)+\".\"+" + ARCHON_PREFIX + "IS62(0)" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "BS62 takes boolean b returns string" + JASS_DELIM +
+						"local integer i=GetRandomInt(0," + (int) (Math.pow(62, 2) - 2) + ")" + JASS_DELIM +
+						"if (" + ARCHON_PREFIX + "ModI(i,2)==0)==b then" + JASS_DELIM +
+						"set i=i+1" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"return " + ARCHON_PREFIX + "IS62(i)" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "SS62 takes string s returns string" + JASS_DELIM +
+						"if s==null then" + JASS_DELIM +
+						"return \"null\"" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"return \"s\"+s" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "S62I takes string s returns integer" + JASS_DELIM +
+						"    local integer result=0" + JASS_DELIM +
+						"    local integer b=62" + JASS_DELIM +
+						"    local string digit" + JASS_DELIM +
+						"    local integer index" + JASS_DELIM +
+						"    if SubString(s,0,1)==\"-\" then" + JASS_DELIM +
+						"    return -" + ARCHON_PREFIX + "S62I(SubString(s,1,StringLength(s)))" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"    loop" + JASS_DELIM +
+						"        exitwhen s==\"\"" + JASS_DELIM +
+						"        " + JASS_DELIM +
+						"        set digit=SubString(s,0,1)" + JASS_DELIM +
+						"        set index=0" + JASS_DELIM +
+						"        " + JASS_DELIM +
+						"        loop" + JASS_DELIM +
+						"            exitwhen SubString(\"" + XT87Utils.BASE62_CHARS + "\",index,index+1)==digit" + JASS_DELIM +
+						"            set index=index+1" + JASS_DELIM +
+						"            if index>=b then" + JASS_DELIM +
+						"                return 0" + JASS_DELIM +
+						"            endif" + JASS_DELIM +
+						"        endloop" + JASS_DELIM +
+						"        " + JASS_DELIM +
+						"        set result=result*b+index" + JASS_DELIM +
+						"        set s=SubString(s,1,StringLength(s))" + JASS_DELIM +
+						"    endloop" + JASS_DELIM +
+						"    " + JASS_DELIM +
+						"    return result" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "S62R takes string s returns real" + JASS_DELIM +
+						"    local integer i=0" + JASS_DELIM +
+						"    local integer len=StringLength(s)" + JASS_DELIM +
+						"    loop" + JASS_DELIM +
+						"    exitwhen i==len" + JASS_DELIM +
+						"    if SubString(s,i,i+1)==\".\" then" + JASS_DELIM +
+						"    return S2R(I2S(" + ARCHON_PREFIX + "S62I(SubString(s,0,i)))+\".\"+I2S(" + ARCHON_PREFIX + "S62I(SubString(s,i+1,len))))" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"set i=i+1" + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						"    return 0.000" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "S62B takes string s returns boolean" + JASS_DELIM +
+						"return " + ARCHON_PREFIX + "ModI(" + ARCHON_PREFIX + "S62I(s),2)==1" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "S62S takes string s returns string" + JASS_DELIM +
+						"if SubString(s,0,1)==\"s\" then" + JASS_DELIM +
+						"return SubString(s,1,StringLength(s))" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"return null" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "WriteString takes string cacheName,string title,string v returns nothing" + JASS_DELIM +
+						"local string p=\"XT87CampaignSplitter\\\\\"+cacheName+\"\\\\\"+title+\".pld\"" + JASS_DELIM +
+						"    call FileIO_Write(p,v+\"\\n\"+" + ARCHON_PREFIX + "IS62(StringHash(v+\"|\"+p)))" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "SyncContents takes string path returns nothing" + JASS_DELIM +
+						"    local integer i=0" + JASS_DELIM +
+						"    local integer j=0" + JASS_DELIM +
+						"    local integer len" + JASS_DELIM +
+						"    local string content=null" + JASS_DELIM +
+						"    loop" + JASS_DELIM +
+						"        exitwhen not XT87ReadLinesLock" + JASS_DELIM +
+						"        call TriggerSleepAction(bj_WAIT_FOR_COND_MIN_INTERVAL)" + JASS_DELIM +
+						"    endloop" + JASS_DELIM +
+						"set XT87ReadLinesLock=true" + JASS_DELIM +
+						"    if GetLocalPlayer()==" + toMainPlayerFunc() + " then" + JASS_DELIM +
+						"        set content=(s__File_readEx(s__File_open((path)),true)) // INLINED!!" + JASS_DELIM +
+						"        if content==null then" + JASS_DELIM +
+						"            set content=\"\"" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"        set len=StringLength(content)" + JASS_DELIM +
+						// todo add gamecache flush index and mission key flush idnex to checksum
+						"    loop" + JASS_DELIM +
+						"    exitwhen i>=len" + JASS_DELIM +
+						"    if SubString(content,i,i+1)==\"\\n\" then" + JASS_DELIM +
+						"set j=i" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"set i=i+1" + JASS_DELIM +
+						"    endloop" + JASS_DELIM +
+						"    if StringHash(SubString(content,0,j)+\"|\"+path)!=" + ARCHON_PREFIX + "S62I(SubString(content,j+1,len)) then" + JASS_DELIM +
+						"        set content=\"\"" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						DebugOnly("call DisplayTextToForce(GetPlayersAll(),\">\"+content+\"<\")" + JASS_DELIM) +
+						"        call BlzSendSyncData(\"XTContents\",content)" + JASS_DELIM +
+						"    endif" + JASS_DELIM +
+						"    loop" + JASS_DELIM +
+						"        exitwhen XT87ReadLinesAreRead" + JASS_DELIM +
+						"        call TriggerSleepAction(bj_WAIT_FOR_COND_MIN_INTERVAL)" + JASS_DELIM +
+						"    endloop" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "ReadString takes string cacheName,string title returns string" + JASS_DELIM +
+						"local string s" + JASS_DELIM +
+						"set XT87ReadLinesWaiting=XT87ReadLinesWaiting+1" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "SyncContents(\"XT87CampaignSplitter\\\\\"+cacheName+\"\\\\\"+title+\".pld\")" + JASS_DELIM +
+						"set s=XT87ReadLines[0]" + JASS_DELIM +
+						"set XT87ReadLinesAreRead=false" + JASS_DELIM +
+						"set XT87ReadLinesLock=false" + JASS_DELIM +
+						"return s" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function " + ARCHON_PREFIX + "ReadUnit takes string cacheName,string title returns integer" + JASS_DELIM +
+						"    local integer i" + JASS_DELIM +
+						"set XT87ReadLinesWaiting=XT87ReadLinesWaiting+1" + JASS_DELIM +
+						"    if GetPlayerSlotState(" + toMainPlayerFunc() + ")!=PLAYER_SLOT_STATE_PLAYING then" + JASS_DELIM +
+						"        return 0" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"    call " + ARCHON_PREFIX + "SyncContents(\"XT87CampaignSplitter\\\\\"+cacheName+\"\\\\\"+title+\".pld\")" + JASS_DELIM +
+						"    if XT87ReadLines[0]==null then" + JASS_DELIM +
+						"        return 0" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"0)\"+XT87ReadLines[0])" + JASS_DELIM) +
+						DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"1)\"+XT87ReadLines[1])" + JASS_DELIM) +
+						DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"2)\"+XT87ReadLines[2])" + JASS_DELIM) +
+						"    return " + ARCHON_PREFIX + "S62I(XT87ReadLines[0])" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function Trig_" + ARCHON_PREFIX + "SyncData_Actions takes nothing returns nothing" + JASS_DELIM +
+						"    local string contents=BlzGetTriggerSyncData()" + JASS_DELIM +
+						"    local integer len=StringLength(contents)" + JASS_DELIM +
+						"    local string char=null" + JASS_DELIM +
+						"    local string buffer=\"\"" + JASS_DELIM +
+						"    local integer curLine=0" + JASS_DELIM +
+						"    local integer i=0" + JASS_DELIM +
+						"    if len<=0 then" + JASS_DELIM +
+						"        set XT87ReadLines[0]=null" + JASS_DELIM +
+						"    else" + JASS_DELIM +
+						"        loop" + JASS_DELIM +
+						"            exitwhen i > len" + JASS_DELIM +
+						"            set char=SubString(contents,i,i+1)" + JASS_DELIM +
+						"            if char==\"\\n\" then" + JASS_DELIM +
+						"                set XT87ReadLines[curLine]=buffer" + JASS_DELIM +
+						"                set curLine=curLine+1" + JASS_DELIM +
+						"                set buffer=\"\"" + JASS_DELIM +
+						"            else" + JASS_DELIM +
+						"                set buffer=buffer+char" + JASS_DELIM +
+						"            endif" + JASS_DELIM +
+						"        set i=i+1" + JASS_DELIM +
+						"        endloop" + JASS_DELIM +
+						"        set XT87ReadLines[curLine]=buffer" + JASS_DELIM +
+						"    endif" + JASS_DELIM +
+						"set XT87ReadLinesAreRead=true" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function InitTrig_" + ARCHON_PREFIX + "SyncData takes nothing returns nothing" + JASS_DELIM +
+						"    local integer i=0" + JASS_DELIM +
+						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData=CreateTrigger()" + JASS_DELIM +
+						"    loop" + JASS_DELIM +
+						"        call BlzTriggerRegisterPlayerSyncEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,Player(i),\"XTContents\",false)" + JASS_DELIM +
+						"        set i=i+1" + JASS_DELIM +
+						"        exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
+						"    endloop" + JASS_DELIM +
+						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,function Trig_" + ARCHON_PREFIX + "SyncData_Actions)" + JASS_DELIM +
+						END_FUNCTION, sb);
+				// endregion
 				// region GameCache functions
 				// region game cache basics natives
 				append("function " + ARCHON_PREFIX + "InitGameCache takes string campaignFile returns hashtable" + JASS_DELIM +
@@ -639,6 +1138,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"    if id==0 then" + JASS_DELIM +
 						"set XT87ReadLinesAreRead=false" + JASS_DELIM +
 						"set XT87ReadLinesLock=false" + JASS_DELIM +
+						"set XT87ReadLinesWaiting=XT87ReadLinesWaiting-1" + JASS_DELIM +
 						"        return null" + JASS_DELIM +
 						END_IF + JASS_DELIM +
 						"set r=true" + JASS_DELIM +
@@ -718,6 +1218,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"if r then" + JASS_DELIM +
 						"set XT87ReadLinesAreRead=false" + JASS_DELIM +
 						"set XT87ReadLinesLock=false" + JASS_DELIM +
+						"set XT87ReadLinesWaiting=XT87ReadLinesWaiting-1" + JASS_DELIM +
 						END_IF + JASS_DELIM +
 						"    return u" + JASS_DELIM +
 						END_FUNCTION, sb);
@@ -755,17 +1256,17 @@ public class CoopRewriter extends ScriptRewriter {
 				// endregion
 				// region Trigger functions
 				{
-					for (String o : Arrays.asList(
-							"TriggerExecute",
-							"TriggerExecuteWait",
-							"ConditionalTriggerExecute"
-					))
-						append("function " + ARCHON_PREFIX + o + " takes trigger t returns nothing" + JASS_DELIM +
-								"call " + READ_LOCK + "()" + JASS_DELIM +
-								"call " + o + "(t)" + JASS_DELIM +
-								//"call " + READ_LOCK + "()" + JASS_DELIM +
-								END_FUNCTION, sb);
-					for (Triple<String, String, String> o : Arrays.asList(
+//					for (String o : Arrays.asList(
+//							"TriggerExecute",
+//							"TriggerExecuteWait",
+//							"ConditionalTriggerExecute"
+//					))
+//						append("function " + ARCHON_PREFIX + o + " takes trigger t returns nothing" + JASS_DELIM +
+//								"call " + READ_LOCK + "()" + JASS_DELIM +
+//								"call " + o + "(t)" + JASS_DELIM +
+//								//"call " + READ_LOCK + "()" + JASS_DELIM +
+//								END_FUNCTION, sb);
+					for (Triple<String, String, String> o : Collections.singletonList(
 							new Triple<>("TriggerExecuteBJ", "trigger t,boolean b returns boolean", "(t,b)")
 					))
 						append("function " + ARCHON_PREFIX + o.a + " takes " + o.b + JASS_DELIM +
@@ -777,7 +1278,7 @@ public class CoopRewriter extends ScriptRewriter {
 								"call " + READ_LOCK + "()" + JASS_DELIM +
 								"return " + o.a + o.c + JASS_DELIM +
 								END_FUNCTION, sb);
-					for (Triple<String, String, String> o : Arrays.asList(
+					for (Triple<String, String, String> o : Collections.singletonList(
 							new Triple<>("TriggerEvaluate", "trigger t returns boolean", "(t)")
 					))
 						append("function " + ARCHON_PREFIX + o.a + " takes " + o.b + JASS_DELIM +
@@ -881,7 +1382,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"return" + JASS_DELIM +
 					END_IF + JASS_DELIM +
 					"call SaveBoolean(" + SELECTION_HASHTABLE + ",pid,-1,true)" + JASS_DELIM +
-					"call TriggerSleepAction(0.01)" + JASS_DELIM +
+					"call TriggerSleepAction(bj_WAIT_FOR_COND_MIN_INTERVAL)" + JASS_DELIM +
 					"set ct=LoadInteger(" + SELECTION_HASHTABLE + ",pid,0)" + JASS_DELIM +
 					"loop" + JASS_DELIM +
 					"set i=i+1" + JASS_DELIM +
@@ -930,499 +1431,6 @@ public class CoopRewriter extends ScriptRewriter {
 			}
 			append(END_FUNCTION, sb);
 			// endregion
-			triggersAdded = true;
-		}
-
-		boolean appendLine = true;
-
-		String call = getCallFromLine(line);
-		if (call != null) {
-			String[] params = getParamsFromLine(line, call);
-			call = getTrimmedCallFromLine(call);
-			if (call != null)
-				for (String playerNumberCall : Arrays.asList("SetPlayers", "SetTeams")) {
-					if (call.equals(playerNumberCall)) {
-						line = "call " + call + "(" + info.getPlayers().size() + ")";
-						break;
-					}
-				}
-			if (params != null) {
-				CoopCallAdjustments.AdjustmentDetails ad = CoopCallAdjustments.callParameters.get(call);
-				if (ad != null) {
-					appendLine = false;
-
-					if (ad.pointIndex != null) {
-						append("set " + TEMP_POINT_NAME + "=" + params[ad.pointIndex], sb);
-						params[ad.pointIndex] = TEMP_POINT_NAME;
-						line = toCallString(call, params);
-					}
-
-					if (!ad.isLocal)
-						append(line, sb);
-
-					appendCallWithReplacement(call, params, ad, sb);
-				}
-			}
-		}
-
-		if (appendLine)
-			append(line, sb);
-
-		if (line.equals("globals")) {
-			for (String resourceName : ALL_RESOURCE_NAMES)
-				append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync=null", sb);
-			append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare=null" + JASS_DELIM +
-							"force " + FORCE_NAME + JASS_DELIM +
-							"location " + TEMP_POINT_NAME + JASS_DELIM +
-							"integer array " + PLAYER_ID_ARRAY + JASS_DELIM +
-							"integer array " + PLAYER_INDEX_ARRAY + JASS_DELIM +
-							//"real array " + PLAYER_ANGLE_ARRAY + JASS_DELIM +
-							"player " + AUX_PLAYER + JASS_DELIM +
-							"hashtable " + GENERAL_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
-							"hashtable " + SELECTION_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
-							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select=null"
-//							+ JASS_DELIM +
-//					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Deselect=null" + JASS_DELIM +
-//					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DeselectOnDeath=null"
-					, sb);
-			if (withCustomGameCache) {
-				append("hashtable " + LAST_CREATED_COOP_CACHE + "=null" + JASS_DELIM +
-						"integer array " + ABILITY_ARRAY + JASS_DELIM +
-						"integer " + ABILITY_ARRAY_SIZE + "=0" + JASS_DELIM +
-						"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill" + JASS_DELIM +
-						"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData" + JASS_DELIM +
-						"constant integer s__File_AbilityCount=10" + JASS_DELIM +
-						"constant integer s__File_PreloadLimit=200" + JASS_DELIM +
-						"integer s__File_Counter=0" + JASS_DELIM +
-						"integer array s__File_List" + JASS_DELIM +
-						"integer array s__File_AbilityList" + JASS_DELIM +
-						"boolean s__File_ReadEnabled=false" + JASS_DELIM +
-						"string array s__File_filename" + JASS_DELIM +
-						"string array s__File_buffer" + JASS_DELIM +
-						"string array XT87ReadLines" + JASS_DELIM +
-						"boolean XT87ReadLinesAreRead=false" + JASS_DELIM +
-						"boolean XT87ReadLinesLock=false", sb);
-			}
-		} else if (line.equals("endglobals")) {
-			if (withCustomGameCache) {
-				// region FileIO library
-				append("        function s__File_open takes string filename returns integer" + JASS_DELIM +
-						"            local integer this= s__File_List[0]" + JASS_DELIM +
-						"            if ( this==0 ) then" + JASS_DELIM +
-						"                set this=s__File_Counter+1" + JASS_DELIM +
-						"                set s__File_Counter=this" + JASS_DELIM +
-						"            else" + JASS_DELIM +
-						"                set s__File_List[0]=s__File_List[this]" + JASS_DELIM +
-						"            endif" + JASS_DELIM +
-						"            " + JASS_DELIM +
-						"            set s__File_filename[this]=filename" + JASS_DELIM +
-						"            set s__File_buffer[this]=null" + JASS_DELIM +
-						"            " + JASS_DELIM +
-						"            " + JASS_DELIM +
-						"            return this" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"        // This is used to detect invalid characters which aren't supported in preload files." + JASS_DELIM +
-						"        function s__File_write takes integer this,string contents returns integer" + JASS_DELIM +
-						"            local integer i= 0" + JASS_DELIM +
-						"            local integer c= 0" + JASS_DELIM +
-						"            local integer len= StringLength(contents)" + JASS_DELIM +
-						"            local integer lev= 0" + JASS_DELIM +
-						"            local string prefix= \"-\"" + JASS_DELIM +
-						"            local string chunk" + JASS_DELIM +
-						"            set s__File_buffer[this]=null" + JASS_DELIM +
-						"            // Check if the string is empty. If null,the contents will be cleared." + JASS_DELIM +
-						"            if ( contents==\"\" ) then" + JASS_DELIM +
-						"                set len=len+1" + JASS_DELIM +
-						"            endif" + JASS_DELIM +
-						"            // Begin to generate the file" + JASS_DELIM +
-						"            call PreloadGenClear()" + JASS_DELIM +
-						"            call PreloadGenStart()" + JASS_DELIM +
-						"            loop" + JASS_DELIM +
-						"                exitwhen i >= len" + JASS_DELIM +
-						"                set lev=0" + JASS_DELIM +
-						"                set chunk=SubString(contents,i,i+s__File_PreloadLimit)" + JASS_DELIM +
-						"                call Preload(\"\\\" )\\ncall BlzSetAbilityTooltip(\"+I2S(s__File_AbilityList[c])+\",\\\"\"+prefix+chunk+\"\\\",\"+I2S(lev)+\")\\n//\")" + JASS_DELIM +
-						"                set i=i+s__File_PreloadLimit" + JASS_DELIM +
-						"                set c=c+1" + JASS_DELIM +
-						"            endloop" + JASS_DELIM +
-						"            call Preload(\"\\\" )\\nendfunction\\nfunction a takes nothing returns nothing\\n //\")" + JASS_DELIM +
-						"            call PreloadGenEnd(s__File_filename[this])" + JASS_DELIM +
-						"            return this" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"        function s__File_clear takes integer this returns integer" + JASS_DELIM +
-						"            return s__File_write(this,null)" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"        function s__File_readPreload takes integer this returns string" + JASS_DELIM +
-						"            local integer i= 0" + JASS_DELIM +
-						"            local integer lev= 0" + JASS_DELIM +
-						"            local string array original" + JASS_DELIM +
-						"            local string chunk= \"\"" + JASS_DELIM +
-						"            local string output= \"\"" + JASS_DELIM +
-						"            loop" + JASS_DELIM +
-						"                exitwhen i==s__File_AbilityCount" + JASS_DELIM +
-						"                set original[i]=BlzGetAbilityTooltip(s__File_AbilityList[i],0)" + JASS_DELIM +
-						"                set i=i+1" + JASS_DELIM +
-						"            endloop" + JASS_DELIM +
-						"            // Execute the preload file" + JASS_DELIM +
-						"            call Preloader(s__File_filename[this])" + JASS_DELIM +
-						"            // Read the output" + JASS_DELIM +
-						"            set i=0" + JASS_DELIM +
-						"            loop" + JASS_DELIM +
-						"                exitwhen i==s__File_AbilityCount" + JASS_DELIM +
-						"                " + JASS_DELIM +
-						"                set lev=0" + JASS_DELIM +
-						"                // Read from ability index 1 instead of 0 if " + JASS_DELIM +
-						"                // backwards compatability is enabled" + JASS_DELIM +
-						"                // Make sure the tooltip has changed" + JASS_DELIM +
-						"                set chunk=BlzGetAbilityTooltip(s__File_AbilityList[i],lev)" + JASS_DELIM +
-						"                if ( chunk==original[i] ) then" + JASS_DELIM +
-						"                    if ( i==0 and output==\"\" ) then" + JASS_DELIM +
-						"                        return null // empty file" + JASS_DELIM +
-						"                    endif" + JASS_DELIM +
-						"                    return output" + JASS_DELIM +
-						"                endif" + JASS_DELIM +
-						"                // Check if the file is an empty string or null" + JASS_DELIM +
-						"                    if ( i==0 ) then" + JASS_DELIM +
-						"                        if ( SubString(chunk,0,1) != \"-\" ) then" + JASS_DELIM +
-						"                            return null // empty file" + JASS_DELIM +
-						"                        endif" + JASS_DELIM +
-						"                        set chunk=SubString(chunk,1,StringLength(chunk))" + JASS_DELIM +
-						"                    endif" + JASS_DELIM +
-						"                // Remove the prefix" + JASS_DELIM +
-						"                if ( i > 0 ) then" + JASS_DELIM +
-						"                    set chunk=SubString(chunk,1,StringLength(chunk))" + JASS_DELIM +
-						"                endif" + JASS_DELIM +
-						"                " + JASS_DELIM +
-						"                // Restore the tooltip and append the chunk" + JASS_DELIM +
-						"                call BlzSetAbilityTooltip(s__File_AbilityList[i],original[i],lev)" + JASS_DELIM +
-						"                " + JASS_DELIM +
-						"                set output=output+chunk" + JASS_DELIM +
-						"                " + JASS_DELIM +
-						"                set i=i+1" + JASS_DELIM +
-						"            endloop" + JASS_DELIM +
-						"            return output" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"        function s__File_close takes integer this returns nothing" + JASS_DELIM +
-						"            if ( s__File_buffer[this] != null ) then" + JASS_DELIM +
-						"                call s__File_write(this,s__File_readPreload(this)+s__File_buffer[this])" + JASS_DELIM +
-						"                set s__File_buffer[this]=null" + JASS_DELIM +
-						"            endif" + JASS_DELIM +
-						"            set s__File_List[this]=s__File_List[0]" + JASS_DELIM +
-						"            set s__File_List[0]=this" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"        function s__File_readEx takes integer this,boolean close returns string" + JASS_DELIM +
-						"            local string output= s__File_readPreload(this)" + JASS_DELIM +
-						"            local string buf= s__File_buffer[this]" + JASS_DELIM +
-						"            if close then" + JASS_DELIM +
-						"                call s__File_close(this)" + JASS_DELIM +
-						"            endif" + JASS_DELIM +
-						"            if output==null then" + JASS_DELIM +
-						"                return buf" + JASS_DELIM +
-						"            endif" + JASS_DELIM +
-						"            if buf != null then" + JASS_DELIM +
-						"                set output=output+buf" + JASS_DELIM +
-						"            endif" + JASS_DELIM +
-						"            return output" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"        function s__File_read takes integer this returns string" + JASS_DELIM +
-						"            return s__File_readEx(this,false)" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"        function s__File_readAndClose takes integer this returns string" + JASS_DELIM +
-						"            return s__File_readEx(this,true)" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"        function s__File_appendBuffer takes integer this,string contents returns integer" + JASS_DELIM +
-						"            set s__File_buffer[this]=s__File_buffer[this]+contents" + JASS_DELIM +
-						"            return this" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"        function s__File_readBuffer takes integer this returns string" + JASS_DELIM +
-						"            return s__File_buffer[this]" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"        function s__File_writeBuffer takes integer this,string contents returns nothing" + JASS_DELIM +
-						"            set s__File_buffer[this]=contents" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"        function s__File_create takes string filename returns integer" + JASS_DELIM +
-						"            return s__File_write(s__File_open(filename),\"\")" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"//Implemented from module FileIO___FileInit:" + JASS_DELIM +
-						"        function s__File_FileIO___FileInit__onInit takes nothing returns nothing" + JASS_DELIM +
-						"            local string originalTooltip" + JASS_DELIM +
-						"            // We can't use a single ability with multiple levels because" + JASS_DELIM +
-						"            // tooltips return the first level's value if the value hasn't" + JASS_DELIM +
-						"            // been set. This way we don't need to edit any object editor data." + JASS_DELIM +
-						"            set s__File_AbilityList[0]='Amls'" + JASS_DELIM +
-						"            set s__File_AbilityList[1]='Aroc'" + JASS_DELIM +
-						"            set s__File_AbilityList[2]='Amic'" + JASS_DELIM +
-						"            set s__File_AbilityList[3]='Amil'" + JASS_DELIM +
-						"            set s__File_AbilityList[4]='Aclf'" + JASS_DELIM +
-						"            set s__File_AbilityList[5]='Acmg'" + JASS_DELIM +
-						"            set s__File_AbilityList[6]='Adef'" + JASS_DELIM +
-						"            set s__File_AbilityList[7]='Adis'" + JASS_DELIM +
-						"            set s__File_AbilityList[8]='Afbt'" + JASS_DELIM +
-						"            set s__File_AbilityList[9]='Afbk'" + JASS_DELIM +
-						"            set s__File_ReadEnabled=(s__File_readEx((s__File_write(s__File_open(\"FileTester.pld\"),\"FileIO_\")),true))==\"FileIO_\" // INLINED!!" + JASS_DELIM +
-						"        endfunction" + JASS_DELIM +
-						"    function FileIO_Write takes string filename,string contents returns nothing" + JASS_DELIM +
-						"        call s__File_close(s__File_write(s__File_open(filename),contents))" + JASS_DELIM +
-						"    endfunction" + JASS_DELIM +
-						"    function FileIO_Read takes string filename returns string" + JASS_DELIM +
-						"        return s__File_readEx(s__File_open(filename),true)" + JASS_DELIM +
-						"    endfunction", sb);
-				// endregion
-				// region custom functions
-				append("function " + READ_LOCK + " takes nothing returns nothing" + JASS_DELIM +
-						"    loop" + JASS_DELIM +
-						"        exitwhen not XT87ReadLinesLock" + JASS_DELIM +
-						"        call TriggerSleepAction(bj_WAIT_FOR_COND_MIN_INTERVAL)" + JASS_DELIM +
-						"    endloop" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "WatchSkill takes integer a returns boolean" + JASS_DELIM +
-						"    if not(LoadBooleanBJ(StringHash(\"" + GH_HAS_ABILITY + "\"),a," + GENERAL_HASHTABLE + ")) then" + JASS_DELIM +
-						"        set " + ABILITY_ARRAY + "[" + ABILITY_ARRAY_SIZE + "]=a" + JASS_DELIM +
-						"        call SaveBooleanBJ(true,StringHash(\"" + GH_HAS_ABILITY + "\"),a," + GENERAL_HASHTABLE + ")" + JASS_DELIM +
-						"        set " + ABILITY_ARRAY_SIZE + "=" + ABILITY_ARRAY_SIZE + "+1" + JASS_DELIM +
-						"        return true" + JASS_DELIM +
-						"    else" + JASS_DELIM +
-						"        return false" + JASS_DELIM +
-						"    " + END_IF + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function Trig_" + ARCHON_PREFIX + "WatchLearnedSkill_Actions takes nothing returns nothing" + JASS_DELIM +
-						"    local integer i=0" + JASS_DELIM +
-						"    local integer a=GetLearnedSkill()" + JASS_DELIM +
-						"    if " + ARCHON_PREFIX + "WatchSkill(a)==true then" + JASS_DELIM +
-						DebugOnly("call DisplayTextToForce(GetPlayersAll(),I2S(i)+\"] \"+I2S(a)+\" _\"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
-						"        loop" + JASS_DELIM +
-						"            exitwhen i>=" + ABILITY_ARRAY_SIZE + JASS_DELIM +
-						DebugOnly("call DisplayTextToForce(GetPlayersAll(),I2S(i)+\") \"+I2S(" + ABILITY_ARRAY + "[i])+\" \"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
-						"            set i = i+1" + JASS_DELIM +
-						"        endloop" + JASS_DELIM +
-						"    " + END_IF + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function InitTrig_" + ARCHON_PREFIX + "WatchLearnedSkill takes nothing returns nothing" + JASS_DELIM +
-						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill = CreateTrigger()" + JASS_DELIM +
-						"    call TriggerRegisterAnyUnitEventBJ(" + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill,EVENT_PLAYER_HERO_SKILL)" + JASS_DELIM +
-						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill,function Trig_" + ARCHON_PREFIX + "WatchLearnedSkill_Actions)" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "S2B takes string s returns boolean" + JASS_DELIM +
-						"    if s==\"t\" then" + JASS_DELIM +
-						"        return true" + JASS_DELIM +
-						"    endif" + JASS_DELIM +
-						"    return false" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "B2S takes boolean b returns string" + JASS_DELIM +
-						"    if b then" + JASS_DELIM +
-						"        return \"t\"" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"    return \"f\"" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "ModI takes integer n, integer b returns integer" + JASS_DELIM +
-						"return n-(n/b)*b" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "IS62 takes integer n returns string" + JASS_DELIM +
-						"    local string result=\"\"" + JASS_DELIM +
-						"    local integer remainder" + JASS_DELIM +
-						"    local integer b=62" + JASS_DELIM +
-						"    local integer digit" + JASS_DELIM +
-						"    if n<0 then" + JASS_DELIM +
-						"    return \"-\" + " + ARCHON_PREFIX + "IS62(-n)" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"    loop" + JASS_DELIM +
-						"        exitwhen n<=0" + JASS_DELIM +
-						"        set digit=" + ARCHON_PREFIX + "ModI(n,b)" + JASS_DELIM +
-						"        set result=SubString(\"" + XT87Utils.BASE62_CHARS + "\",digit,digit+1)+result" + JASS_DELIM +
-						"        set n=n/b" + JASS_DELIM +
-						"    endloop" + JASS_DELIM +
-						"    " + JASS_DELIM +
-						"    return result" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "RS62 takes real r returns string" + JASS_DELIM +
-						"    local string s=R2S(r)" + JASS_DELIM +
-						"    local integer i=0" + JASS_DELIM +
-						"    local integer len=StringLength(s)" + JASS_DELIM +
-						"    loop" + JASS_DELIM +
-						"    exitwhen i>=len" + JASS_DELIM +
-						"    if SubString(s,i,i+1)==\".\" then" + JASS_DELIM +
-						"    return " + ARCHON_PREFIX + "IS62(S2I(SubString(s,0,i)))+\".\"+" + ARCHON_PREFIX + "IS62(S2I(SubString(s,i+1,len)))" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"set i=i+1" + JASS_DELIM +
-						"endloop" + JASS_DELIM +
-						"    return " + ARCHON_PREFIX + "IS62(0)+\".\"+" + ARCHON_PREFIX + "IS62(0)" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "BS62 takes boolean b returns string" + JASS_DELIM +
-						"local integer i=GetRandomInt(0," + (int) (Math.pow(62, 2) - 2) + ")" + JASS_DELIM +
-						"if (" + ARCHON_PREFIX + "ModI(i,2)==0)==b then" + JASS_DELIM +
-						"set i=i+1" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"return " + ARCHON_PREFIX + "IS62(i)" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "SS62 takes string s returns string" + JASS_DELIM +
-						"if s==null then" + JASS_DELIM +
-						"return \"null\"" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"return \"s\"+s" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "S62I takes string s returns integer" + JASS_DELIM +
-						"    local integer result=0" + JASS_DELIM +
-						"    local integer b=62" + JASS_DELIM +
-						"    local string digit" + JASS_DELIM +
-						"    local integer index" + JASS_DELIM +
-						"    if SubString(s,0,1)==\"-\" then" + JASS_DELIM +
-						"    return -" + ARCHON_PREFIX + "S62I(SubString(s,1,StringLength(s)))" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"    loop" + JASS_DELIM +
-						"        exitwhen s==\"\"" + JASS_DELIM +
-						"        " + JASS_DELIM +
-						"        set digit=SubString(s,0,1)" + JASS_DELIM +
-						"        set index=0" + JASS_DELIM +
-						"        " + JASS_DELIM +
-						"        loop" + JASS_DELIM +
-						"            exitwhen SubString(\"" + XT87Utils.BASE62_CHARS + "\",index,index+1)==digit" + JASS_DELIM +
-						"            set index=index+1" + JASS_DELIM +
-						"            if index>=b then" + JASS_DELIM +
-						"                return 0" + JASS_DELIM +
-						"            endif" + JASS_DELIM +
-						"        endloop" + JASS_DELIM +
-						"        " + JASS_DELIM +
-						"        set result=result*b+index" + JASS_DELIM +
-						"        set s=SubString(s,1,StringLength(s))" + JASS_DELIM +
-						"    endloop" + JASS_DELIM +
-						"    " + JASS_DELIM +
-						"    return result" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "S62R takes string s returns real" + JASS_DELIM +
-						"    local integer i=0" + JASS_DELIM +
-						"    local integer len=StringLength(s)" + JASS_DELIM +
-						"    loop" + JASS_DELIM +
-						"    exitwhen i==len" + JASS_DELIM +
-						"    if SubString(s,i,i+1)==\".\" then" + JASS_DELIM +
-						"    return S2R(I2S(" + ARCHON_PREFIX + "S62I(SubString(s,0,i)))+\".\"+I2S(" + ARCHON_PREFIX + "S62I(SubString(s,i+1,len))))" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"set i=i+1" + JASS_DELIM +
-						"endloop" + JASS_DELIM +
-						"    return 0.000" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "S62B takes string s returns boolean" + JASS_DELIM +
-						"return " + ARCHON_PREFIX + "ModI(" + ARCHON_PREFIX + "S62I(s),2)==1" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "S62S takes string s returns string" + JASS_DELIM +
-						"if SubString(s,0,1)==\"s\" then" + JASS_DELIM +
-						"return SubString(s,1,StringLength(s))" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"return null" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "WriteString takes string cacheName,string title,string v returns nothing" + JASS_DELIM +
-						"local string p=\"XT87CampaignSplitter\\\\\"+cacheName+\"\\\\\"+title+\".pld\"" + JASS_DELIM +
-						"    call FileIO_Write(p,v+\"\\n\"+" + ARCHON_PREFIX + "IS62(StringHash(v+\"|\"+p)))" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "SyncContents takes string path returns nothing" + JASS_DELIM +
-						"    local integer i=0" + JASS_DELIM +
-						"    local integer j=0" + JASS_DELIM +
-						"    local integer len" + JASS_DELIM +
-						"    local string content=null" + JASS_DELIM +
-						"call " + READ_LOCK + "()" + JASS_DELIM +
-						"set XT87ReadLinesLock=true" + JASS_DELIM +
-						"    if GetLocalPlayer()==" + toMainPlayerFunc() + " then" + JASS_DELIM +
-						"        set content=(s__File_readEx(s__File_open((path)),true)) // INLINED!!" + JASS_DELIM +
-						"        if content==null then" + JASS_DELIM +
-						"            set content=\"\"" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"        set len=StringLength(content)" + JASS_DELIM +
-						// todo add gamecache flush index and mission key flush idnex to checksum
-						"    loop" + JASS_DELIM +
-						"    exitwhen i>=len" + JASS_DELIM +
-						"    if SubString(content,i,i+1)==\"\\n\" then" + JASS_DELIM +
-						"set j=i" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"set i=i+1" + JASS_DELIM +
-						"    endloop" + JASS_DELIM +
-						"    if StringHash(SubString(content,0,j)+\"|\"+path)!=" + ARCHON_PREFIX + "S62I(SubString(content,j+1,len)) then" + JASS_DELIM +
-						"        set content=\"\"" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						DebugOnly("call DisplayTextToForce(GetPlayersAll(),\">\"+content+\"<\")" + JASS_DELIM) +
-						"        call BlzSendSyncData(\"XTContents\",content)" + JASS_DELIM +
-						"    endif" + JASS_DELIM +
-						"    loop" + JASS_DELIM +
-						"        exitwhen XT87ReadLinesAreRead" + JASS_DELIM +
-						"        call TriggerSleepAction(bj_WAIT_FOR_COND_MIN_INTERVAL)" + JASS_DELIM +
-						"    endloop" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "ReadString takes string cacheName,string title returns string" + JASS_DELIM +
-						"local string s" + JASS_DELIM +
-						"call " + ARCHON_PREFIX + "SyncContents(\"XT87CampaignSplitter\\\\\"+cacheName+\"\\\\\"+title+\".pld\")" + JASS_DELIM +
-						"set s=XT87ReadLines[0]" + JASS_DELIM +
-						"set XT87ReadLinesAreRead=false" + JASS_DELIM +
-						"set XT87ReadLinesLock=false" + JASS_DELIM +
-						"return s" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function " + ARCHON_PREFIX + "ReadUnit takes string cacheName,string title returns integer" + JASS_DELIM +
-						"    local integer i" + JASS_DELIM +
-						"    if GetPlayerSlotState(" + toMainPlayerFunc() + ")!=PLAYER_SLOT_STATE_PLAYING then" + JASS_DELIM +
-						"        return 0" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"    call " + ARCHON_PREFIX + "SyncContents(\"XT87CampaignSplitter\\\\\"+cacheName+\"\\\\\"+title+\".pld\")" + JASS_DELIM +
-						"    if XT87ReadLines[0]==null then" + JASS_DELIM +
-						"        return 0" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"0)\"+XT87ReadLines[0])" + JASS_DELIM) +
-						DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"1)\"+XT87ReadLines[1])" + JASS_DELIM) +
-						DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"2)\"+XT87ReadLines[2])" + JASS_DELIM) +
-						"    return " + ARCHON_PREFIX + "S62I(XT87ReadLines[0])" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function Trig_" + ARCHON_PREFIX + "SyncData_Actions takes nothing returns nothing" + JASS_DELIM +
-						"    local string contents=BlzGetTriggerSyncData()" + JASS_DELIM +
-						"    local integer len=StringLength(contents)" + JASS_DELIM +
-						"    local string char=null" + JASS_DELIM +
-						"    local string buffer=\"\"" + JASS_DELIM +
-						"    local integer curLine=0" + JASS_DELIM +
-						"    local integer i=0" + JASS_DELIM +
-						"    if len<=0 then" + JASS_DELIM +
-						"        set XT87ReadLines[0]=null" + JASS_DELIM +
-						"    else" + JASS_DELIM +
-						"        loop" + JASS_DELIM +
-						"            exitwhen i > len" + JASS_DELIM +
-						"            set char=SubString(contents,i,i+1)" + JASS_DELIM +
-						"            if char==\"\\n\" then" + JASS_DELIM +
-						"                set XT87ReadLines[curLine]=buffer" + JASS_DELIM +
-						"                set curLine=curLine+1" + JASS_DELIM +
-						"                set buffer=\"\"" + JASS_DELIM +
-						"            else" + JASS_DELIM +
-						"                set buffer=buffer+char" + JASS_DELIM +
-						"            endif" + JASS_DELIM +
-						"        set i=i+1" + JASS_DELIM +
-						"        endloop" + JASS_DELIM +
-						"        set XT87ReadLines[curLine]=buffer" + JASS_DELIM +
-						"    endif" + JASS_DELIM +
-						"set XT87ReadLinesAreRead=true" + JASS_DELIM +
-						END_FUNCTION + JASS_DELIM +
-						"function InitTrig_" + ARCHON_PREFIX + "SyncData takes nothing returns nothing" + JASS_DELIM +
-						"    local integer i=0" + JASS_DELIM +
-						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData=CreateTrigger()" + JASS_DELIM +
-						"    loop" + JASS_DELIM +
-						"        call BlzTriggerRegisterPlayerSyncEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,Player(i),\"XTContents\",false)" + JASS_DELIM +
-						"        set i=i+1" + JASS_DELIM +
-						"        exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
-						"    endloop" + JASS_DELIM +
-						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,function Trig_" + ARCHON_PREFIX + "SyncData_Actions)" + JASS_DELIM +
-						END_FUNCTION, sb);
-				// endregion
-			}
-		} else if (insideConfig) {
-			if (line.equals(END_FUNCTION)) {
-				insideConfig = false;
-//			} else if (line.contains(toMainPlayerFunc())) {
-//				for (W3I.Player player : secondaryPlayers) {
-//					append(line.replace(toMainPlayerFunc(), toPlayerFunc(player.getNum())), sb);
-//				}
-			}
-		} else if (line.contains("function config takes")) {
-			insideConfig = true;
-		} else if (insideCustomPlayerSlots) {
-			if (line.equals(END_FUNCTION)) {
-				insideCustomPlayerSlots = false;
-			}
-		} else if (line.contains("function InitCustomPlayerSlots takes")) {
-			insideCustomPlayerSlots = true;
-//			for (W3I.Player player : secondaryPlayers)
-//				append("call SetPlayerTeam(" + toPlayerFunc(player.getNum()) + "," + (info.getForces().size() - 1) + ")", sb);
 		} else if (line.contains("function InitCustomTriggers takes")) {
 			for (String resourceName : ALL_RESOURCE_NAMES)
 				append("    call InitTrig_" + ARCHON_PREFIX + resourceName + "Sync()", sb);

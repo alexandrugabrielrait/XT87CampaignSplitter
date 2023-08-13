@@ -10,11 +10,13 @@ import java.util.Set;
 
 public abstract class ScriptRewriter {
 	public static final String JASS_DELIM = "\r\n";
+	public static final String FUNCTION = "function";
 	public static final String END_FUNCTION = "endfunction";
 	public static final String END_IF = "endif";
 	public static final String INIT_CALL = "call ConditionalTriggerExecute(";
 	public MapInjector mi;
 	public boolean first = true;
+	public String insideFunction;
 
 	public ScriptRewriter(MapInjector mi) {
 		this.mi = mi;
@@ -81,7 +83,17 @@ public abstract class ScriptRewriter {
 		onStartRead(text, sb);
 		first = true;
 		while (sc.hasNextLine()) {
-			onReadLine(sc.nextLine(), sb);
+			String line = sc.nextLine();
+			{
+				String trimmedLine = line.trim();
+				if (trimmedLine.startsWith(FUNCTION)) {
+					insideFunction = trimmedLine.substring(FUNCTION.length()).trim();
+					insideFunction = insideFunction.substring(0, insideFunction.indexOf(' '));
+				}
+			}
+			onReadLine(line, sb);
+			if (line.trim().equals(END_FUNCTION))
+				insideFunction = null;
 		}
 
 		mi.scriptBuffer = sb;

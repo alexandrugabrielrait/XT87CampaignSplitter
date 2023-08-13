@@ -18,6 +18,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.Stack;
 import java.util.stream.Collectors;
@@ -204,5 +206,19 @@ public class XT87Utils {
 		result.setStartPos(player.getStartPos());
 		result.setStartPosFixed(player.getStartPosFixed());
 		return result;
+	}
+
+	public static String getLocalizedString(String label)
+	{
+		try {
+			//Locale l = new Locale("en", "US");
+			Locale l = new Locale("ro", "RO");
+			ResourceBundle bundle = ResourceBundle.getBundle("properties/Localization", l);
+			return bundle.getString(label);
+		}
+		catch (Throwable ignored)
+		{
+			return label;
+		}
 	}
 }

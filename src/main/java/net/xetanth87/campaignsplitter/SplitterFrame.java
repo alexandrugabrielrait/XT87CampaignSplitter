@@ -2,12 +2,9 @@ package net.xetanth87.campaignsplitter;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.filechooser.FileSystemView;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -19,14 +16,17 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+
+import static net.xetanth87.campaignsplitter.XT87Utils.getLocalizedString;
 
 public class SplitterFrame extends JFrame {
 	public static final String AUTHOR = "Xetanth87";
 	public static final String APP_TITLE = "Campaign Splitter";
 	private final JTextField filePathField = new JTextField(30);
-	private final JButton browse = new JButton("Browse");
-	private final JButton split = new JButton("Split");
+	private final JButton browse = new JButton(getLocalizedString("browse_button"));
+	private final JButton split = new JButton(getLocalizedString("split_button"));
 	private boolean running = false;
 	private Thread splitterThread = null;
 	private final JProgressBar bar;
@@ -78,72 +78,67 @@ public class SplitterFrame extends JFrame {
 
 		panel = new JPanel();
 		optionsPanel.add(panel);
-		panel.add(new JLabel("Add Difficulty Selector?"));
+		panel.add(new JLabel(getLocalizedString("difficulty_selector_check")));
 		difficultySelectorGroup = new ButtonGroup();
 		JRadioButton radioButton;
 		for (XT87Utils.TriOption option : XT87Utils.TriOption.values()) {
-			radioButton = new JRadioButton(XT87Utils.beautifyEnum(option));
+			String label = "difficulty_selector_" + option.toString().toLowerCase(Locale.ROOT);
+			radioButton = new JRadioButton(getLocalizedString(label));
 			radioButton.setFocusPainted(false);
 			radioButton.setActionCommand(option.toString());
 			if (option == difficultySelectorOption)
 				radioButton.setSelected(true);
-			String tooltipText = "";
-			switch (option) {
-				case NO:
-					tooltipText = "Don't add a Difficulty Selector at the start of each map.";
-					break;
-				case SMART:
-					tooltipText = "Add a Difficulty Selector at the start of each map, only if the campaign has the \"Variable Difficulty\" setting. (Recommended)";
-					break;
-				case YES:
-					tooltipText = "Add a Difficulty Selector at the start of each map.";
-					break;
-			}
-			radioButton.setToolTipText(tooltipText);
+			radioButton.setToolTipText(getLocalizedString(label + "_tooltip"));
 			radioButton.addActionListener(new DifficultySelectorOptionL(option));
 			panel.add(radioButton);
 			difficultySelectorGroup.add(radioButton);
 		}
 
+		String label;
 		panel = new JPanel();
 		optionsPanel.add(panel);
 		panel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
-		panel.add(new JLabel("Add campaign preview?"));
+		label = "campaign_preview_check";
+		panel.add(new JLabel(getLocalizedString(label)));
 		campaignPreviewCheck.setSelected(true);
 		panel.add(campaignPreviewCheck);
-		campaignPreviewCheck.setToolTipText("Changes each map's preview to the campaign preview, hiding the minimap. (Recommended)");
-		panel.add(new JLabel("Show next level name?"));
+		campaignPreviewCheck.setToolTipText(getLocalizedString(label + "_tooltip"));
+		panel.add(new JLabel(getLocalizedString("next_level_name_check")));
 		nextLevelCheck.setSelected(true);
 		panel.add(nextLevelCheck);
-		nextLevelCheck.setToolTipText("Shows the name of the next level upon victory. Especially useful for campaigns with branching paths. (Recommended)");
+		nextLevelCheck.setToolTipText(getLocalizedString(label + "_tooltip"));
 
 		panel = new JPanel();
 		optionsPanel.add(panel);
 		panel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
-		panel.add(new JLabel("Add legacy assets?"));
+		label = "legacy_assets_check";
+		panel.add(new JLabel(getLocalizedString(label)));
 		legacyAssetsCheck.setSelected(true);
 		panel.add(legacyAssetsCheck);
-		legacyAssetsCheck.setToolTipText("Adds Reign of Chaos models and icons that were removed in Reforged. (Recommended, requires \"legacy.zip\" for SD or \"legacyHD.zip\" for HD)");
-		panel.add(new JLabel("Remove Upkeep?"));
+		legacyAssetsCheck.setToolTipText(getLocalizedString(label + "_tooltip"));
+		label = "remove_upkeep_check";
+		panel.add(new JLabel(getLocalizedString(label)));
 		upkeepRemovalCheck.setSelected(false);
 		panel.add(upkeepRemovalCheck);
-		upkeepRemovalCheck.setToolTipText("Removes Upkeep from each map. May lead to unforeseen consequences. (Not recommended)");
+		upkeepRemovalCheck.setToolTipText(getLocalizedString(label + "_tooltip"));
 
 		panel = new JPanel();
 		optionsPanel.add(panel);
 		panel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
-		panel.add(new JLabel("Archon Mode Slots"));
+		label = "archon_mode_dropdown";
+		panel.add(new JLabel(getLocalizedString(label)));
 		panel.add(archonModeAddedSlotsDropdown);
 		for (int i = 0; i < 24; i++)
 			archonModeAddedSlotsDropdown.addItem(new ArchonModeAddedSlotsVariant(i));
-		archonModeAddedSlotsDropdown.setToolTipText("Select the number of player slots, limited by the amount of unused slots of every map.");
+		archonModeAddedSlotsDropdown.setToolTipText(getLocalizedString(label + "_tooltip"));
 		archonModeAddedSlotsDropdown.addItemListener(e -> {
 			enableDisableToDownloadFolderCheck();
 		});
-		panel.add(new JLabel("Extract to Download folder?"));
+		label = "to_download_folder_check";
+		panel.add(new JLabel(getLocalizedString(label)));
 		toDownloadFolderCheck.setSelected(false);
 		panel.add(toDownloadFolderCheck);
-		toDownloadFolderCheck.setToolTipText("Extracts the maps to the Warcraft III Download folder. (Check if you play Archon Mode and are not the host)");
+		toDownloadFolderCheck.setToolTipText(getLocalizedString(label + "_tooltip"));
 		enableDisableToDownloadFolderCheck();
 
 		browse.addActionListener(new BrowseL());
@@ -207,7 +202,7 @@ public class SplitterFrame extends JFrame {
 			try {
 				File directory;
 				if (filePathField.getText().isEmpty())
-					directory = new File(XT87Utils.MAPS_FOLDER);
+					directory = new File(XT87Utils.GAME_FOLDER);
 				else
 					directory = new File(filePathField.getText());
 				if (!directory.isDirectory())
@@ -238,11 +233,11 @@ public class SplitterFrame extends JFrame {
 		}
 		if (running) {
 			browse.setBackground(Color.GRAY);
-			split.setText("Stop");
+			split.setText(getLocalizedString("stop_button"));
 			split.setBackground(Color.RED);
 		} else {
 			browse.setBackground(new Color(100, 200, 255));
-			split.setText("Split");
+			split.setText(getLocalizedString("split_button"));
 			split.setBackground(Color.ORANGE);
 		}
 	}
