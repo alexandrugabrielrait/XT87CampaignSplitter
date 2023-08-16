@@ -212,15 +212,23 @@ public class XT87Utils {
 	public static String getLocalizedString(String label)
 	{
 		try {
-			//Locale l = new Locale("en", "US");
-			//Locale l = new Locale("ro", "RO");
-			Locale l = Locale.getDefault();
-			ResourceBundle bundle = ResourceBundle.getBundle("properties/Localization", l);
+			ResourceBundle bundle = ResourceBundle.getBundle("properties/Localization", SplitterLanguage.selectedLanguage.getLocale());
 			return bundle.getString(label);
 		}
 		catch (Throwable ignored)
 		{
 			return label;
+		}
+	}
+
+	public static String getUnicodeString(String readable)
+	{
+		try {
+			return new String(readable.getBytes(), StandardCharsets.UTF_8);
+		}
+		catch (Exception ignored)
+		{
+			return readable;
 		}
 	}
 }
