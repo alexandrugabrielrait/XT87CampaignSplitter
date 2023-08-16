@@ -212,7 +212,8 @@ public class XT87Utils {
 	{
 		try {
 			//Locale l = new Locale("en", "US");
-			Locale l = new Locale("ro", "RO");
+			//Locale l = new Locale("ro", "RO");
+			Locale l = Locale.getDefault();
 			ResourceBundle bundle = ResourceBundle.getBundle("properties/Localization", l);
 			return bundle.getString(label);
 		}

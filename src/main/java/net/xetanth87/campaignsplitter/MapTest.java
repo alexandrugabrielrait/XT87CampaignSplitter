@@ -29,11 +29,6 @@ public class MapTest {
         W3I info3 = W3I.ofMapFile(file2);
         String breakp = "point";
 
-
-
-
-
-
 //        File extra = new File("extra");
 //        extra.deleteOnExit();
 //        File misc = new File("misc");
