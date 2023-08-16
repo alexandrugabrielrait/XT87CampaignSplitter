@@ -5,12 +5,15 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -25,8 +28,8 @@ public class SplitterFrame extends JFrame {
 	public static final String AUTHOR = "Xetanth87";
 	public static final String APP_TITLE = "Campaign Splitter";
 	private final JTextField filePathField = new JTextField(30);
-	private final JButton browse = new JButton(getLocalizedString("browse_button"));
-	private final JButton split = new JButton(getLocalizedString("split_button"));
+	private final JButton browse = new JButton(getLocalizedString("button_open"));
+	private final JButton split = new JButton(getLocalizedString("button_split"));
 	private boolean running = false;
 	private Thread splitterThread = null;
 	private final JProgressBar bar;
@@ -141,8 +144,8 @@ public class SplitterFrame extends JFrame {
 		toDownloadFolderCheck.setToolTipText(getLocalizedString(label + "_tooltip"));
 		enableDisableToDownloadFolderCheck();
 
-		browse.addActionListener(new BrowseL());
-		split.addActionListener(new SplitL());
+		browse.addActionListener(this::openAction);
+		split.addActionListener(this::splitAction);
 		panel = new JPanel();
 		add(panel);
 		panel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
@@ -181,6 +184,85 @@ public class SplitterFrame extends JFrame {
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
+
+		JMenu menu;
+		JMenuItem menuItem;
+		JMenuBar menuBar = new JMenuBar();
+		setJMenuBar(menuBar);
+
+		menu = new JMenu("File");
+		menu.setMnemonic('F');
+		menuBar.add(menu);
+
+		menuItem = new JMenuItem("Open Campaign...");
+		menuItem.setAccelerator(KeyStroke.getKeyStroke('O', KeyEvent.CTRL_DOWN_MASK));
+		menuItem.addActionListener(new ActionListenerInPopup(this::openAction));
+		menu.add(menuItem);
+
+		menuItem = new JMenuItem("Open from Maps folder");
+		menuItem.setAccelerator(KeyStroke.getKeyStroke('D', KeyEvent.CTRL_DOWN_MASK));
+		menuItem.addActionListener(new ActionListenerInPopup(e -> openAction(e, XT87Utils.MAPS_FOLDER)));
+		menu.add(menuItem);
+
+		menuItem = new JMenuItem("Open from Campaigns folder");
+		menuItem.setAccelerator(KeyStroke.getKeyStroke('F', KeyEvent.CTRL_DOWN_MASK));
+		menuItem.addActionListener(new ActionListenerInPopup(e -> openAction(e, XT87Utils.CAMPAIGNS_FOLDER)));
+		menu.add(menuItem);
+
+		menuItem = new JMenuItem("Clear");
+		menuItem.setAccelerator(KeyStroke.getKeyStroke('W', KeyEvent.CTRL_DOWN_MASK));
+		menuItem.addActionListener(new ActionListenerInPopup(this::clearAction));
+		menu.add(menuItem);
+
+		menuItem = new JMenuItem("Preferences");
+		menuItem.setAccelerator(KeyStroke.getKeyStroke('P', KeyEvent.CTRL_DOWN_MASK));
+		//menuItem.addActionListener(new ActionListenerInPopup(this::preferencesAction));
+		menu.add(menuItem);
+
+		menuItem = new JMenuItem("Exit");
+		menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F4, KeyEvent.ALT_DOWN_MASK));
+		menuItem.addActionListener(e -> System.exit(0));
+		menu.add(menuItem);
+
+		menu = new JMenu("Edit");
+		menu.setMnemonic('E');
+		menuBar.add(menu);
+
+		menuItem = new JMenuItem("Split/Stop");
+		menuItem.setAccelerator(KeyStroke.getKeyStroke('S', KeyEvent.CTRL_DOWN_MASK));
+		menuItem.addActionListener(new ActionListenerInPopup(this::splitAction));
+		menu.add(menuItem);
+
+		menu = new JMenu("Help");
+		menu.setMnemonic('H');
+		menuBar.add(menu);
+
+		menu = new JMenu("Donate");
+		menu.setMnemonic('H');
+		menuBar.add(menu);
+
+		menuItem = new JMenuItem("Become a Patron");
+		menuItem.setAccelerator(KeyStroke.getKeyStroke('T', KeyEvent.CTRL_DOWN_MASK));
+		menuItem.addActionListener(new ActionListenerInPopup(e -> {
+			try {
+				Desktop.getDesktop().browse(new URI("https://www.patreon.com/alternatecampaigns")); // Open URL in browser
+			} catch (IOException | URISyntaxException ex) {
+				ex.printStackTrace();
+			}
+		}));
+		menu.add(menuItem);
+
+		menuItem = new JMenuItem("One Time Donation");
+		menuItem.setAccelerator(KeyStroke.getKeyStroke('T', KeyEvent.CTRL_DOWN_MASK));
+		menuItem.addActionListener(new ActionListenerInPopup(e -> {
+			try {
+				Desktop.getDesktop().browse(new URI("https://www.buymeacoffee.com/xetanth87")); // Open URL in browser
+			} catch (IOException | URISyntaxException ex) {
+				ex.printStackTrace();
+			}
+		}));
+		menu.add(menuItem);
+
 		setVisible(true);
 	}
 
@@ -196,29 +278,59 @@ public class SplitterFrame extends JFrame {
 		}
 	}
 
-	class BrowseL implements ActionListener {
-		public void actionPerformed(ActionEvent e) {
-			JFileChooser c = new JFileChooser();
-			try {
-				File directory;
+	public void openAction(ActionEvent e, String overridePath) {
+		if (running)
+			return;
+		JFileChooser c = new JFileChooser();
+		try {
+			File directory;
+			if (overridePath == null) {
 				if (filePathField.getText().isEmpty())
 					directory = new File(XT87Utils.GAME_FOLDER);
 				else
 					directory = new File(filePathField.getText());
-				if (!directory.isDirectory())
-					directory = directory.getParentFile();
-				if (directory != null)
-					c.setCurrentDirectory(directory);
-			} catch (Exception ex) {
-			}
-			c.setFileFilter(new FileNameExtensionFilter("Warcraft III Campaign (*.w3n)", "w3n"));
-			c.setAcceptAllFileFilterUsed(false);
-			int rVal = c.showOpenDialog(SplitterFrame.this);
-			if (rVal == JFileChooser.APPROVE_OPTION) {
-				filePathField.setText(c.getSelectedFile().getAbsolutePath());
-			}
-			if (rVal == JFileChooser.CANCEL_OPTION) {
-			}
+			} else
+				directory = new File(overridePath);
+			if (!directory.isDirectory())
+				directory = directory.getParentFile();
+			if (directory != null)
+				c.setCurrentDirectory(directory);
+		} catch (Exception ignored) {
+		}
+		c.setFileFilter(new FileNameExtensionFilter("Warcraft III Campaign (*.w3n)", "w3n"));
+		c.setAcceptAllFileFilterUsed(false);
+		int rVal = c.showOpenDialog(SplitterFrame.this);
+		if (rVal == JFileChooser.APPROVE_OPTION) {
+			filePathField.setText(c.getSelectedFile().getAbsolutePath());
+		}
+		if (rVal == JFileChooser.CANCEL_OPTION) {
+		}
+	}
+
+	public void openAction(ActionEvent e) {
+		if (running)
+			return;
+		openAction(e, null);
+	}
+
+	public void clearAction(ActionEvent e) {
+		if (running)
+			return;
+		filePathField.setText("");
+	}
+
+	public void splitAction(ActionEvent e) {
+		if (running) {
+			setButtonStates(false);
+			if (splitterThread != null)
+				splitterThread.interrupt();
+			XT87Utils.deleteNewFiles();
+			JOptionPane.showMessageDialog(null, "The splitting has stopped!", APP_TITLE, JOptionPane.INFORMATION_MESSAGE);
+		} else {
+			taskOutput.setText("");
+			setButtonStates(true);
+			splitterThread = new CampaignSplitterThread();
+			splitterThread.start();
 		}
 	}
 
@@ -298,13 +410,11 @@ public class SplitterFrame extends JFrame {
 		}
 	}
 
-	private int getArchonModeAddedSlotsVariant()
-	{
+	private int getArchonModeAddedSlotsVariant() {
 		return ((ArchonModeAddedSlotsVariant) Objects.requireNonNull(archonModeAddedSlotsDropdown.getSelectedItem())).getValue();
 	}
 
-	private void enableDisableToDownloadFolderCheck()
-	{
+	private void enableDisableToDownloadFolderCheck() {
 		if (getArchonModeAddedSlotsVariant() > 0)
 			toDownloadFolderCheck.setEnabled(!running);
 		else {
@@ -364,20 +474,18 @@ public class SplitterFrame extends JFrame {
 		}
 	}
 
-	class SplitL implements ActionListener {
+	private static class ActionListenerInPopup implements ActionListener {
+		private final ActionListener l;
+
+		public ActionListenerInPopup(ActionListener l) {
+			this.l = l;
+		}
+
+		@Override
 		public void actionPerformed(ActionEvent e) {
-			if (running) {
-				setButtonStates(false);
-				if (splitterThread != null)
-					splitterThread.interrupt();
-				XT87Utils.deleteNewFiles();
-				JOptionPane.showMessageDialog(null, "The splitting has stopped!", APP_TITLE, JOptionPane.INFORMATION_MESSAGE);
-			} else {
-				taskOutput.setText("");
-				setButtonStates(true);
-				splitterThread = new CampaignSplitterThread();
-				splitterThread.start();
-			}
+			JPopupMenu popupMenu = (JPopupMenu) ((JMenuItem) e.getSource()).getParent(); // Get the parent menu
+			popupMenu.setVisible(false);
+			l.actionPerformed(e);
 		}
 	}
 

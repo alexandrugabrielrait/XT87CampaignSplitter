@@ -36,6 +36,7 @@ public class XT87Utils {
 	public static final String BASE62_CHARS = "XlvWV7GmwyH5M9YsNhJkCUzAZT6roxOLnqIe0KjcFiDQdtpaP2S3uE1bRg84fB";
 	public static final String GAME_FOLDER = FileSystemView.getFileSystemView().getDefaultDirectory().getAbsolutePath() + "/Warcraft III";
 	public static final String MAPS_FOLDER = GAME_FOLDER + "/Maps";
+	public static final String CAMPAIGNS_FOLDER = GAME_FOLDER + "/Campaigns";
 	public static final String DOWNLOAD_FOLDER = MAPS_FOLDER + "/Download";
 	static {
 		assert BASE62_CHARS.length() == 62 && BASE62_CHARS.length() == BASE62_CHARS.chars().distinct().count();
