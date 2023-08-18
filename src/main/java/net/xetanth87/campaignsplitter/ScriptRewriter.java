@@ -4,9 +4,7 @@ import net.moonlightflower.wc3libs.txt.app.jass.Jass;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.Scanner;
-import java.util.Set;
 
 public abstract class ScriptRewriter {
 	public static final String JASS_DELIM = "\r\n";
@@ -14,12 +12,20 @@ public abstract class ScriptRewriter {
 	public static final String END_FUNCTION = "endfunction";
 	public static final String END_IF = "endif";
 	public static final String INIT_CALL = "call ConditionalTriggerExecute(";
+	private static final boolean IS_DEBUG = false;
+	private static final boolean REMOVE_USELESS = true;
 	public MapInjector mi;
 	public boolean first = true;
 	public String insideFunction;
 
 	public ScriptRewriter(MapInjector mi) {
 		this.mi = mi;
+	}
+
+	protected static String DebugOnly(String text) {
+		if (IS_DEBUG)
+			return text;
+		return "";
 	}
 
 	public String initializationTriggerFromCall(String line) {
@@ -37,11 +43,18 @@ public abstract class ScriptRewriter {
 	public abstract void onReadLine(String line, StringBuffer sb);
 
 	public void append(String line, StringBuffer sb) {
-		if (first)
-			first = false;
-		else
-			sb.append(JASS_DELIM);
-		sb.append(line);
+		for (String l : line.split(JASS_DELIM)) {
+			if (REMOVE_USELESS) {
+				l = l.trim();
+				if (l.isBlank() || l.startsWith("//"))
+					continue;
+			}
+			if (first)
+				first = false;
+			else
+				sb.append(JASS_DELIM);
+			sb.append(l);
+		}
 	}
 
 	public static void readScript(MapInjector mi) throws Exception {
