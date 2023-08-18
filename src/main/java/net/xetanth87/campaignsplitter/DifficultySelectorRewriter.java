@@ -112,9 +112,6 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 		}
 		else if (!triggersAdded && line.contains("function Trig")) {
 			sb.append(JASS_DELIM +
-					"//===========================================================================" + JASS_DELIM +
-					"// Trigger: XT87CS Dif Init" + JASS_DELIM +
-					"//===========================================================================" + JASS_DELIM +
 					"function Trig_XT87CS_Dif_Init_Actions takes nothing returns nothing" + JASS_DELIM +
 					"    local string XT87CSDifDiagEasyName=GetLocalizedString(\"EASY\")" + JASS_DELIM +
 					"    call PauseGameOn()" + JASS_DELIM +
@@ -130,46 +127,19 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 					"    set udg_XT87CSDifButttonHard=GetLastCreatedButtonBJ()" + JASS_DELIM +
 					"    call DialogDisplayBJ(true, udg_XT87CSDifDialog, Player(" + playerId + "))" + JASS_DELIM +
 					END_FUNCTION + JASS_DELIM +
-					JASS_DELIM +
-					"//===========================================================================" + JASS_DELIM +
 					"function InitTrig_XT87CS_Dif_Init takes nothing returns nothing" + JASS_DELIM +
 					"    set gg_trg_XT87CS_Dif_Init=CreateTrigger()" + JASS_DELIM +
 					"    call TriggerRegisterTimerEventSingle(gg_trg_XT87CS_Dif_Init, 0.01)" + JASS_DELIM +
 					"    call TriggerAddAction(gg_trg_XT87CS_Dif_Init, function Trig_XT87CS_Dif_Init_Actions)" + JASS_DELIM +
 					END_FUNCTION + JASS_DELIM +
-					JASS_DELIM +
-					"//===========================================================================" + JASS_DELIM +
-					"// Trigger: XT87CS Dif Click" + JASS_DELIM +
-					"//===========================================================================" + JASS_DELIM +
-					"function Trig_XT87CS_Dif_Click_Func001Func001Func001C takes nothing returns boolean" + JASS_DELIM +
-					"    if ( not ( GetClickedButtonBJ() == udg_XT87CSDifButttonHard ) ) then" + JASS_DELIM +
-					"        return false" + JASS_DELIM +
-					"    endif" + JASS_DELIM +
-					"    return true" + JASS_DELIM +
-					END_FUNCTION + JASS_DELIM +
-					JASS_DELIM +
-					"function Trig_XT87CS_Dif_Click_Func001Func001C takes nothing returns boolean" + JASS_DELIM +
-					"    if ( not ( GetClickedButtonBJ() == udg_XT87CSDifButtonNormal ) ) then" + JASS_DELIM +
-					"        return false" + JASS_DELIM +
-					"    endif" + JASS_DELIM +
-					"    return true" + JASS_DELIM +
-					END_FUNCTION + JASS_DELIM +
-					JASS_DELIM +
-					"function Trig_XT87CS_Dif_Click_Func001C takes nothing returns boolean" + JASS_DELIM +
-					"    if ( not ( GetClickedButtonBJ() == udg_XT87CSDifButtonEasy ) ) then" + JASS_DELIM +
-					"        return false" + JASS_DELIM +
-					"    endif" + JASS_DELIM +
-					"    return true" + JASS_DELIM +
-					END_FUNCTION + JASS_DELIM +
-					JASS_DELIM +
 					"function Trig_XT87CS_Dif_Click_Actions takes nothing returns nothing" + JASS_DELIM +
-					"    if ( Trig_XT87CS_Dif_Click_Func001C() ) then" + JASS_DELIM +
+					"    if GetClickedButton()==udg_XT87CSDifButtonEasy then" + JASS_DELIM +
 					"        call SetGameDifficulty(MAP_DIFFICULTY_EASY)" + JASS_DELIM +
 					"    else" + JASS_DELIM +
-					"        if ( Trig_XT87CS_Dif_Click_Func001Func001C() ) then" + JASS_DELIM +
+					"        if GetClickedButton()==udg_XT87CSDifButtonNormal then" + JASS_DELIM +
 					"            call SetGameDifficulty(MAP_DIFFICULTY_NORMAL)" + JASS_DELIM +
 					"        else" + JASS_DELIM +
-					"            if ( Trig_XT87CS_Dif_Click_Func001Func001Func001C() ) then" + JASS_DELIM +
+					"            if GetClickedButton()==udg_XT87CSDifButttonHard then" + JASS_DELIM +
 					"                call SetGameDifficulty(MAP_DIFFICULTY_HARD)" + JASS_DELIM +
 					"            else" + JASS_DELIM +
 					"                call SetGameDifficulty(MAP_DIFFICULTY_INSANE)" + JASS_DELIM +
