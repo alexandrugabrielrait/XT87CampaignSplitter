@@ -29,8 +29,11 @@ public class CoopRewriter extends ScriptRewriter {
 	public static final String SELECTION_HASHTABLE = ARCHON_PREFIX + "FXHT";
 	public static final String SELECTION_INDICATOR_PATH = "selectionIndicator";
 	public static final String GH_HAS_ABILITY = "hasAbility";
+	public static final String GH_DIALOG_BUTTON_TEXT = "dbt";
 	public static final String ABILITY_ARRAY = ARCHON_PREFIX + "AbilityArray";
 	public static final String ABILITY_ARRAY_SIZE = ABILITY_ARRAY + "SIZE";
+	public static final String LOCAL_DECLARATION = "local ";
+	public static final String DIALOG_DECLARATION = "dialog ";
 
 	// coop cache
 	public static final String CACHE_CACHE_PREFIX = "c";
@@ -77,7 +80,7 @@ public class CoopRewriter extends ScriptRewriter {
 			"call TriggerSleepAction(0.01)" + JASS_DELIM +
 			"endloop";
 	private static final String FLUSH_KEY_CODE =
-			"I2S("+ARCHON_PREFIX + "GetFlushIndex(q,m2,\"" + CACHE_FLUSH_PREFIX + "\"+k2))" +
+			"I2S(" + ARCHON_PREFIX + "GetFlushIndex(q,m2,\"" + CACHE_FLUSH_PREFIX + "\"+k2))" +
 					"+\"|\"+I2S(" + ARCHON_PREFIX + "GetFlushIndex(q,m2,\"" + CACHE_FLUSH_PREFIX + CACHE_MISSION_PREFIX + "\"))" +
 					"+\"|\"+I2S(" + ARCHON_PREFIX + "GetFlushIndex(q,\"" + CACHE_CAMPAIGN_MKEY + "\",\"" + CACHE_FLUSH_PREFIX + CACHE_CACHE_PREFIX + "\"))";
 
@@ -88,6 +91,7 @@ public class CoopRewriter extends ScriptRewriter {
 	public W3I.Player mainPlayer;
 	public List<W3I.Player> secondaryPlayers;
 	public List<Integer> allPlayerNumbers;
+	public List<String> dialogNames;
 
 	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers) {
 		super(mi);
@@ -97,6 +101,7 @@ public class CoopRewriter extends ScriptRewriter {
 		allPlayerNumbers = new ArrayList<>(1 + secondaryPlayers.size());
 		allPlayerNumbers.add(mainPlayer.getNum());
 		secondaryPlayers.forEach(x -> allPlayerNumbers.add(x.getNum()));
+		dialogNames = new ArrayList<>();
 		withCustomGameCache = true;
 	}
 
@@ -261,8 +266,21 @@ public class CoopRewriter extends ScriptRewriter {
 							String gameCacheCall = gameCacheFunction + suffix;
 							line = line.replace(prefix + gameCacheCall, prefix + ARCHON_PREFIX + gameCacheCall);
 						}
-				// endregion
 			}
+			// endregion
+			// region replace button add calls
+			for (String gameCacheFunction : Arrays.asList(
+					"DialogAddButton",
+					"DialogAddQuitButton",
+					"DialogAddButtonBJ",
+					"DialogAddButtonWithHotkeyBJ"
+			))
+				for (String prefix : Arrays.asList("(", " ", ",", "="))
+					for (String suffix : Arrays.asList("(", " ")) {
+						String gameCacheCall = gameCacheFunction + suffix;
+						line = line.replace(prefix + gameCacheCall, prefix + ARCHON_PREFIX + gameCacheCall);
+					}
+			// endregion
 			// region replace SyncStored calls
 			for (String gameCacheFunction : Arrays.asList(
 					"SyncStoredInteger",
@@ -288,8 +306,14 @@ public class CoopRewriter extends ScriptRewriter {
 		// variable declarations
 		{
 			String trimmedLine = line.trim();
-			if (trimmedLine.startsWith("gamecache ") || trimmedLine.startsWith("local "))
+			if (trimmedLine.startsWith(LOCAL_DECLARATION))
+				trimmedLine = trimmedLine.substring(LOCAL_DECLARATION.length()).trim();
+			if (trimmedLine.startsWith("gamecache "))
 				line = line.replaceFirst("gamecache ", "hashtable ");
+			else if (trimmedLine.startsWith(DIALOG_DECLARATION)) {
+				String auxLine = trimmedLine.substring(DIALOG_DECLARATION.length()).trim();
+				dialogNames.add(auxLine.substring(0, auxLine.indexOf('=')).trim());
+			}
 		}
 
 		if ("main".equals(insideFunction)) {
@@ -540,7 +564,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"    endfunction" + JASS_DELIM +
 							"    function FileIO_Read takes string filename returns string" + JASS_DELIM +
 							"        return s__File_readEx(s__File_open(filename),true)" + JASS_DELIM +
-							"    endfunction", sb);
+							END_FUNCTION, sb);
 					// endregion
 					// region custom functions
 					append("function " + ARCHON_PREFIX + "WatchSkill takes integer a returns boolean" + JASS_DELIM +
@@ -778,6 +802,27 @@ public class CoopRewriter extends ScriptRewriter {
 							"    endloop" + JASS_DELIM +
 							"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,function Trig_" + ARCHON_PREFIX + "SyncData_Actions)" + JASS_DELIM +
 							END_FUNCTION, sb);
+					// endregion
+					// region button add functions
+					append("function " + ARCHON_PREFIX + "DialogAddButton takes dialog d,string s,integer h returns button" + JASS_DELIM +
+							"local button b=DialogAddButton(d,s,h)" + JASS_DELIM +
+							"call SaveStr(" + GENERAL_HASHTABLE + ",StringHash(\"" + GH_DIALOG_BUTTON_TEXT + "\"),GetHandleId(b),s)" + JASS_DELIM +
+							"return b" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "DialogAddQuitButton takes dialog d,boolean t,string s,integer h returns button" + JASS_DELIM +
+							"local button b=DialogAddQuitButton(d,t,s,h)" + JASS_DELIM +
+							"call SaveStr(" + GENERAL_HASHTABLE + ",StringHash(\"" + GH_DIALOG_BUTTON_TEXT + "\"),GetHandleId(b),s)" + JASS_DELIM +
+							"return b" + JASS_DELIM +
+							END_FUNCTION, sb);
+					for (Triple<String, String, String> o : Arrays.asList(
+							new Triple<>("", "", "0"),
+							new Triple<>("WithHotkey", ",integer h", "h")
+					))
+						append("function " + ARCHON_PREFIX + "DialogAddButton" + o.a + "BJ takes dialog d,string s" + o.b + " returns button" + JASS_DELIM +
+								"set bj_lastCreatedButton=DialogAddButton(d,s," + o.c + ")" + JASS_DELIM +
+								"call SaveStr(" + GENERAL_HASHTABLE + ",StringHash(\"" + GH_DIALOG_BUTTON_TEXT + "\"),GetHandleId(bj_lastCreatedButton),s)" + JASS_DELIM +
+								"return bj_lastCreatedButton" + JASS_DELIM +
+								END_FUNCTION, sb);
 					// endregion
 					// region GetFlushIndex function
 					// uses m2 and flush prefixed k2
@@ -1040,7 +1085,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"if LoadInteger(q,StringHash(m2),StringHash(k2+\"" + CACHE_ID_SUFIX + "\"))!=0 then" + JASS_DELIM +
 							"    return true" + JASS_DELIM +
 							END_IF + JASS_DELIM +
-							"return " + ARCHON_PREFIX + "ReadString(cacheName,m2+\"\\\\\"+k2," + FLUSH_KEY_CODE +")!=null" + JASS_DELIM +
+							"return " + ARCHON_PREFIX + "ReadString(cacheName,m2+\"\\\\\"+k2," + FLUSH_KEY_CODE + ")!=null" + JASS_DELIM +
 							END_FUNCTION, sb);
 					// endregion
 					// region HaveStoredValue function
@@ -1281,7 +1326,6 @@ public class CoopRewriter extends ScriptRewriter {
 							END_FUNCTION + JASS_DELIM, sb);
 				}
 				// endregion
-
 				// region food and population cap synchronization
 				resourceTypes = Arrays.asList("PLAYER_STATE_RESOURCE_FOOD_USED", "PLAYER_STATE_RESOURCE_FOOD_CAP", "PLAYER_STATE_FOOD_CAP_CEILING");
 				resourceNames = ALL_RESOURCE_NAMES.subList(resourceNames.size(), resourceNames.size() + 3);
@@ -1306,7 +1350,6 @@ public class CoopRewriter extends ScriptRewriter {
 							END_FUNCTION, sb);
 				}
 				// endregion
-
 				// region give units to main player
 				append("function Trig_" + ARCHON_PREFIX + "UnitShare_Conditions takes nothing returns boolean", sb);
 				for (int playerNumber : allPlayerNumbers) {
@@ -1328,7 +1371,6 @@ public class CoopRewriter extends ScriptRewriter {
 						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare,function Trig_" + ARCHON_PREFIX + "UnitShare_Actions)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
-
 				// region selection effects
 				append("function " + ARCHON_PREFIX + "SelectUnit takes nothing returns nothing" + JASS_DELIM +
 						"local integer pid=GetPlayerId(" + AUX_PLAYER + ")" + JASS_DELIM +
@@ -1372,7 +1414,6 @@ public class CoopRewriter extends ScriptRewriter {
 				append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "Select, function Trig_" + ARCHON_PREFIX + "Select_Actions)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
-
 				// region get main player
 				append("function " + ARCHON_PREFIX + "GetMainPlayer takes nothing returns player" + JASS_DELIM +
 						"    local player p=GetLocalPlayer()" + JASS_DELIM +
@@ -1382,7 +1423,6 @@ public class CoopRewriter extends ScriptRewriter {
 						"    return p" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
-
 				// region enforce sharing
 				append("function " + ENFORCE_ARCHON + " takes nothing returns nothing", sb);
 				for (W3I.Player player : secondaryPlayers) {
@@ -1397,6 +1437,23 @@ public class CoopRewriter extends ScriptRewriter {
 					}
 				}
 				append(END_FUNCTION, sb);
+				// endregion
+				// region dialog triggers
+				append("function Trig_" + ARCHON_PREFIX + "DialogSync_Actions takes nothing returns nothing" + JASS_DELIM +
+								"local player p=GetTriggerPlayer()" + JASS_DELIM +
+								"local string s=LoadStr(" + GENERAL_HASHTABLE + ",StringHash(\"" + GH_DIALOG_BUTTON_TEXT + "\"),GetHandleId(GetClickedButton()))"
+						, sb);
+				for (int playerNumber : allPlayerNumbers)
+					append("call DialogDisplay(" + toPlayerFunc(playerNumber) + ",GetClickedDialog(),false)", sb);
+				append("call TriggerSleepAction(0.01)" + JASS_DELIM +
+						"call DisplayTimedTextFromPlayer(p,0,0,10,\"%s -> \"+s)" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function InitTrig_" + ARCHON_PREFIX + "DialogSync takes nothing returns nothing" + JASS_DELIM +
+						"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync=CreateTrigger()", sb);
+				for (String dialogName : dialogNames)
+					append("    call TriggerRegisterDialogEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync," + dialogName + ")", sb);
+				append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync,function Trig_" + ARCHON_PREFIX + "DialogSync_Actions)" + JASS_DELIM +
+						END_FUNCTION, sb);
 				// endregion
 			}
 
@@ -1420,16 +1477,16 @@ public class CoopRewriter extends ScriptRewriter {
 							"location " + TEMP_POINT_NAME + JASS_DELIM +
 							"integer array " + PLAYER_ID_ARRAY + JASS_DELIM +
 							"integer array " + PLAYER_INDEX_ARRAY + JASS_DELIM +
-							//"real array " + PLAYER_ANGLE_ARRAY + JASS_DELIM +
 							"player " + AUX_PLAYER + JASS_DELIM +
 							"hashtable " + GENERAL_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
 							"hashtable " + SELECTION_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
-							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select=null"
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select=null" + JASS_DELIM +
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync=null"
 //							+ JASS_DELIM +
 //					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Deselect=null" + JASS_DELIM +
 //					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DeselectOnDeath=null"
 					, sb);
-			if (withCustomGameCache) {
+			if (withCustomGameCache)
 				append("hashtable " + LAST_CREATED_COOP_CACHE + "=null" + JASS_DELIM +
 						"integer array " + ABILITY_ARRAY + JASS_DELIM +
 						"integer " + ABILITY_ARRAY_SIZE + "=0" + JASS_DELIM +
@@ -1447,14 +1504,13 @@ public class CoopRewriter extends ScriptRewriter {
 						"boolean XT87ReadLinesAreRead=false" + JASS_DELIM +
 						"boolean XT87ReadLinesLock=false" + JASS_DELIM +
 						"integer XT87ReadLinesWaiting=0", sb);
-			}
 		} else if (line.trim().equals("endglobals")) {
 			if (endGlobalsState == 0)
 				endGlobalsState = 1;
 		} else if (line.contains("function InitCustomTriggers takes")) {
 			for (String resourceName : ALL_RESOURCE_NAMES)
 				append("    call InitTrig_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
-			for (String triggerName : Arrays.asList("UnitShare", "Select"))//, "Deselect", "DeselectOnDeath"))
+			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync"))//, "Deselect", "DeselectOnDeath"))
 				append("    call InitTrig_" + ARCHON_PREFIX + triggerName + "()", sb);
 			if (withCustomGameCache) {
 				append("    call InitTrig_" + ARCHON_PREFIX + "SyncData()" + JASS_DELIM +

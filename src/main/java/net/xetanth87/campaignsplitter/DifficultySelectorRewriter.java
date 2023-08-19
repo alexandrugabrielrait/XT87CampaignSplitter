@@ -115,22 +115,19 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 					"function Trig_XT87CS_Dif_Init_Actions takes nothing returns nothing" + JASS_DELIM +
 					"    local string XT87CSDifDiagEasyName=GetLocalizedString(\"EASY\")" + JASS_DELIM +
 					"    call PauseGameOn()" + JASS_DELIM +
-					"    call DialogSetMessageBJ(udg_XT87CSDifDialog, GetLocalizedString(\"SELECT_DIFFICULTY_LEVEL\"))" + JASS_DELIM +
+					"    call DialogSetMessage(udg_XT87CSDifDialog,GetLocalizedString(\"SELECT_DIFFICULTY_LEVEL\"))" + JASS_DELIM +
 					"    if XT87CSDifDiagEasyName == \"Story\" then" + JASS_DELIM +
 					"        set XT87CSDifDiagEasyName=\"Easy\"" + JASS_DELIM +
 					"    endif" + JASS_DELIM +
-					"    call DialogAddButtonBJ(udg_XT87CSDifDialog, \"|cff00ff00\" + XT87CSDifDiagEasyName + \"|r\")" + JASS_DELIM +
-					"    set udg_XT87CSDifButtonEasy=GetLastCreatedButtonBJ()" + JASS_DELIM +
-					"    call DialogAddButtonBJ(udg_XT87CSDifDialog, \"|cffffff00\" + GetLocalizedString(\"NORMAL\") + \"|r\")" + JASS_DELIM +
-					"    set udg_XT87CSDifButtonNormal=GetLastCreatedButtonBJ()" + JASS_DELIM +
-					"    call DialogAddButtonBJ(udg_XT87CSDifDialog, \"|cffff0000\" + GetLocalizedString(\"HARD\") + \"|r\")" + JASS_DELIM +
-					"    set udg_XT87CSDifButttonHard=GetLastCreatedButtonBJ()" + JASS_DELIM +
-					"    call DialogDisplayBJ(true, udg_XT87CSDifDialog, Player(" + playerId + "))" + JASS_DELIM +
+					"    set udg_XT87CSDifButtonEasy=DialogAddButton(udg_XT87CSDifDialog,\"|cff00ff00\"+XT87CSDifDiagEasyName+\"|r\",0)" + JASS_DELIM +
+					"    set udg_XT87CSDifButtonNormal=DialogAddButton(udg_XT87CSDifDialog,\"|cffffff00\"+GetLocalizedString(\"NORMAL\")+\"|r\",0)" + JASS_DELIM +
+					"    set udg_XT87CSDifButttonHard=DialogAddButton(udg_XT87CSDifDialog,\"|cffff0000\"+GetLocalizedString(\"HARD\")+\"|r\",0)" + JASS_DELIM +
+					"    call DialogDisplay(Player(" + playerId + "),udg_XT87CSDifDialog,true)" + JASS_DELIM +
 					END_FUNCTION + JASS_DELIM +
 					"function InitTrig_XT87CS_Dif_Init takes nothing returns nothing" + JASS_DELIM +
 					"    set gg_trg_XT87CS_Dif_Init=CreateTrigger()" + JASS_DELIM +
-					"    call TriggerRegisterTimerEventSingle(gg_trg_XT87CS_Dif_Init, 0.01)" + JASS_DELIM +
-					"    call TriggerAddAction(gg_trg_XT87CS_Dif_Init, function Trig_XT87CS_Dif_Init_Actions)" + JASS_DELIM +
+					"    call TriggerRegisterTimerEventSingle(gg_trg_XT87CS_Dif_Init,0.01)" + JASS_DELIM +
+					"    call TriggerAddAction(gg_trg_XT87CS_Dif_Init,function Trig_XT87CS_Dif_Init_Actions)" + JASS_DELIM +
 					END_FUNCTION + JASS_DELIM +
 					"function Trig_XT87CS_Dif_Click_Actions takes nothing returns nothing" + JASS_DELIM +
 					"    if GetClickedButton()==udg_XT87CSDifButtonEasy then" + JASS_DELIM +
@@ -149,28 +146,24 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 					"    call DialogClear(udg_XT87CSDifDialog)" + JASS_DELIM +
 					"    call DialogDestroy(udg_XT87CSDifDialog)" + JASS_DELIM +
 					"    call PauseGameOff()" + JASS_DELIM +
-					"    call CinematicFadeBJ(bj_CINEFADETYPE_FADEIN, 0.00, \"ReplaceableTextures\\\\CameraMasks\\\\Black_mask.blp\", 0, 0, 0, 0)" + JASS_DELIM +
-					"    call StartTimerBJ(udg_XT87CSMapInitialization, false, 0.00)");
+					"    call CinematicFadeBJ(bj_CINEFADETYPE_FADEIN,0.00,\"ReplaceableTextures\\\\CameraMasks\\\\Black_mask.blp\",0,0,0,0)" + JASS_DELIM +
+					"    call StartTimerBJ(udg_XT87CSMapInitialization,false,0.00)");
 			if (!elapsedTimeIndices.isEmpty() || !periodicTimeTriggers.isEmpty())
 				sb.append(JASS_DELIM +
 						"    call TriggerSleepAction( 0.01 )");
 			for (String elapsedTime : elapsedTimeIndices.keySet())
 				sb.append(JASS_DELIM +
-						"    call StartTimerBJ(udg_" + ELAPSED_TIMER_PREFIX + elapsedTimeIndices.get(elapsedTime) + ", false, " + elapsedTime + ")");
+						"    call StartTimerBJ(udg_" + ELAPSED_TIMER_PREFIX + elapsedTimeIndices.get(elapsedTime) + ",false," + elapsedTime + ")");
 			for (String periodicTimeTrigger : periodicTimeTriggers)
 				sb.append(JASS_DELIM +
 						"    " + XT87Utils.ENABLE_TRIGGER + periodicTimeTrigger + ")");
 			sb.append(JASS_DELIM +
 					END_FUNCTION + JASS_DELIM +
-					JASS_DELIM +
-					"//===========================================================================" + JASS_DELIM +
 					"function InitTrig_XT87CS_Dif_Click takes nothing returns nothing" + JASS_DELIM +
 					"    set gg_trg_XT87CS_Dif_Click=CreateTrigger()" + JASS_DELIM +
-					"    call TriggerRegisterDialogEventBJ(gg_trg_XT87CS_Dif_Click, udg_XT87CSDifDialog)" + JASS_DELIM +
-					"    call TriggerAddAction(gg_trg_XT87CS_Dif_Click, function Trig_XT87CS_Dif_Click_Actions)" + JASS_DELIM +
-					END_FUNCTION + JASS_DELIM +
-					JASS_DELIM +
-					"//===========================================================================");
+					"    call TriggerRegisterDialogEventBJ(gg_trg_XT87CS_Dif_Click,udg_XT87CSDifDialog)" + JASS_DELIM +
+					"    call TriggerAddAction(gg_trg_XT87CS_Dif_Click,function Trig_XT87CS_Dif_Click_Actions)" + JASS_DELIM +
+					END_FUNCTION);
 			triggersAdded = true;
 		}
 		append(line, sb);

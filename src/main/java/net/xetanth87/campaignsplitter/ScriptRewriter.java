@@ -42,18 +42,18 @@ public abstract class ScriptRewriter {
 
 	public abstract void onReadLine(String line, StringBuffer sb);
 
-	public void append(String line, StringBuffer sb) {
-		for (String l : line.split(JASS_DELIM)) {
+	public void append(String block, StringBuffer sb) {
+		for (String line : block.split(JASS_DELIM)) {
 			if (REMOVE_USELESS) {
-				l = l.trim();
-				if (l.isBlank() || l.startsWith("//"))
+				line = line.trim();
+				if (line.isEmpty() || line.startsWith("//"))
 					continue;
 			}
 			if (first)
 				first = false;
 			else
 				sb.append(JASS_DELIM);
-			sb.append(l);
+			sb.append(line);
 		}
 	}
 
