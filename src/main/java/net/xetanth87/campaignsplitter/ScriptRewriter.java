@@ -4,7 +4,11 @@ import net.moonlightflower.wc3libs.txt.app.jass.Jass;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public abstract class ScriptRewriter {
 	public static final String JASS_DELIM = "\r\n";
@@ -112,9 +116,34 @@ public abstract class ScriptRewriter {
 		mi.scriptBuffer = sb;
 	}
 
+	public static String[] splitWithParentheses(String input) {
+		List<String> result = new ArrayList<>();
+		StringBuilder currentElement = new StringBuilder();
+		int openParentheses = 0;
+		for (char c : input.toCharArray()) {
+			if (c == ',' && openParentheses == 0) {
+				result.add(currentElement.toString().trim());
+				currentElement.setLength(0);
+			} else {
+				currentElement.append(c);
+				if (c == '(') {
+					openParentheses++;
+				} else if (c == ')') {
+					openParentheses--;
+				}
+			}
+		}
+
+		if (currentElement.length() > 0) {
+			result.add(currentElement.toString().trim());
+		}
+
+		return result.toArray(new String[0]);
+	}
+
 	private static String[] getParamsAux(String s) {
 		try {
-			String[] params = s.split(",");
+			String[] params = splitWithParentheses(s);
 			for (int i = 0; i < params.length; i++)
 				params[i] = params[i].trim();
 			return params;

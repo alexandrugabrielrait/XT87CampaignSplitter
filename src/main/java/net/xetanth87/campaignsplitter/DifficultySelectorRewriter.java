@@ -21,19 +21,6 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 		this.playerId = playerId;
 	}
 
-	public String[] timeParams(String line, String call) {
-		String[] params = getParamsFromLine(line, call);
-		return params;
-	}
-
-	public String[] elapsedTimeParams(String line) {
-		return timeParams(line, ELAPSED_TIME_REGISTER);
-	}
-
-	public String[] periodicTimeParams(String line) {
-		return timeParams(line, PERIODIC_TIME_REGISTER);
-	}
-
 	public void findInitializationTriggers(String text) {
 		Scanner sc = new Scanner(text);
 		initializationTriggers = new HashSet<>();
@@ -52,11 +39,11 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 				insideInitialization = true;
 
 			if (line.contains(ELAPSED_TIME_REGISTER)) {
-				String[] params = elapsedTimeParams(line);
+				String[] params = getParamsFromLine(line);
 				if (!elapsedTimeIndices.containsKey(params[1]))
 					elapsedTimeIndices.put(params[1], elapsedTimeIndices.size());
 			} else if (line.contains(PERIODIC_TIME_REGISTER)) {
-				String[] params = elapsedTimeParams(line);
+				String[] params = getParamsFromLine(line);
 				if (!periodicTimeIndices.containsKey(params[1]))
 					periodicTimeIndices.put(params[1], periodicTimeIndices.size());
 			}
@@ -110,11 +97,11 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 			}
 		}
 		if (line.contains(ELAPSED_TIME_REGISTER)) {
-			String[] params = elapsedTimeParams(line);
+			String[] params = getParamsFromLine(line);
 			line = "    call TriggerRegisterTimerExpireEventBJ(" + params[0] + "," + ELAPSED_TIMER_PREFIX + elapsedTimeIndices.get(params[1]) + " )";
 		}
 		else if (line.contains(PERIODIC_TIME_REGISTER)) {
-			String[] params = periodicTimeParams(line);
+			String[] params = getParamsFromLine(line);
 			line = "    call TriggerRegisterTimerExpireEventBJ(" + params[0] + "," + PERIODIC_TIMER_PREFIX + periodicTimeIndices.get(params[1]) + " )";
 		}
 //		else if (line.contains(PERIODIC_TIME_REGISTER)) {
