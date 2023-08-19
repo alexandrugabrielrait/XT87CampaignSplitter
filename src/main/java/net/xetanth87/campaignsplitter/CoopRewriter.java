@@ -312,7 +312,9 @@ public class CoopRewriter extends ScriptRewriter {
 				line = line.replaceFirst("gamecache ", "hashtable ");
 			else if (trimmedLine.startsWith(DIALOG_DECLARATION)) {
 				String auxLine = trimmedLine.substring(DIALOG_DECLARATION.length()).trim();
-				dialogNames.add(auxLine.substring(0, auxLine.indexOf('=')).trim());
+				if (auxLine.contains("="))
+					auxLine = auxLine.substring(0, auxLine.indexOf('='));
+				dialogNames.add(auxLine.trim());
 			}
 		}
 
@@ -1446,7 +1448,7 @@ public class CoopRewriter extends ScriptRewriter {
 				for (int playerNumber : allPlayerNumbers)
 					append("call DialogDisplay(" + toPlayerFunc(playerNumber) + ",GetClickedDialog(),false)", sb);
 				append("call TriggerSleepAction(0.01)" + JASS_DELIM +
-						"call DisplayTimedTextFromPlayer(p,0,0,10,\"%s -> \"+GetLocalizedString(s))" + JASS_DELIM +
+						"call DisplayTimedTextFromPlayer(p,0,0,10,\"%s => \"+GetLocalizedString(s))" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function InitTrig_" + ARCHON_PREFIX + "DialogSync takes nothing returns nothing" + JASS_DELIM +
 						"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync=CreateTrigger()", sb);
