@@ -226,6 +226,8 @@ public class SplitterFrame extends JFrame {
 		menuItem.setAccelerator(KeyStroke.getKeyStroke('F', KeyEvent.CTRL_DOWN_MASK));
 		menuItem.addActionListener(new ActionListenerInPopup(e ->
 		{
+			if (running)
+				return;
 			JComboBox<LanguageVariant> languageDropdown = new JComboBox<>();
 			Arrays.stream(SplitterLanguage.values()).forEach(x ->
 					{
@@ -357,7 +359,12 @@ public class SplitterFrame extends JFrame {
 		c.setAcceptAllFileFilterUsed(false);
 		int rVal = c.showOpenDialog(SplitterFrame.this);
 		if (rVal == JFileChooser.APPROVE_OPTION) {
-			filePathField.setText(c.getSelectedFile().getAbsolutePath());
+			String absolutePath = c.getSelectedFile().getAbsolutePath();
+			if (!absolutePath.equals(filePathField.getText())) {
+				filePathField.setText(absolutePath);
+				taskOutput.setText("");
+				bar.setValue(0);
+			}
 		}
 		if (rVal == JFileChooser.CANCEL_OPTION) {
 		}
