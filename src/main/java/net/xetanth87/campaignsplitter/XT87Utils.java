@@ -90,13 +90,32 @@ public class XT87Utils {
 		}
 	}
 
-	public static String zeroedNumber(int number, int digitCount)
+	public static String zeroedNumber(int number, int charCount)
 	{
 		String buttonIndexText = number + "";
-		int addedZeroes = Math.max(digitCount - buttonIndexText.length(), 0);
+		int addedZeroes = Math.max(charCount - buttonIndexText.length(), 0);
 		for (int i = 0; i < addedZeroes; i ++)
 			buttonIndexText = "0" + buttonIndexText;
 		return buttonIndexText;
+	}
+
+	public static String alphabetNumber(int number, int charCount) {
+		if (charCount <= 0) {
+			throw new IllegalArgumentException("charCount must be greater than 0");
+		}
+
+		StringBuilder result = new StringBuilder();
+
+		while (charCount > 0) {
+			int remainder = number % 26;
+			char letter = (char) ('a' + remainder);
+			result.insert(0, letter);
+
+			number /= 26;
+			charCount--;
+		}
+
+		return result.toString();
 	}
 
 	public static String toCampaignPath(String gamePath)
@@ -179,7 +198,7 @@ public class XT87Utils {
 	}
 
 	public static String buttonText(int buttonIndex, int buttonCount) {
-		return zeroedNumber(buttonIndex + 1, (buttonCount + "").length()) + ". ";
+		return alphabetNumber(buttonIndex, ((buttonCount - 1) / 26) + 1) + ". ";
 	}
 
 	public static String getWithoutExtension(String path) {
