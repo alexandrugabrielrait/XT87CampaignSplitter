@@ -4,6 +4,7 @@ import com.ibm.icu.impl.Assert;
 import net.moonlightflower.wc3libs.bin.ObjMod;
 import net.moonlightflower.wc3libs.bin.Wc3BinInputStream;
 import net.moonlightflower.wc3libs.bin.app.W3I;
+import net.moonlightflower.wc3libs.dataTypes.app.Controller;
 import net.moonlightflower.wc3libs.port.JMpqPort;
 import net.moonlightflower.wc3libs.port.MpqPort;
 import systems.crigges.jmpq3.JMpqEditor;
@@ -38,6 +39,8 @@ public class XT87Utils {
 	public static final String MAPS_FOLDER = GAME_FOLDER + "/Maps";
 	public static final String CAMPAIGNS_FOLDER = GAME_FOLDER + "/Campaigns";
 	public static final String DOWNLOAD_FOLDER = MAPS_FOLDER + "/Download";
+	public static final Controller FAKE_PLAYER_CONTROLLER = Controller.NEUTRAL;
+
 	static {
 		assert BASE62_CHARS.length() == 62 && BASE62_CHARS.length() == BASE62_CHARS.chars().distinct().count();
 	}

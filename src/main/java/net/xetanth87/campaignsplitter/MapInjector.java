@@ -38,8 +38,11 @@ import java.nio.channels.NonReadableChannelException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import static net.xetanth87.campaignsplitter.XT87Utils.FAKE_PLAYER_CONTROLLER;
 import static net.xetanth87.campaignsplitter.XT87Utils.STRING_PREFIX;
 import static net.xetanth87.campaignsplitter.XT87Utils.getWithoutExtension;
 import static net.xetanth87.campaignsplitter.XT87Utils.offsetCampaignDataString;
@@ -411,21 +414,28 @@ public class MapInjector {
 		public W3I info;
 		public W3I.Player mainPlayer;
 		public List<W3I.Player> secondaryPlayers;
+		public Set<Integer>fakeUserPlayersSet;
 
-		public MapInfo(W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers) {
+		public MapInfo(W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers, Set<Integer> fakeUserPlayersSet) {
 			this.info = info;
 			this.mainPlayer = mainPlayer;
 			this.secondaryPlayers = secondaryPlayers;
+			this.fakeUserPlayersSet = fakeUserPlayersSet;
 		}
 	}
 
 	private MapInfo modifyInfo() throws Exception {
 		W3I info = W3I.ofMapFile(mapFile);
 		W3I.Player mainPlayer = null;
+		Set<Integer> fakeUserPlayersSet = new HashSet<>();
 		for (W3I.Player p : info.getPlayers())
 			if (p.getType().equals(Controller.USER)) {
-				mainPlayer = p;
-				break;
+				if (mainPlayer == null)
+					mainPlayer = p;
+				else {
+					p.setType(FAKE_PLAYER_CONTROLLER);
+					fakeUserPlayersSet.add(p.getNum());
+				}
 			}
 
 		info.setMapDescription(cs.getFeatureDescription());
@@ -463,7 +473,7 @@ public class MapInjector {
 //				}
 			}
 		}
-		return new MapInfo(info, mainPlayer, secondaryPlayers);
+		return new MapInfo(info, mainPlayer, secondaryPlayers, fakeUserPlayersSet);
 	}
 
 	public void initEditor() throws IOException {
@@ -530,6 +540,9 @@ public class MapInjector {
 
 		if (editScript) {
 			ScriptRewriter.readScript(this);
+
+			if (mapInfo.fakeUserPlayersSet != null && !mapInfo.fakeUserPlayersSet.isEmpty())
+				new FakeUserPlayerRewriter(this, mapInfo.fakeUserPlayersSet).modifyScript();
 
 			if (withDifficultySelector) {
 				System.out.println("Adding Difficulty Selector to map \"" + mapFile.getName() + "\".");
