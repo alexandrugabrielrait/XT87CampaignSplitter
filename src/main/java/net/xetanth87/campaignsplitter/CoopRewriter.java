@@ -745,6 +745,9 @@ public class CoopRewriter extends ScriptRewriter {
 							END_FUNCTION + JASS_DELIM +
 							"function " + ARCHON_PREFIX + "ReadString takes string cacheName,string title,string fK returns string" + JASS_DELIM +
 							"local string s" + JASS_DELIM +
+							"    if GetPlayerSlotState(" + toMainPlayerFunc() + ")!=PLAYER_SLOT_STATE_PLAYING then" + JASS_DELIM +
+							"        return null" + JASS_DELIM +
+							END_IF + JASS_DELIM +
 							"set XT87ReadLinesWaiting=XT87ReadLinesWaiting+1" + JASS_DELIM +
 							"call " + ARCHON_PREFIX + "SyncContents(\"XT87CampaignSplitter\\\\\"+cacheName+\"\\\\\"+title+\".pld\",fK)" + JASS_DELIM +
 							"set s=XT87ReadLines[0]" + JASS_DELIM +
