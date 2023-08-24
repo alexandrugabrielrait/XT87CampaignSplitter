@@ -1189,10 +1189,6 @@ public class CoopRewriter extends ScriptRewriter {
 							"        call SetHeroAgi(u,LoadInteger(q,mh,StringHash(k2+\"" + CACHE_AGI_SUFIX + "\")),true)" + JASS_DELIM +
 							"        call SetHeroInt(u,LoadInteger(q,mh,StringHash(k2+\"" + CACHE_INT_SUFIX + "\")),true)" + JASS_DELIM +
 							"        call ModifyHeroSkillPoints(u,bj_MODIFYMETHOD_SET,LoadInteger(q,mh,StringHash(k2+\"" + CACHE_UNSPEND_POINTS_SUFIX + "\")))" + JASS_DELIM +
-							"        call BlzSetUnitMaxHP(u,LoadInteger(q,mh,StringHash(k2+\"" + CACHE_HEALTH_MAX_SUFIX + "\")))" + JASS_DELIM +
-							"        call SetUnitLifePercentBJ(u,100)" + JASS_DELIM +
-							"        call BlzSetUnitMaxMana(u,LoadInteger(q,mh,StringHash(k2+\"" + CACHE_MANA_MAX_SUFIX + "\")))" + JASS_DELIM +
-							"        call SetUnitManaPercentBJ(u,100)" + JASS_DELIM +
 							"        set c=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_ABILITY_COUNT_SUFIX + "\"))" + JASS_DELIM +
 							"        set i=0" + JASS_DELIM +
 							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"AUX i \"+I2S(i)+\" c \"+I2S(c))" + JASS_DELIM) +
@@ -1247,6 +1243,10 @@ public class CoopRewriter extends ScriptRewriter {
 							"        call SetItemCharges(UnitItemInSlot(u,i),LoadInteger(q,mh,StringHash(k2+\"" + CACHE_ITEM_CHARGE_SUFIX + "\"+I2S(i))))" + JASS_DELIM +
 							"        set i=i+1" + JASS_DELIM +
 							"    endloop" + JASS_DELIM +
+							"        call BlzSetUnitMaxHP(u,LoadInteger(q,mh,StringHash(k2+\"" + CACHE_HEALTH_MAX_SUFIX + "\")))" + JASS_DELIM +
+							"        call SetUnitLifePercentBJ(u,100)" + JASS_DELIM +
+							"        call BlzSetUnitMaxMana(u,LoadInteger(q,mh,StringHash(k2+\"" + CACHE_MANA_MAX_SUFIX + "\")))" + JASS_DELIM +
+							"        call SetUnitManaPercentBJ(u,100)" + JASS_DELIM +
 							"if r then" + JASS_DELIM +
 							"set XT87ReadLinesAreRead=false" + JASS_DELIM +
 							"set XT87ReadLinesLock=false" + JASS_DELIM +
