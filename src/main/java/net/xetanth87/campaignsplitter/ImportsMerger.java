@@ -27,9 +27,8 @@ public class ImportsMerger {
 
 	public static boolean AddLegacyAssets(CampaignSplitter cs, IMP imports) {
 		List<String> originalImportList = new ArrayList<>();
-		for (IMP.Obj o : imports.getObjs()) {
+		for (IMP.Obj o : imports.getObjs())
 			originalImportList.add(o.getPath());
-		}
 		return AddLegacyAssets(cs, imports, originalImportList);
 	}
 
