@@ -134,7 +134,22 @@ public class CoopRewriter extends ScriptRewriter {
 					"+\"|\"+I2S(" + ARCHON_PREFIX + "GetFlushIndex(q,m2,\"" + CACHE_FLUSH_PREFIX + CACHE_MISSION_PREFIX + "\"))" +
 					"+\"|\"+I2S(" + ARCHON_PREFIX + "GetFlushIndex(q,\"" + CACHE_CAMPAIGN_MKEY + "\",\"" + CACHE_FLUSH_PREFIX + CACHE_CACHE_PREFIX + "\"))";
 
-	public static final List<String> ALL_RESOURCE_NAMES = Arrays.asList("Gold", "Lumber", "FoodUsed", "FoodCap", "FoodCeiling");
+	private static List<String> getBaseResourceNames() {
+		// Gold, Lumber
+		return Arrays.asList("G", "L");
+	}
+
+	private static List<String> getFoodResourceNames() {
+		// Food Used, Food Cap, Food Max
+		return Arrays.asList("U", "C", "M");
+	}
+
+	private static List<String> getAllResourceNames() {
+		List<String> l = new ArrayList<>(getBaseResourceNames());
+		l.addAll(new ArrayList<>(getFoodResourceNames()));
+		return l;
+	}
+
 	public boolean triggersAdded, initGlobalsAdded, insideInitGlobals, insideConfig, insideCustomPlayerSlots;
 	public int endGlobalsState;
 	public W3I info;
@@ -1627,51 +1642,51 @@ public class CoopRewriter extends ScriptRewriter {
 				}
 				// region gold and lumber synchronization
 				List<String> resourceTypes = Arrays.asList("PLAYER_STATE_RESOURCE_GOLD", "PLAYER_STATE_RESOURCE_LUMBER");
-				List<String> resourceNames = ALL_RESOURCE_NAMES.subList(0, 2);
+				List<String> resourceNames = getBaseResourceNames();
 				for (int i = 0; i < resourceTypes.size(); i++) {
 					String resourceType = resourceTypes.get(i);
 					String resourceName = resourceNames.get(i);
-					append("// Trigger: " + ARCHON_PREFIX + resourceName + "Sync" + JASS_DELIM +
-							"function Trig_" + ARCHON_PREFIX + resourceName + "Sync_Actions takes nothing returns nothing" + JASS_DELIM +
-							"    local integer resourceSyncValue=GetPlayerState(GetTriggerPlayer()," + resourceType + ")" + JASS_DELIM +
-							"    " + XT87Utils.DISABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")", sb);
+					append("function Trig_" + ARCHON_PREFIX + resourceName + "Sync_Actions takes nothing returns nothing" + JASS_DELIM +
+							"    local integer v=GetPlayerState(GetTriggerPlayer()," + resourceType + ")" + JASS_DELIM +
+							XT87Utils.DISABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")", sb);
 					for (int playerNumber : allPlayerNumbers) {
 						String playerFunc = toPlayerFunc(playerNumber);
 						append("    if (GetTriggerPlayer()!=" + playerFunc + ") then", sb);
-						append("        call SetPlayerState(" + playerFunc + "," + resourceType + ",resourceSyncValue)", sb);
+						append("        call SetPlayerState(" + playerFunc + "," + resourceType + ",v)", sb);
 						append("    " + END_IF, sb);
 					}
-					append("    " + XT87Utils.ENABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")" + JASS_DELIM +
+					append(XT87Utils.ENABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"function InitTrig_" + ARCHON_PREFIX + resourceName + "Sync takes nothing returns nothing" + JASS_DELIM +
 							"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync=CreateTrigger()", sb);
 					for (int playerNumber : allPlayerNumbers)
-						append("    call TriggerRegisterPlayerStateEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync," + toPlayerFunc(playerNumber) + "," + resourceType + ",GREATER_THAN_OR_EQUAL,0.00)", sb);
+						append("    call TriggerRegisterPlayerStateEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync," + toPlayerFunc(playerNumber) + "," + resourceType + ",GREATER_THAN_OR_EQUAL,0)", sb);
 					append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync,function Trig_" + ARCHON_PREFIX + resourceName + "Sync_Actions)" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM, sb);
 				}
 				// endregion
 				// region food and population cap synchronization
 				resourceTypes = Arrays.asList("PLAYER_STATE_RESOURCE_FOOD_USED", "PLAYER_STATE_RESOURCE_FOOD_CAP", "PLAYER_STATE_FOOD_CAP_CEILING");
-				resourceNames = ALL_RESOURCE_NAMES.subList(resourceNames.size(), resourceNames.size() + 3);
+				resourceNames = getFoodResourceNames();
 				for (int i = 0; i < resourceTypes.size(); i++) {
 					String resourceType = resourceTypes.get(i);
 					String resourceName = resourceNames.get(i);
 					append("function Trig_" + ARCHON_PREFIX + resourceName + "Sync_Actions takes nothing returns nothing" + JASS_DELIM +
-							"    local integer resourceSyncValue=GetPlayerState(GetTriggerPlayer()," + resourceType + ")" + JASS_DELIM +
-							"    " + XT87Utils.DISABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")", sb);
+							"    local integer v=GetPlayerState(" + toMainPlayerFunc() + "," + resourceType + ")" + JASS_DELIM +
+							XT87Utils.DISABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")", sb);
 					for (int playerNumber : allPlayerNumbers) {
 						if (playerNumber == mainPlayer.getNum())
 							continue;
 						String playerFunc = toPlayerFunc(playerNumber);
-						append("    call SetPlayerState(" + playerFunc + "," + resourceType + ",resourceSyncValue)", sb);
+						append("    call SetPlayerState(" + playerFunc + "," + resourceType + ",v)", sb);
 					}
-					append("    " + XT87Utils.ENABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")" + JASS_DELIM +
+					append(XT87Utils.ENABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"function InitTrig_" + ARCHON_PREFIX + resourceName + "Sync takes nothing returns nothing" + JASS_DELIM +
 							"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync=CreateTrigger()", sb);
-					append("    call TriggerRegisterPlayerStateEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync," + toMainPlayerFunc() + "," + resourceType + ",GREATER_THAN_OR_EQUAL,0.00)", sb);
-					append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync,function Trig_" + ARCHON_PREFIX + resourceName + "Sync_Actions)" + JASS_DELIM +
+					append("call TriggerRegisterPlayerStateEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync," + toMainPlayerFunc() + "," + resourceType + ",GREATER_THAN_OR_EQUAL,0)", sb);
+					append("call TriggerRegisterTimerEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync,0,false)", sb);
+					append("call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync,function Trig_" + ARCHON_PREFIX + resourceName + "Sync_Actions)" + JASS_DELIM +
 							END_FUNCTION, sb);
 				}
 				// endregion
@@ -1796,7 +1811,7 @@ public class CoopRewriter extends ScriptRewriter {
 		}
 
 		if (line.trim().equals("globals")) {
-			for (String resourceName : ALL_RESOURCE_NAMES)
+			for (String resourceName : getAllResourceNames())
 				append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync=null", sb);
 			append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare=null" + JASS_DELIM +
 							"force " + FORCE_NAME + JASS_DELIM +
@@ -1837,7 +1852,7 @@ public class CoopRewriter extends ScriptRewriter {
 			if (endGlobalsState == 0)
 				endGlobalsState = 1;
 		} else if (line.contains("function InitCustomTriggers takes")) {
-			for (String resourceName : ALL_RESOURCE_NAMES)
+			for (String resourceName : getAllResourceNames())
 				append("    call InitTrig_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
 			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync"))//, "Deselect", "DeselectOnDeath"))
 				append("    call InitTrig_" + ARCHON_PREFIX + triggerName + "()", sb);
