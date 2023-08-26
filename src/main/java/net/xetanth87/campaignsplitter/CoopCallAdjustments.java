@@ -123,7 +123,7 @@ public class CoopCallAdjustments {
 		addCallParameters("CreateFogModifierRadiusLocBJ", 1).setLocal();
 		addCallParameters("StartSoundForPlayerBJ", 0).setLocal();
 		addCallParameters("VolumeGroupSetVolumeForPlayerBJ", 0).setLocal();
-		addCallParameters("ClearSelectionForPlayer", 0).setLocal();
+		//addCallParameters("ClearSelectionForPlayer", 0).setLocal();
 		addCallParameters("SelectUnitForPlayerSingle", 1).setLocal();
 		addCallParameters("SelectGroupForPlayerBJ", 1).setLocal();
 		addCallParameters("SelectUnitAddForPlayer", 1).setLocal();

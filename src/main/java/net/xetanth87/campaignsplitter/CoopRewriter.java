@@ -74,8 +74,6 @@ public class CoopRewriter extends ScriptRewriter {
 				CACHE_STRING_KEY, CACHE_UNIT_KEY, /*CACHE_FLUSH_KEY,*/ CACHE_COUNT_KEY, GH_DIALOG_BUTTON_TEXT_KEY);
 	}
 
-	;
-
 	private static Map<String, Integer> commonHashes = new HashMap<>() {
 		{
 			for (String key : getCommonHashKeys())
@@ -264,6 +262,14 @@ public class CoopRewriter extends ScriptRewriter {
 		return "LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")";
 	}
 
+	private String loopOverPlayers(String var, String code) {
+		return "loop" + JASS_DELIM +
+				"exitwhen " + var + ">=" + allPlayerNumbers.size() + JASS_DELIM +
+				code + JASS_DELIM +
+				"set " + var + "=" + var + "+1" + JASS_DELIM +
+				"endloop";
+	}
+
 	@Override
 	public void onReadLine(String line, StringBuffer sb) {
 		line = line.replace("bj_FORCE_PLAYER[" + mainPlayer.getNum() + "]", FORCE_NAME);
@@ -361,6 +367,24 @@ public class CoopRewriter extends ScriptRewriter {
 					"DialogAddQuitButton",
 					"DialogAddButtonBJ",
 					"DialogAddButtonWithHotkeyBJ"
+			))
+				for (String prefix : Arrays.asList("(", " ", ",", "="))
+					for (String suffix : Arrays.asList("(", " ")) {
+						String gameCacheCall = gameCacheFunction + suffix;
+						line = line.replace(prefix + gameCacheCall, prefix + ARCHON_PREFIX + gameCacheCall);
+					}
+			// endregion
+			// region replace selection calls
+			for (String gameCacheFunction : Arrays.asList(
+					"ClearSelection",
+					"SelectUnitSingle",
+					//"SelectGroupBJ",
+					"ClearSelectionForPlayer",
+					"EnableUserControl",
+					"SetUserControlForceOn",
+					"SetUserControlForceOff",
+					"CinematicModeExBJ",
+					"CinematicModeBJ"
 			))
 				for (String prefix : Arrays.asList("(", " ", ",", "="))
 					for (String suffix : Arrays.asList("(", " ")) {
@@ -672,10 +696,10 @@ public class CoopRewriter extends ScriptRewriter {
 							"    local integer i=0" + JASS_DELIM +
 							"    local integer a=GetLearnedSkill()" + JASS_DELIM +
 							"    if " + ARCHON_PREFIX + "WatchSkill(a)==true then" + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),I2S(i)+\"] \"+I2S(a)+\" _\"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(I2S(i)+\"] \"+I2S(a)+\" _\"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
 							"        loop" + JASS_DELIM +
 							"            exitwhen i>=" + ABILITY_ARRAY_SIZE + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),I2S(i)+\") \"+I2S(" + ABILITY_ARRAY + "[i])+\" \"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(I2S(i)+\") \"+I2S(" + ABILITY_ARRAY + "[i])+\" \"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
 							"            set i = i+1" + JASS_DELIM +
 							"        endloop" + JASS_DELIM +
 							"    " + END_IF + JASS_DELIM +
@@ -815,7 +839,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"    if StringHash(SubString(content,0,j)+\"|\"+p+\"|\"+fK)!=" + ARCHON_PREFIX + "S62I(SubString(content,j+1,len)) then" + JASS_DELIM +
 							"        set content=\"\"" + JASS_DELIM +
 							END_IF + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\">\"+content+\"<\")" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\">\"+content+\"<\")" + JASS_DELIM) +
 							"        call BlzSendSyncData(\"XTContents\",content)" + JASS_DELIM +
 							"    endif" + JASS_DELIM +
 							"    loop" + JASS_DELIM +
@@ -846,9 +870,9 @@ public class CoopRewriter extends ScriptRewriter {
 							"    if XT87ReadLines[0]==null then" + JASS_DELIM +
 							"        return 0" + JASS_DELIM +
 							END_IF + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"0)\"+XT87ReadLines[0])" + JASS_DELIM) +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"1)\"+XT87ReadLines[1])" + JASS_DELIM) +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"2)\"+XT87ReadLines[2])" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"0)\"+XT87ReadLines[0])" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"1)\"+XT87ReadLines[1])" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"2)\"+XT87ReadLines[2])" + JASS_DELIM) +
 							"    return " + ARCHON_PREFIX + "S62I(XT87ReadLines[0])" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"function Trig_" + ARCHON_PREFIX + "SyncData_Actions takes nothing returns nothing" + JASS_DELIM +
@@ -909,6 +933,77 @@ public class CoopRewriter extends ScriptRewriter {
 								"return bj_lastCreatedButton" + JASS_DELIM +
 								END_FUNCTION, sb);
 					// endregion
+					// region selection functions
+					append("function " + ARCHON_PREFIX + "ShowSelection takes boolean b returns nothing" + JASS_DELIM +
+							"local integer c" + JASS_DELIM +
+							"local integer i" + JASS_DELIM +
+							"local integer j=0" + JASS_DELIM +
+							"local real a=0" + JASS_DELIM +
+							"if b then" + JASS_DELIM +
+							"set a=1" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							DebugOnly("call BJDebugMsg(\"ShowSelection \"+R2S(a))" + JASS_DELIM) +
+							loopOverPlayers("j",
+									"set c=LoadInteger(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],0)" + JASS_DELIM +
+											"set i=1" + JASS_DELIM +
+											"loop" + JASS_DELIM +
+											"exitwhen i>c" + JASS_DELIM +
+											"call BlzSetSpecialEffectScale(LoadEffectHandle(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],i),a)" + JASS_DELIM +
+											"set i=i+1" + JASS_DELIM +
+											"endloop" + JASS_DELIM) + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "ClearSelection takes nothing returns nothing" + JASS_DELIM +
+							"local integer c" + JASS_DELIM +
+							"local integer i" + JASS_DELIM +
+							"local integer j=0" + JASS_DELIM +
+							loopOverPlayers("j",
+									"set c=LoadInteger(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],0)" + JASS_DELIM +
+											"set i=1" + JASS_DELIM +
+											"loop" + JASS_DELIM +
+											"exitwhen i>c" + JASS_DELIM +
+											"call DestroyEffect(LoadEffectHandle(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],i))" + JASS_DELIM +
+											"set i=i+1" + JASS_DELIM +
+											"endloop" + JASS_DELIM +
+											"call SaveInteger(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],0,0)") + JASS_DELIM +
+							"call ClearSelection()" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "SelectUnitSingle takes unit u returns nothing" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "ClearSelection()" + JASS_DELIM +
+							"call SelectUnit(u,true)" + JASS_DELIM +
+							END_FUNCTION, sb);
+//					append("function " + ARCHON_PREFIX + "SelectGroupBJ takes group g returns nothing" + JASS_DELIM +
+//							"call " + ARCHON_PREFIX + "ClearSelection()" + JASS_DELIM +
+//							"call ForGroup(g,function SelectGroupBJEnum)" + JASS_DELIM +
+//							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "ClearSelectionForPlayer takes player p returns nothing" + JASS_DELIM +
+							"if p==" + toMainPlayerFunc() + " then" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "ClearSelection()" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "EnableUserControl takes boolean b returns nothing" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "ShowSelection(b)" + JASS_DELIM +
+							"call EnableUserControl(b)" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "SetUserControlForceOn takes force f returns nothing" + JASS_DELIM +
+							"if IsPlayerInForce(" + toMainPlayerFunc() + ",f) then" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "EnableUserControl(true)" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "SetUserControlForceOff takes force f returns nothing" + JASS_DELIM +
+							"if IsPlayerInForce(" + toMainPlayerFunc() + ",f) then" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "EnableUserControl(false)" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "CinematicModeExBJ takes boolean b, force f, real t returns nothing" + JASS_DELIM +
+							"if IsPlayerInForce(" + toMainPlayerFunc() + ",f) then" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "ShowSelection(not b)" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							"call CinematicModeExBJ(b,f,t)" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "CinematicModeBJ takes boolean b, force f returns nothing" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "CinematicModeExBJ(b,f,bj_CINEMODE_INTERFACEFADE)" + JASS_DELIM +
+							END_FUNCTION, sb);
+					// endregion
 					// region GetFlushIndex function
 					// uses m2 and flush prefixed k2
 					append("function " + ARCHON_PREFIX + "GetFlushIndex takes hashtable q,string m,string k returns integer" + JASS_DELIM +
@@ -930,10 +1025,10 @@ public class CoopRewriter extends ScriptRewriter {
 					// endregion
 					// region GameCache functions
 					// region game cache basics natives
-					append("function " + ARCHON_PREFIX + "InitGameCache takes string campaignFile returns hashtable" + JASS_DELIM +
+					append("function " + ARCHON_PREFIX + "InitGameCache takes string f returns hashtable" + JASS_DELIM +
 							"    local hashtable q = InitHashtable()" + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"InitGameCache \"+campaignFile)" + JASS_DELIM) +
-							"    call SaveStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ",campaignFile)" + JASS_DELIM +
+							DebugOnly("call BJDebugMsg(\"InitGameCache \"+f)" + JASS_DELIM) +
+							"    call SaveStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ",f)" + JASS_DELIM +
 //		todo replace first mission key CACHE_CAMPAIGNFILE_KEY with CACHE_CAMPAIGN_MKEY
 //						"    if not " + ARCHON_PREFIX + "HaveStoredInteger(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + ",StringHash(\"" + CACHE_FLUSH_KEY + "\")) then" +
 //						"    call SaveInteger(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + ",StringHash(\"" + CACHE_FLUSH_KEY + "\"),0)" + JASS_DELIM +
@@ -953,7 +1048,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"    local string k2" + JASS_DELIM +
 							"    local string uD" + JASS_DELIM +
 							"    local string cacheName=" + getCacheNameFunc("q") + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"SaveGameCache \"+cacheName)" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"SaveGameCache \"+cacheName)" + JASS_DELIM) +
 							// todo simplify using foreach
 							// save integers to files
 							"    set i=0" + JASS_DELIM +
@@ -1054,27 +1149,27 @@ public class CoopRewriter extends ScriptRewriter {
 							"function " + ARCHON_PREFIX + "StoreInteger takes hashtable q,string m,string k,integer v returns nothing" + JASS_DELIM +
 							"    local string m2=\"" + CACHE_MISSION_PREFIX + "\"+m" + JASS_DELIM +
 							"    local string k2=\"" + CACHE_INTEGER_PREFIX + "\"+k" + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"StoreInteger \"+LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")+\"|\"+m+\"|\"+k)" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"StoreInteger \"+LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")+\"|\"+m+\"|\"+k)" + JASS_DELIM) +
 							"    call " + ARCHON_PREFIX + "StoreReference(q,\"" + CACHE_INTEGER_KEY + "\",m2,k2)" + JASS_DELIM +
 							"    call SaveInteger(q,StringHash(m2),StringHash(k2),v)" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM + "function " + ARCHON_PREFIX + "StoreReal takes hashtable q,string m,string k,real v returns nothing" + JASS_DELIM +
 							"    local string m2=\"" + CACHE_MISSION_PREFIX + "\"+m" + JASS_DELIM +
 							"    local string k2=\"" + CACHE_REAL_PREFIX + "\"+k" + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"StoreReal \"+LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")+\"|\"+m+\"|\"+k)" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"StoreReal \"+LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")+\"|\"+m+\"|\"+k)" + JASS_DELIM) +
 							"    call " + ARCHON_PREFIX + "StoreReference(q,\"" + CACHE_REAL_KEY + "\",m2,k2)" + JASS_DELIM +
 							"    call SaveReal(q,StringHash(m2),StringHash(k2),v)" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"function " + ARCHON_PREFIX + "StoreBoolean takes hashtable q,string m,string k,boolean v returns nothing" + JASS_DELIM +
 							"    local string m2=\"" + CACHE_MISSION_PREFIX + "\"+m" + JASS_DELIM +
 							"    local string k2=\"" + CACHE_BOOL_PREFIX + "\"+k" + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"StoreBoolean \"+LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")+\"|\"+m+\"|\"+k)" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"StoreBoolean \"+LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")+\"|\"+m+\"|\"+k)" + JASS_DELIM) +
 							"    call " + ARCHON_PREFIX + "StoreReference(q,\"" + CACHE_BOOL_KEY + "\",m2,k2)" + JASS_DELIM +
 							"    call SaveBoolean(q,StringHash(m2),StringHash(k2),v)" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"function " + ARCHON_PREFIX + "StoreString takes hashtable q,string m,string k,string v returns boolean" + JASS_DELIM +
 							"    local string m2=\"" + CACHE_MISSION_PREFIX + "\"+m" + JASS_DELIM +
 							"    local string k2=\"" + CACHE_STRING_PREFIX + "\"+k" + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"StoreString \"+LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")+\"|\"+m+\"|\"+k+\" > \"+v)" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"StoreString \"+LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")+\"|\"+m+\"|\"+k+\" > \"+v)" + JASS_DELIM) +
 							"    call " + ARCHON_PREFIX + "StoreReference(q,\"" + CACHE_STRING_KEY + "\",m2,k2)" + JASS_DELIM +
 							"    return SaveStr(q,StringHash(m2),StringHash(k2),v)" + JASS_DELIM +
 							END_FUNCTION, sb);
@@ -1095,7 +1190,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"    if (u==null) then" + JASS_DELIM +
 							"        return false" + JASS_DELIM +
 							"    endif" + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"StoreUnit \"+LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")+\"|\"+m+\"|\"+k +\" > \"+GetUnitName(u))" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"StoreUnit \"+LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")+\"|\"+m+\"|\"+k +\" > \"+GetUnitName(u))" + JASS_DELIM) +
 							"set id=GetUnitTypeId(u)" + JASS_DELIM +
 							"set tu=CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE),id,0,0,0)" + JASS_DELIM +
 							//"call ShowUnit(tu,false)" + JASS_DELIM +
@@ -1332,7 +1427,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"    local integer array z" + JASS_DELIM +
 							"    local item ti" + JASS_DELIM +
 							"    local string cacheName=" + getCacheNameFunc("q") + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"RestoreUnit \"+cacheName+\"|\"+m+\"|\"+k+\" > \"+LoadStr(q,mh,StringHash(\"" + CACHE_STRING_PREFIX + "\"+k)))" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"RestoreUnit \"+cacheName+\"|\"+m+\"|\"+k+\" > \"+LoadStr(q,mh,StringHash(\"" + CACHE_STRING_PREFIX + "\"+k)))" + JASS_DELIM) +
 							"    set id=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_ID_SUFFIX + "\"))" + JASS_DELIM +
 							"if id==0 then" + JASS_DELIM +
 							"        set id=" + ARCHON_PREFIX + "ReadUnit(cacheName,m2+\"\\\\\"+k2," + FLUSH_KEY_CODE + ")" + JASS_DELIM +
@@ -1380,7 +1475,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"        call BlzSetUnitArmor(u,vr[" + getCacheFieldIndex(CACHE_ARMOR_SUFFIX) + "]+BlzGetUnitArmor(u))" + JASS_DELIM +
 							"        call ModifyHeroSkillPoints(u,bj_MODIFYMETHOD_SET,v[" + getCacheFieldIndex(CACHE_UNSPEND_POINTS_SUFFIX) + "])" + JASS_DELIM +
 							"        set i=0" + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"AUX i \"+I2S(i)+\" c \"+I2S(c))" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"AUX i \"+I2S(i)+\" c \"+I2S(c))" + JASS_DELIM) +
 							"        loop" + JASS_DELIM + // loop i = 0, i < ability_count
 							"            exitwhen i>=v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "]" + JASS_DELIM +
 							"if r then", sb); // if read
@@ -1395,13 +1490,13 @@ public class CoopRewriter extends ScriptRewriter {
 							END_IF + JASS_DELIM + // endif read
 							"            call ModifyHeroSkillPoints(u,bj_MODIFYMETHOD_ADD,l)" + JASS_DELIM +
 							"            call " + ARCHON_PREFIX + "WatchSkill(a)" + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"AUX i \"+I2S(i)+\" l \"+I2S(l))" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"AUX i \"+I2S(i)+\" l \"+I2S(l))" + JASS_DELIM) +
 							"            set j=0" + JASS_DELIM +
 							"set d=false" + JASS_DELIM +
 							"            loop" + JASS_DELIM +
 							"                exitwhen j>=l" + JASS_DELIM +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"AUX i \"+I2S(i)+\" j \"+I2S(j))" + JASS_DELIM) +
-							DebugOnly("call DisplayTextToForce(GetPlayersAll(),\"AUX i \"+I2S(i)+\" a \"+I2S(a))" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"AUX i \"+I2S(i)+\" j \"+I2S(j))" + JASS_DELIM) +
+							DebugOnly("call BJDebugMsg(\"AUX i \"+I2S(i)+\" a \"+I2S(a))" + JASS_DELIM) +
 							"                call SelectHeroSkill(u,a)" + JASS_DELIM +
 							"if j==0 and GetUnitAbilityLevel(u,a)<1 then" + JASS_DELIM +
 							"set d=true" + JASS_DELIM +
@@ -1602,39 +1697,40 @@ public class CoopRewriter extends ScriptRewriter {
 						END_FUNCTION, sb);
 				// endregion
 				// region selection effects
-				append("function " + ARCHON_PREFIX + "SelectUnit takes nothing returns nothing" + JASS_DELIM +
-						"local integer pid=GetPlayerId(" + AUX_PLAYER + ")" + JASS_DELIM +
-						"local integer ct=LoadInteger(" + SELECTION_HASHTABLE + ",pid,0)+1" + JASS_DELIM +
-						"local effect fc=AddSpecialEffectTarget(\"" + XT87Utils.PATH_PREFIX + "\\\\" + SELECTION_INDICATOR_PATH + ".mdx\",GetEnumUnit(),\"overhead\")" + JASS_DELIM +
-						"call BlzSetSpecialEffectColorByPlayer(fc,Player(pid))" + JASS_DELIM +
-						//"call BlzSetSpecialEffectYaw(fc," + PLAYER_ANGLE_ARRAY + "[pid]" + ")" + JASS_DELIM +
-						"call SaveEffectHandle(" + SELECTION_HASHTABLE + ",pid,ct,fc)" + JASS_DELIM +
-						"call SaveInteger(" + SELECTION_HASHTABLE + ",pid,0,ct)" + JASS_DELIM +
+				append("function " + ARCHON_PREFIX + "OnSelect takes nothing returns nothing" + JASS_DELIM +
+						"local integer p=GetPlayerId(" + AUX_PLAYER + ")" + JASS_DELIM +
+						"local integer c=LoadInteger(" + SELECTION_HASHTABLE + ",p,0)+1" + JASS_DELIM +
+						"local effect f=AddSpecialEffectTarget(\"" + XT87Utils.PATH_PREFIX + "\\\\" + SELECTION_INDICATOR_PATH + ".mdx\",GetEnumUnit(),\"overhead\")" + JASS_DELIM +
+						"call BlzSetSpecialEffectColorByPlayer(f,Player(p))" + JASS_DELIM +
+						"call SaveEffectHandle(" + SELECTION_HASHTABLE + ",p,c,f)" + JASS_DELIM +
+						"call SaveInteger(" + SELECTION_HASHTABLE + ",p,0,c)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				append("function Trig_" + ARCHON_PREFIX + "Select_Actions takes nothing returns nothing" + JASS_DELIM +
 						"local integer i=0" + JASS_DELIM +
-						"local integer pid=GetPlayerId(GetTriggerPlayer())" + JASS_DELIM +
-						"local integer ct" + JASS_DELIM +
-						"local boolean stp=LoadBoolean(" + SELECTION_HASHTABLE + ",pid,-1)" + JASS_DELIM +
+						"local integer p=GetPlayerId(GetTriggerPlayer())" + JASS_DELIM +
+						// selection count
+						"local integer c" + JASS_DELIM +
+						// stop bool
+						"local boolean b=LoadBoolean(" + SELECTION_HASHTABLE + ",p,0)" + JASS_DELIM +
 						"local group g" + JASS_DELIM +
-						"if stp then" + JASS_DELIM +
+						"if b then" + JASS_DELIM +
 						"return" + JASS_DELIM +
 						END_IF + JASS_DELIM +
-						"call SaveBoolean(" + SELECTION_HASHTABLE + ",pid,-1,true)" + JASS_DELIM +
+						"call SaveBoolean(" + SELECTION_HASHTABLE + ",p,0,true)" + JASS_DELIM +
 						"call TriggerSleepAction(0.01)" + JASS_DELIM +
-						"set ct=LoadInteger(" + SELECTION_HASHTABLE + ",pid,0)" + JASS_DELIM +
+						"set c=LoadInteger(" + SELECTION_HASHTABLE + ",p,0)" + JASS_DELIM +
 						"loop" + JASS_DELIM +
 						"set i=i+1" + JASS_DELIM +
-						"exitwhen i>ct" + JASS_DELIM +
-						"call DestroyEffect(LoadEffectHandle(" + SELECTION_HASHTABLE + ",pid,i))" + JASS_DELIM +
+						"exitwhen i>c" + JASS_DELIM +
+						"call DestroyEffect(LoadEffectHandle(" + SELECTION_HASHTABLE + ",p,i))" + JASS_DELIM +
 						"endloop" + JASS_DELIM +
-						"call SaveInteger(" + SELECTION_HASHTABLE + ",pid,0,0)" + JASS_DELIM +
+						"call SaveInteger(" + SELECTION_HASHTABLE + ",p,0,0)" + JASS_DELIM +
 						"set g=CreateGroup()" + JASS_DELIM +
 						"set " + AUX_PLAYER + "=GetTriggerPlayer()" + JASS_DELIM +
 						"call GroupEnumUnitsSelected(g," + AUX_PLAYER + ",null)" + JASS_DELIM +
-						"call ForGroup(g,function " + ARCHON_PREFIX + "SelectUnit)" + JASS_DELIM +
+						"call ForGroup(g,function " + ARCHON_PREFIX + "OnSelect)" + JASS_DELIM +
 						"call DestroyGroup(g)" + JASS_DELIM +
-						"call SaveBoolean(" + SELECTION_HASHTABLE + ",pid,-1,false)" + JASS_DELIM +
+						"call SaveBoolean(" + SELECTION_HASHTABLE + ",p,0,false)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function InitTrig_" + ARCHON_PREFIX + "Select takes nothing returns nothing" + JASS_DELIM +
 						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select=CreateTrigger()", sb);
