@@ -38,9 +38,12 @@ import java.nio.channels.NonReadableChannelException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static net.xetanth87.campaignsplitter.XT87Utils.FAKE_PLAYER_CONTROLLER;
 import static net.xetanth87.campaignsplitter.XT87Utils.STRING_PREFIX;
@@ -212,7 +215,7 @@ public class MapInjector {
 		insertImports(imports, IMP.GAME_PATH);
 	}
 
-	public void changeMapName(File extractedFile, String originalMapName, String newMapName) throws IOException {
+	public void changeMapStrings(File extractedFile, Map<String, String> mapStrings) throws IOException {
 		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(extractedFile), StandardCharsets.ISO_8859_1));
 		StringBuilder sb = new StringBuilder();
 		int s1 = 0;
@@ -223,7 +226,10 @@ public class MapInjector {
 		String s = sb.toString();
 
 		OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(tempFile), StandardCharsets.ISO_8859_1);
-		writer.append(s.replaceFirst(originalMapName, newMapName));
+		for (String key : new ArrayList<>(mapStrings.keySet().stream().sorted().collect(Collectors.toList())))
+			s = s.replaceFirst(key, mapStrings.get(key));
+
+		writer.append(s);
 		writer.close();
 	}
 
@@ -254,11 +260,17 @@ public class MapInjector {
 			}
 
 			if (buttonIndex >= 0) {
+				Map<String, String> mapStrings = new HashMap<>();
 				W3F.MapEntry mapEntry = cs.campaignData.getMaps().get(buttonIndex);
-				int mapTitleIndex = stringIndexToInt(mapEntry.getMapTitle());
 				info.write(tempFile);
-				int buttonStringIndex = mapTitleIndex + offsets.campaignKeyOffset;
-				changeMapName(tempFile, W3I.ofMapFile(mapFile).getMapName(), STRING_PREFIX + buttonStringIndex);
+
+				int buttonStringIndex = stringIndexToInt(mapEntry.getMapTitle()) + offsets.campaignKeyOffset;
+				mapStrings.put(W3I.ofMapFile(mapFile).getMapName(), STRING_PREFIX + buttonStringIndex);
+
+				int campaignAuthorIndex = stringIndexToInt(cs.campaignData.getCampaignAuthor()) + offsets.campaignKeyOffset;
+				mapStrings.put(info.getMapAuthor(), STRING_PREFIX + campaignAuthorIndex);
+
+				changeMapStrings(tempFile, mapStrings);
 				insertDataFile(tempFile, W3I.GAME_PATH.getPath());
 			}
 
