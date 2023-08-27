@@ -39,7 +39,7 @@ public class XT87Utils {
 	public static final String MAPS_FOLDER = GAME_FOLDER + "/Maps";
 	public static final String CAMPAIGNS_FOLDER = GAME_FOLDER + "/Campaigns";
 	public static final String DOWNLOAD_FOLDER = MAPS_FOLDER + "/Download";
-	public static final Controller FAKE_PLAYER_CONTROLLER = Controller.NEUTRAL;
+	public static final Controller FAKE_PLAYER_CONTROLLER = Controller.COMPUTER;
 
 	static {
 		assert BASE62_CHARS.length() == 62 && BASE62_CHARS.length() == BASE62_CHARS.chars().distinct().count();

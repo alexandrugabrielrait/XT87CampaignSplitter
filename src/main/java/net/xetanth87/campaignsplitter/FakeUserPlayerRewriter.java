@@ -27,8 +27,9 @@ public class FakeUserPlayerRewriter extends ScriptRewriter {
 			if (trimmedCall != null && params != null && params.length == 2) {
 				if (trimmedCall.equals("SetPlayerController")) {
 					for (Integer id : fakeUserPlayersSet)
-						if (params[0].contains("Player(" + id + ")") || line.contains("ConvertedPlayer(" + (id + 1) + ")"))
-							line = "call " + trimmedCall + "(" + params[0] + "," + FAKE_PLAYER_CONTROLLER.getJassExpr() + ")";
+						if (params[0].equals("Player(" + id + ")") || params[0].equals("ConvertedPlayer(" + (id + 1) + ")"))
+							//line = "call " + trimmedCall + "(" + params[0] + "," + FAKE_PLAYER_CONTROLLER.getJassExpr() + ")";
+							return;
 				}
 			}
 		}
