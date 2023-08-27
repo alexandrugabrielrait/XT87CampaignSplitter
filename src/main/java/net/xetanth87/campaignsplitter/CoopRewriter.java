@@ -274,7 +274,7 @@ public class CoopRewriter extends ScriptRewriter {
 	}
 
 	private static String getCacheNameFunc(String cache) {
-		return "LoadStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")";
+		return "LoadStr(" + cache + "," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")";
 	}
 
 	private String loopOverPlayers(String var, String code) {
@@ -288,23 +288,41 @@ public class CoopRewriter extends ScriptRewriter {
 	@Override
 	public void onReadLine(String line, StringBuffer sb) {
 		line = line.replace("bj_FORCE_PLAYER[" + mainPlayer.getNum() + "]", FORCE_NAME);
-		line = line.replace("GetLocalPlayer()", ARCHON_PREFIX + "GetMainPlayer()");
 		line = line.replace("call SetSoundDuration(", "//call SetSoundDuration(");
+
 		// region replace specific calls
-//		for (String specificFunction : Arrays.asList(
-//				"CreateSound",
-//		))
-//			for (String suffix : Arrays.asList("(", " ")) {
-//				String specificCall = specificFunction + suffix;
-//				line = line.replace(specificCall, ARCHON_PREFIX + specificCall);
-//			}
+		for (String function : Arrays.asList(
+				"GetLocalPlayer",
+				"GetTriggerPlayer",
+				//"CreateSound",
+				"DialogAddButton",
+				"DialogAddQuitButton",
+				"DialogAddButtonBJ",
+				"DialogAddButtonWithHotkeyBJ",
+				"ClearSelection",
+				"SelectUnitSingle",
+				//"SelectGroupBJ",
+				"ClearSelectionForPlayer",
+				"EnableUserControl",
+				"SetUserControlForceOn",
+				"SetUserControlForceOff",
+				"CinematicModeExBJ",
+				"CinematicModeBJ"
+		))
+			for (String prefix : Arrays.asList("(", " ", ",", "="))
+				for (String suffix : Arrays.asList("(", " ")) {
+					String call = function + suffix;
+					line = line.replace(prefix + call, prefix + ARCHON_PREFIX + call);
+				}
+		// endregion
+
 		if (WITH_CUSTOM_GAMECACHE) {
 			line = line.replace("bj_lastCreatedGameCache", LAST_CREATED_COOP_CACHE);
 			line = line.replace("GetLastCreatedGameCacheBJ()", LAST_CREATED_COOP_CACHE);
 			for (String prefix : Arrays.asList(",", " "))
 				line = line.replace(prefix + "gamecache ", prefix + "hashtable ");
 			// region replace game cache calls
-			for (String gameCacheFunction : Arrays.asList(
+			for (String function : Arrays.asList(
 					"InitGameCache",
 					"SaveGameCache",
 
@@ -356,13 +374,13 @@ public class CoopRewriter extends ScriptRewriter {
 			))
 				for (String prefix : Arrays.asList("(", " ", ",", "="))
 					for (String suffix : Arrays.asList("(", " ")) {
-						String gameCacheCall = gameCacheFunction + suffix;
-						line = line.replace(prefix + gameCacheCall, prefix + ARCHON_PREFIX + gameCacheCall);
+						String call = function + suffix;
+						line = line.replace(prefix + call, prefix + ARCHON_PREFIX + call);
 					}
 			// endregion
 			// region replace trigger execution calls
 			if (!Arrays.asList("main", "RunInitializationTriggers").contains(insideFunction)) {
-				for (String gameCacheFunction : Arrays.asList(
+				for (String function : Arrays.asList(
 //					"TriggerExecute",
 //					"TriggerExecuteWait",
 						"TriggerEvaluate",
@@ -371,44 +389,13 @@ public class CoopRewriter extends ScriptRewriter {
 				))
 					for (String prefix : Arrays.asList("(", " ", ",", "="))
 						for (String suffix : Arrays.asList("(", " ")) {
-							String gameCacheCall = gameCacheFunction + suffix;
-							line = line.replace(prefix + gameCacheCall, prefix + ARCHON_PREFIX + gameCacheCall);
+							String call = function + suffix;
+							line = line.replace(prefix + call, prefix + ARCHON_PREFIX + call);
 						}
 			}
 			// endregion
-			// region replace button add calls
-			for (String gameCacheFunction : Arrays.asList(
-					"DialogAddButton",
-					"DialogAddQuitButton",
-					"DialogAddButtonBJ",
-					"DialogAddButtonWithHotkeyBJ"
-			))
-				for (String prefix : Arrays.asList("(", " ", ",", "="))
-					for (String suffix : Arrays.asList("(", " ")) {
-						String gameCacheCall = gameCacheFunction + suffix;
-						line = line.replace(prefix + gameCacheCall, prefix + ARCHON_PREFIX + gameCacheCall);
-					}
-			// endregion
-			// region replace selection calls
-			for (String gameCacheFunction : Arrays.asList(
-					"ClearSelection",
-					"SelectUnitSingle",
-					//"SelectGroupBJ",
-					"ClearSelectionForPlayer",
-					"EnableUserControl",
-					"SetUserControlForceOn",
-					"SetUserControlForceOff",
-					"CinematicModeExBJ",
-					"CinematicModeBJ"
-			))
-				for (String prefix : Arrays.asList("(", " ", ",", "="))
-					for (String suffix : Arrays.asList("(", " ")) {
-						String gameCacheCall = gameCacheFunction + suffix;
-						line = line.replace(prefix + gameCacheCall, prefix + ARCHON_PREFIX + gameCacheCall);
-					}
-			// endregion
 			// region replace SyncStored calls
-			for (String gameCacheFunction : Arrays.asList(
+			for (String function : Arrays.asList(
 					"SyncStoredInteger",
 					"SyncStoredReal",
 					"SyncStoredBoolean",
@@ -417,7 +404,7 @@ public class CoopRewriter extends ScriptRewriter {
 			))
 				for (String prefix : Collections.singletonList(" "))
 					for (String suffix : Arrays.asList("(", " "))
-						line = line.replace(prefix + gameCacheFunction + suffix, prefix + ARCHON_PREFIX + "SyncStoredUnused" + suffix);
+						line = line.replace(prefix + function + suffix, prefix + ARCHON_PREFIX + "SyncStoredUnused" + suffix);
 			// endregion
 			String call = getCallFromLine(line);
 			if (call != null) {
@@ -1695,7 +1682,7 @@ public class CoopRewriter extends ScriptRewriter {
 				for (int playerNumber : allPlayerNumbers) {
 					if (playerNumber == mainPlayer.getNum())
 						continue;
-					append("    if (GetOwningPlayer(GetEnteringUnit())==" + toPlayerFunc(playerNumber) + ") then" + JASS_DELIM +
+					append("    if GetOwningPlayer(GetEnteringUnit())==" + toPlayerFunc(playerNumber) + " then" + JASS_DELIM +
 							"        return true" + JASS_DELIM +
 							"    endif", sb);
 				}
@@ -1756,14 +1743,14 @@ public class CoopRewriter extends ScriptRewriter {
 						END_FUNCTION, sb);
 				// endregion
 				// region get main player
-				append("function " + ARCHON_PREFIX + "GetMainPlayer takes nothing returns player" + JASS_DELIM +
-						"    local player p=GetLocalPlayer()" + JASS_DELIM +
-						"    if IsPlayerInForce(p," + FORCE_NAME + ") then" + JASS_DELIM +
-						"        return " + toMainPlayerFunc() + JASS_DELIM +
-						"    endif" + JASS_DELIM +
-						"    return p" + JASS_DELIM +
-						END_FUNCTION, sb);
-				// endregion
+				for (String s : Arrays.asList("GetLocalPlayer", "GetTriggerPlayer"))
+					append("function " + ARCHON_PREFIX + s + " takes nothing returns player" + JASS_DELIM +
+							"    local player p=" + s + "()" + JASS_DELIM +
+							"    if IsPlayerInForce(p," + FORCE_NAME + ") then" + JASS_DELIM +
+							"        return " + toMainPlayerFunc() + JASS_DELIM +
+							"    endif" + JASS_DELIM +
+							"    return p" + JASS_DELIM +
+							END_FUNCTION, sb);
 				// region enforce sharing
 				append("function " + ENFORCE_ARCHON + " takes nothing returns nothing", sb);
 				for (W3I.Player player : secondaryPlayers) {
