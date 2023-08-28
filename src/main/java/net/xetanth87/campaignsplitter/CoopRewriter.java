@@ -1702,7 +1702,12 @@ public class CoopRewriter extends ScriptRewriter {
 						"local integer p=GetPlayerId(" + AUX_PLAYER + ")" + JASS_DELIM +
 						"local integer c=LoadInteger(" + SELECTION_HASHTABLE + ",p,0)+1" + JASS_DELIM +
 						"local effect f=AddSpecialEffectTarget(\"" + XT87Utils.PATH_PREFIX + "\\\\" + SELECTION_INDICATOR_PATH + ".mdx\",GetEnumUnit(),\"overhead\")" + JASS_DELIM +
+						"local real a=1" + JASS_DELIM +
+						"if bj_cineModeAlreadyIn then" + JASS_DELIM +
+						"set a=0" + JASS_DELIM +
+						END_IF + JASS_DELIM +
 						"call BlzSetSpecialEffectColorByPlayer(f,Player(p))" + JASS_DELIM +
+						"call BlzSetSpecialEffectScale(f,a)" + JASS_DELIM +
 						"call SaveEffectHandle(" + SELECTION_HASHTABLE + ",p,c,f)" + JASS_DELIM +
 						"call SaveInteger(" + SELECTION_HASHTABLE + ",p,0,c)" + JASS_DELIM +
 						END_FUNCTION, sb);
