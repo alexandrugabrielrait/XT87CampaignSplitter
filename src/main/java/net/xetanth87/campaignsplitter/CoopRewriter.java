@@ -612,7 +612,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"                if i>0 then" + JASS_DELIM +
 							"                    set k=SubString(k,1,StringLength(k))" + JASS_DELIM +
 							"                endif" + JASS_DELIM +
-							// Restore the tooltip and append the k
+							// Restore the tooltip and append the chunk
 							"                call BlzSetAbilityTooltip(" + FILE_LIBRARY_PREFIX + "AL[i],g[i],v)" + JASS_DELIM +
 							"                set o=o+k" + JASS_DELIM +
 							"                set i=i+1" + JASS_DELIM +
