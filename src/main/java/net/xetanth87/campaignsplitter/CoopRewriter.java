@@ -558,7 +558,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"            call PreloadGenClear()" + JASS_DELIM +
 							"            call PreloadGenStart()" + JASS_DELIM +
 							"            loop" + JASS_DELIM +
-							"                exitwhen i >= l" + JASS_DELIM +
+							"                exitwhen i>=l" + JASS_DELIM +
 							"                set v=0" + JASS_DELIM +
 							"                set k=SubString(s,i,i+" + FILE_LIBRARY_PRELOAD_LIMIT + ")" + JASS_DELIM +
 							"                call Preload(\"\\\" )\\ncall BlzSetAbilityTooltip(\"+I2S(" + FILE_LIBRARY_PREFIX + "AL[c])+\",\\\"\"+p+k+\"\\\",\"+I2S(v)+\")\\n//\")" + JASS_DELIM +
@@ -628,8 +628,8 @@ public class CoopRewriter extends ScriptRewriter {
 							"            set " + FILE_LIBRARY_PREFIX + "LS[0]=t" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"        function " + FILE_LIBRARY_PREFIX + "readEx takes integer t,boolean c returns string" + JASS_DELIM + // close c
-							"            local string o= " + FILE_LIBRARY_PREFIX + "readPreload(t)" + JASS_DELIM +
-							"            local string b= " + FILE_LIBRARY_PREFIX + "BF[t]" + JASS_DELIM + // buf b
+							"            local string o=" + FILE_LIBRARY_PREFIX + "readPreload(t)" + JASS_DELIM +
+							"            local string b=" + FILE_LIBRARY_PREFIX + "BF[t]" + JASS_DELIM + // buf b
 							"            if c then" + JASS_DELIM +
 							"                call " + FILE_LIBRARY_PREFIX + "close(t)" + JASS_DELIM +
 							"            endif" + JASS_DELIM +
@@ -703,12 +703,12 @@ public class CoopRewriter extends ScriptRewriter {
 							"        loop" + JASS_DELIM +
 							"            exitwhen i>=" + ABILITY_ARRAY_SIZE + JASS_DELIM +
 							DebugOnly("call BJDebugMsg(I2S(i)+\") \"+I2S(" + ABILITY_ARRAY + "[i])+\" \"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
-							"            set i = i+1" + JASS_DELIM +
+							"            set i=i+1" + JASS_DELIM +
 							"        endloop" + JASS_DELIM +
 							"    " + END_IF + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"function InitTrig_" + ARCHON_PREFIX + "WatchLearnedSkill takes nothing returns nothing" + JASS_DELIM +
-							"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill = CreateTrigger()" + JASS_DELIM +
+							"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill=CreateTrigger()" + JASS_DELIM +
 							"    call TriggerRegisterAnyUnitEventBJ(" + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill,EVENT_PLAYER_HERO_SKILL)" + JASS_DELIM +
 							"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill,function Trig_" + ARCHON_PREFIX + "WatchLearnedSkill_Actions)" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
@@ -1029,7 +1029,7 @@ public class CoopRewriter extends ScriptRewriter {
 					// region GameCache functions
 					// region game cache basics natives
 					append("function " + ARCHON_PREFIX + "InitGameCache takes string f returns hashtable" + JASS_DELIM +
-							"    local hashtable q = InitHashtable()" + JASS_DELIM +
+							"    local hashtable q=InitHashtable()" + JASS_DELIM +
 							DebugOnly("call BJDebugMsg(\"InitGameCache \"+f)" + JASS_DELIM) +
 							"    call SaveStr(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ",f)" + JASS_DELIM +
 //		todo replace first mission key CACHE_CAMPAIGNFILE_KEY with CACHE_CAMPAIGN_MKEY
@@ -1232,8 +1232,6 @@ public class CoopRewriter extends ScriptRewriter {
 							"        call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_MANA_MAX_SUFFIX + "\"),BlzGetUnitMaxMana(u)-BlzGetUnitMaxMana(tu))", sb);
 					for (int i = 0; i < 2; i++)
 						append("        call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ATTACK_DAMAGE_BASE_SUFFIX + i + "\"),BlzGetUnitBaseDamage(u," + i + ")-BlzGetUnitBaseDamage(tu," + i + "))", sb);
-//					for (int i = 0; i < 2; i++)
-//						append("        call SaveReal(q,mh,StringHash(k2+\"" + CACHE_ATTACK_RATE_SUFFIX + i + "\"),BlzGetUnitAttackCooldown(u," + i + "))", sb);
 					append("        call SaveReal(q,mh,StringHash(k2+\"" + CACHE_ARMOR_SUFFIX + "\"),BlzGetUnitArmor(u)-BlzGetUnitArmor(tu))" + JASS_DELIM +
 							"call RemoveUnit(tu)" + JASS_DELIM +
 							// region readd items
@@ -1293,7 +1291,7 @@ public class CoopRewriter extends ScriptRewriter {
 						i = i * 2;
 					}
 					append("        call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ITEM_BITS_SUFFIX + "\"+I2S(i)),c)" + JASS_DELIM +
-							"        set i = i+1" + JASS_DELIM +
+							"        set i=i+1" + JASS_DELIM +
 							"    endloop" + JASS_DELIM +
 							"    call " + ARCHON_PREFIX + "StoreReference(q,\"" + CACHE_UNIT_KEY + "\",m2,k2)" + JASS_DELIM +
 							"    return true" + JASS_DELIM +
@@ -1360,7 +1358,7 @@ public class CoopRewriter extends ScriptRewriter {
 							new Pair<>("Unit", "else"),
 							new Pair<>("String", "else")
 					))
-						append("    " + o.b + "if t == bj_GAMECACHE_" + o.a.toUpperCase(Locale.ROOT) + " then" + JASS_DELIM +
+						append("    " + o.b + "if t==bj_GAMECACHE_" + o.a.toUpperCase(Locale.ROOT) + " then" + JASS_DELIM +
 								"        return " + ARCHON_PREFIX + "HaveStored" + o.a + "(q,m,k)", sb);
 					append("    endif" + JASS_DELIM +
 							"return false" + JASS_DELIM +
@@ -1584,14 +1582,14 @@ public class CoopRewriter extends ScriptRewriter {
 								"    return " + ARCHON_PREFIX + "GetStored" + s + "(q,m,k)" + JASS_DELIM +
 								END_FUNCTION, sb);
 					append("function " + ARCHON_PREFIX + "GetStoredStringBJ takes string k,string m,hashtable q returns string" + JASS_DELIM +
-							"    local string s = " + ARCHON_PREFIX + "GetStoredString(q,m,k)" + JASS_DELIM +
+							"    local string s=" + ARCHON_PREFIX + "GetStoredString(q,m,k)" + JASS_DELIM +
 							"    if s==null then" + JASS_DELIM +
 							"        return \"\"" + JASS_DELIM +
 							END_IF + JASS_DELIM +
 							"    return s" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"function " + ARCHON_PREFIX + "RestoreUnitLocFacingAngleBJ takes string k,string m,hashtable q,player p,location l,real f returns unit" + JASS_DELIM +
-							"    set bj_lastLoadedUnit = " + ARCHON_PREFIX + "RestoreUnit(q,m,k,p,GetLocationX(l),GetLocationY(l),f)" + JASS_DELIM +
+							"    set bj_lastLoadedUnit=" + ARCHON_PREFIX + "RestoreUnit(q,m,k,p,GetLocationX(l),GetLocationY(l),f)" + JASS_DELIM +
 							"    return bj_lastLoadedUnit" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"function " + ARCHON_PREFIX + "RestoreUnitLocFacingPointBJ takes string k,string m,hashtable q,player p,location l,location f returns unit" + JASS_DELIM +
