@@ -1,5 +1,9 @@
 package net.xetanth87.campaignsplitter;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class VictoryRewriter extends ScriptRewriter {
 	public int campaignKeyOffset;
 	public boolean insideInitGlobals;
@@ -30,18 +34,18 @@ public class VictoryRewriter extends ScriptRewriter {
 			}
 		if (line.contains(VICTORY_CALL)) {
 			line = line.substring(line.indexOf(VICTORY_CALL) + VICTORY_CALL.length());
-			String[] words = line.substring(0, line.lastIndexOf(')')).split(",");
+			List<String> words = Arrays.stream(line.substring(0, line.lastIndexOf(')')).split(",")).map(String::trim).collect(Collectors.toList());
 			append(//VICTORY_CALL + words[0] + ", true," + words[2] +  ")"
-					VICTORY_CALL + words[0] + ", true,true)", sb);
+					VICTORY_CALL + words.get(0) + ", true,true)", sb);
 			if (addNextLevelMessage)
-				append(VICTORY_CALL + words[0] + ", true,true)" + JASS_DELIM +
+				append(VICTORY_CALL + words.get(0) + ", true,true)" + JASS_DELIM +
 						"    if udg_XT87CSNextLevel!=\"\" then" + JASS_DELIM +
-						"        call DisplayTimedTextToForce(GetForceOfPlayer(" + words[0] + "),0,GetLocalizedString(\"CONTINUE_PLAYING\")+\":\\n|cffffcc00\"+udg_XT87CSNextLevel+\"|r\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\")" + JASS_DELIM +
+						"        call DisplayTimedTextToForce(GetForceOfPlayer(" + words.get(0) + "),0,GetLocalizedString(\"CONTINUE_PLAYING\")+\":\\n|cffffcc00\"+udg_XT87CSNextLevel+\"|r\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\")" + JASS_DELIM +
 						"    else" + JASS_DELIM +
 						"    endif", sb);
 			else
 				// force scorescreens
-				append(VICTORY_CALL + words[0] + "," + words[1] +  ",true)", sb);
+				append(VICTORY_CALL + words.get(0) + "," + words.get(0) +  ",true)", sb);
 			return;
 		}
 		append(line, sb);

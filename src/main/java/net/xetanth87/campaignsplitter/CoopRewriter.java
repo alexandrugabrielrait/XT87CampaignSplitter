@@ -13,28 +13,35 @@ import java.util.Locale;
 import java.util.Map;
 
 public class CoopRewriter extends ScriptRewriter {
-	public static final String SETPLAYERCOLOR = "call SetPlayerColor(";
-	public static final String DEFINE_START_LOC = "call DefineStartLocation(";
-	public static final String SETPLAYERCOLORBJ = "call SetPlayerColorBJ(";
-	public static final String CONVERTPLAYERCOLOR = "ConvertPlayerColor(";
-	public static final String PLAYER_FUNC = "Player(";
-	public static final String TRIGGER_PREFIX = "tr_";
-	public static final String ARCHON_PREFIX = "XT87AS";
-	public static final String FORCE_NAME = ARCHON_PREFIX + "Force";
-	public static final String TEMP_POINT_NAME = ARCHON_PREFIX + "TempPoint";
-	public static final String ENFORCE_ARCHON = ARCHON_PREFIX + "EnforceArchon";
-	public static final String LAST_CREATED_COOP_CACHE = ARCHON_PREFIX + "_lastCreatedGameCache";
-	public static final String PLAYER_ID_ARRAY = ARCHON_PREFIX + "IDA";
-	public static final String PLAYER_INDEX_ARRAY = ARCHON_PREFIX + "PIA";
-	public static final String AUX_PLAYER = ARCHON_PREFIX + "AXP";
-	public static final String GENERAL_HASHTABLE = ARCHON_PREFIX + "GHT";
-	public static final String SELECTION_HASHTABLE = ARCHON_PREFIX + "FXT";
+	private static final String SETPLAYERCOLOR = "call SetPlayerColor(";
+	private static final String DEFINE_START_LOC = "call DefineStartLocation(";
+	private static final String SETPLAYERCOLORBJ = "call SetPlayerColorBJ(";
+	private static final String CONVERTPLAYERCOLOR = "ConvertPlayerColor(";
+	private static final String PLAYER_FUNC = "Player(";
+	private static final String TRIGGER_PREFIX = "t_";
+	private static final String ARCHON_PREFIX_BASE = "XT87A";
+	private static final String ARCHON_PREFIX = ARCHON_PREFIX_BASE + "S";
+	private static final String  FILE_IO_PREFIX = ARCHON_PREFIX_BASE + "I";
+	private static final String FILE_LIBRARY_PREFIX = ARCHON_PREFIX_BASE + "F";
+	private static final String FORCE_NAME = ARCHON_PREFIX + "Force";
+	private static final String TEMP_POINT_NAME = ARCHON_PREFIX + "TempPoint";
+	private static final String ENFORCE_ARCHON = ARCHON_PREFIX + "EnforceArchon";
+	private static final String LAST_CREATED_COOP_CACHE = ARCHON_PREFIX + "_lastCreatedGameCache";
+	private static final String PLAYER_ID_ARRAY = ARCHON_PREFIX + "IDA";
+	private static final String PLAYER_INDEX_ARRAY = ARCHON_PREFIX + "PIA";
+	private static final String AUX_PLAYER = ARCHON_PREFIX + "AXP";
+	private static final String GENERAL_HASHTABLE = ARCHON_PREFIX + "GHT";
+	private static final String SELECTION_HASHTABLE = ARCHON_PREFIX + "FXT";
+	private static final String ABILITY_ARRAY = ARCHON_PREFIX + "AbilityArray";
+	private static final String ABILITY_ARRAY_SIZE = ABILITY_ARRAY + "SIZE";
+	private static final String HASH_ARRAY = ARCHON_PREFIX + "HA";
+	private static final String LOCAL_DECLARATION = "local ";
+	private static final String DIALOG_DECLARATION = "dialog ";
+
+	private static final int FILE_LIBRARY_ABILITY_COUNT = 10;
+	private static final int FILE_LIBRARY_PRELOAD_LIMIT = 200;
+
 	public static final String SELECTION_INDICATOR_PATH = "selectionIndicator";
-	public static final String ABILITY_ARRAY = ARCHON_PREFIX + "AbilityArray";
-	public static final String ABILITY_ARRAY_SIZE = ABILITY_ARRAY + "SIZE";
-	public static final String HASH_ARRAY = ARCHON_PREFIX + "HA";
-	public static final String LOCAL_DECLARATION = "local ";
-	public static final String DIALOG_DECLARATION = "dialog ";
 
 	// coop cache
 	public static final boolean WITH_CUSTOM_GAMECACHE = true;
@@ -294,6 +301,7 @@ public class CoopRewriter extends ScriptRewriter {
 		for (String function : Arrays.asList(
 				"GetLocalPlayer",
 				"GetTriggerPlayer",
+				"GetForceOfPlayer",
 				//"CreateSound",
 				"DialogAddButton",
 				"DialogAddQuitButton",
@@ -521,166 +529,159 @@ public class CoopRewriter extends ScriptRewriter {
 				endGlobalsState = 2;
 				if (WITH_CUSTOM_GAMECACHE) {
 					// region FileIO library
-					append("        function s__File_open takes string filename returns integer" + JASS_DELIM +
-							"            local integer this= s__File_List[0]" + JASS_DELIM +
-							"            if ( this==0 ) then" + JASS_DELIM +
-							"                set this=s__File_Counter+1" + JASS_DELIM +
-							"                set s__File_Counter=this" + JASS_DELIM +
+					append("function " + FILE_LIBRARY_PREFIX + "open takes string f returns integer" + JASS_DELIM + // filename f
+							"            local integer t=" + FILE_LIBRARY_PREFIX + "LS[0]" + JASS_DELIM + // this t
+							"            if t==0 then" + JASS_DELIM +
+							"                set t=" + FILE_LIBRARY_PREFIX + "CT+1" + JASS_DELIM +
+							"                set " + FILE_LIBRARY_PREFIX + "CT=t" + JASS_DELIM +
 							"            else" + JASS_DELIM +
-							"                set s__File_List[0]=s__File_List[this]" + JASS_DELIM +
+							"                set " + FILE_LIBRARY_PREFIX + "LS[0]=" + FILE_LIBRARY_PREFIX + "LS[t]" + JASS_DELIM +
 							"            endif" + JASS_DELIM +
-							"            " + JASS_DELIM +
-							"            set s__File_filename[this]=filename" + JASS_DELIM +
-							"            set s__File_buffer[this]=null" + JASS_DELIM +
-							"            " + JASS_DELIM +
-							"            " + JASS_DELIM +
-							"            return this" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"        // This is used to detect invalid characters which aren't supported in preload files." + JASS_DELIM +
-							"        function s__File_write takes integer this,string contents returns integer" + JASS_DELIM +
-							"            local integer i= 0" + JASS_DELIM +
-							"            local integer c= 0" + JASS_DELIM +
-							"            local integer len= StringLength(contents)" + JASS_DELIM +
-							"            local integer lev= 0" + JASS_DELIM +
-							"            local string prefix= \"-\"" + JASS_DELIM +
-							"            local string chunk" + JASS_DELIM +
-							"            set s__File_buffer[this]=null" + JASS_DELIM +
-							"            // Check if the string is empty. If null,the contents will be cleared." + JASS_DELIM +
-							"            if ( contents==\"\" ) then" + JASS_DELIM +
-							"                set len=len+1" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "FN[t]=f" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "BF[t]=null" + JASS_DELIM +
+							"            return t" + JASS_DELIM +
+							END_FUNCTION + JASS_DELIM +
+							// This is used to detect invalid characters which aren't supported in preload files.
+							"        function " + FILE_LIBRARY_PREFIX + "write takes integer t,string s returns integer" + JASS_DELIM + // this t, contents s
+							"            local integer i=0" + JASS_DELIM +
+							"            local integer c=0" + JASS_DELIM +
+							"            local integer l=StringLength(s)" + JASS_DELIM +
+							"            local integer v=0" + JASS_DELIM + // lev v
+							"            local string p=\"-\"" + JASS_DELIM + // prefix p
+							"            local string k" + JASS_DELIM + // chunk k
+							"            set " + FILE_LIBRARY_PREFIX + "BF[t]=null" + JASS_DELIM +
+							// Check if the string is empty. If null,the s will be cleared.
+							"            if (s==\"\") then" + JASS_DELIM +
+							"                set l=l+1" + JASS_DELIM +
 							"            endif" + JASS_DELIM +
-							"            // Begin to generate the file" + JASS_DELIM +
+							// Begin to generate the file
 							"            call PreloadGenClear()" + JASS_DELIM +
 							"            call PreloadGenStart()" + JASS_DELIM +
 							"            loop" + JASS_DELIM +
-							"                exitwhen i >= len" + JASS_DELIM +
-							"                set lev=0" + JASS_DELIM +
-							"                set chunk=SubString(contents,i,i+s__File_PreloadLimit)" + JASS_DELIM +
-							"                call Preload(\"\\\" )\\ncall BlzSetAbilityTooltip(\"+I2S(s__File_AbilityList[c])+\",\\\"\"+prefix+chunk+\"\\\",\"+I2S(lev)+\")\\n//\")" + JASS_DELIM +
-							"                set i=i+s__File_PreloadLimit" + JASS_DELIM +
+							"                exitwhen i >= l" + JASS_DELIM +
+							"                set v=0" + JASS_DELIM +
+							"                set k=SubString(s,i,i+" + FILE_LIBRARY_PRELOAD_LIMIT + ")" + JASS_DELIM +
+							"                call Preload(\"\\\" )\\ncall BlzSetAbilityTooltip(\"+I2S(" + FILE_LIBRARY_PREFIX + "AL[c])+\",\\\"\"+p+k+\"\\\",\"+I2S(v)+\")\\n//\")" + JASS_DELIM +
+							"                set i=i+" + FILE_LIBRARY_PRELOAD_LIMIT + JASS_DELIM +
 							"                set c=c+1" + JASS_DELIM +
 							"            endloop" + JASS_DELIM +
 							"            call Preload(\"\\\" )\\nendfunction\\nfunction a takes nothing returns nothing\\n //\")" + JASS_DELIM +
-							"            call PreloadGenEnd(s__File_filename[this])" + JASS_DELIM +
-							"            return this" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"        function s__File_clear takes integer this returns integer" + JASS_DELIM +
-							"            return s__File_write(this,null)" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"        function s__File_readPreload takes integer this returns string" + JASS_DELIM +
-							"            local integer i= 0" + JASS_DELIM +
-							"            local integer lev= 0" + JASS_DELIM +
-							"            local string array original" + JASS_DELIM +
-							"            local string chunk= \"\"" + JASS_DELIM +
-							"            local string output= \"\"" + JASS_DELIM +
+							"            call PreloadGenEnd(" + FILE_LIBRARY_PREFIX + "FN[t])" + JASS_DELIM +
+							"            return t" + JASS_DELIM +
+							END_FUNCTION + JASS_DELIM +
+							"        function " + FILE_LIBRARY_PREFIX + "clear takes integer t returns integer" + JASS_DELIM +
+							"            return " + FILE_LIBRARY_PREFIX + "write(t,null)" + JASS_DELIM +
+							END_FUNCTION + JASS_DELIM +
+							"        function " + FILE_LIBRARY_PREFIX + "readPreload takes integer t returns string" + JASS_DELIM +
+							"            local integer i=0" + JASS_DELIM +
+							"            local integer v=0" + JASS_DELIM +
+							"            local string array g" + JASS_DELIM + // original g
+							"            local string k=\"\"" + JASS_DELIM +
+							"            local string o=\"\"" + JASS_DELIM + // output o
 							"            loop" + JASS_DELIM +
-							"                exitwhen i==s__File_AbilityCount" + JASS_DELIM +
-							"                set original[i]=BlzGetAbilityTooltip(s__File_AbilityList[i],0)" + JASS_DELIM +
+							"                exitwhen i==" + FILE_LIBRARY_ABILITY_COUNT + JASS_DELIM +
+							"                set g[i]=BlzGetAbilityTooltip(" + FILE_LIBRARY_PREFIX + "AL[i],0)" + JASS_DELIM +
 							"                set i=i+1" + JASS_DELIM +
 							"            endloop" + JASS_DELIM +
-							"            // Execute the preload file" + JASS_DELIM +
-							"            call Preloader(s__File_filename[this])" + JASS_DELIM +
-							"            // Read the output" + JASS_DELIM +
+							// Execute the preload file
+							"            call Preloader(" + FILE_LIBRARY_PREFIX + "FN[t])" + JASS_DELIM +
+							// Read the output"
 							"            set i=0" + JASS_DELIM +
 							"            loop" + JASS_DELIM +
-							"                exitwhen i==s__File_AbilityCount" + JASS_DELIM +
+							"                exitwhen i==" + FILE_LIBRARY_ABILITY_COUNT + JASS_DELIM +
 							"                " + JASS_DELIM +
-							"                set lev=0" + JASS_DELIM +
-							"                // Read from ability index 1 instead of 0 if " + JASS_DELIM +
-							"                // backwards compatability is enabled" + JASS_DELIM +
-							"                // Make sure the tooltip has changed" + JASS_DELIM +
-							"                set chunk=BlzGetAbilityTooltip(s__File_AbilityList[i],lev)" + JASS_DELIM +
-							"                if ( chunk==original[i] ) then" + JASS_DELIM +
-							"                    if ( i==0 and output==\"\" ) then" + JASS_DELIM +
-							"                        return null // empty file" + JASS_DELIM +
+							"                set v=0" + JASS_DELIM +
+							// Read from ability index 1 instead of 0 if
+							// backwards compatability is enabled
+							// Make sure the tooltip has changed
+							"                set k=BlzGetAbilityTooltip(" + FILE_LIBRARY_PREFIX + "AL[i],v)" + JASS_DELIM +
+							"                if k==g[i] then" + JASS_DELIM +
+							"                    if i==0 and o==\"\" then" + JASS_DELIM +
+							"                        return null" + JASS_DELIM + // empty file
 							"                    endif" + JASS_DELIM +
-							"                    return output" + JASS_DELIM +
-							"                endif" + JASS_DELIM +
-							"                // Check if the file is an empty string or null" + JASS_DELIM +
-							"                    if ( i==0 ) then" + JASS_DELIM +
-							"                        if ( SubString(chunk,0,1) != \"-\" ) then" + JASS_DELIM +
-							"                            return null // empty file" + JASS_DELIM +
+							"                    return o" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							// Check if the file is an empty string or null
+							"                    if i==0 then" + JASS_DELIM +
+							"                        if SubString(k,0,1)!=\"-\" then" + JASS_DELIM +
+							"                            return null" + JASS_DELIM + // empty file
 							"                        endif" + JASS_DELIM +
-							"                        set chunk=SubString(chunk,1,StringLength(chunk))" + JASS_DELIM +
-							"                    endif" + JASS_DELIM +
-							"                // Remove the prefix" + JASS_DELIM +
-							"                if ( i > 0 ) then" + JASS_DELIM +
-							"                    set chunk=SubString(chunk,1,StringLength(chunk))" + JASS_DELIM +
+							"                        set k=SubString(k,1,StringLength(k))" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							// Remove the prefix
+							"                if i>0 then" + JASS_DELIM +
+							"                    set k=SubString(k,1,StringLength(k))" + JASS_DELIM +
 							"                endif" + JASS_DELIM +
-							"                " + JASS_DELIM +
-							"                // Restore the tooltip and append the chunk" + JASS_DELIM +
-							"                call BlzSetAbilityTooltip(s__File_AbilityList[i],original[i],lev)" + JASS_DELIM +
-							"                " + JASS_DELIM +
-							"                set output=output+chunk" + JASS_DELIM +
-							"                " + JASS_DELIM +
+							// Restore the tooltip and append the k
+							"                call BlzSetAbilityTooltip(" + FILE_LIBRARY_PREFIX + "AL[i],g[i],v)" + JASS_DELIM +
+							"                set o=o+k" + JASS_DELIM +
 							"                set i=i+1" + JASS_DELIM +
 							"            endloop" + JASS_DELIM +
-							"            return output" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"        function s__File_close takes integer this returns nothing" + JASS_DELIM +
-							"            if ( s__File_buffer[this] != null ) then" + JASS_DELIM +
-							"                call s__File_write(this,s__File_readPreload(this)+s__File_buffer[this])" + JASS_DELIM +
-							"                set s__File_buffer[this]=null" + JASS_DELIM +
+							"            return o" + JASS_DELIM +
+							END_FUNCTION + JASS_DELIM +
+							"        function " + FILE_LIBRARY_PREFIX + "close takes integer t returns nothing" + JASS_DELIM +
+							"            if " + FILE_LIBRARY_PREFIX + "BF[t]!=null then" + JASS_DELIM +
+							"                call " + FILE_LIBRARY_PREFIX + "write(t," + FILE_LIBRARY_PREFIX + "readPreload(t)+" + FILE_LIBRARY_PREFIX + "BF[t])" + JASS_DELIM +
+							"                set " + FILE_LIBRARY_PREFIX + "BF[t]=null" + JASS_DELIM +
 							"            endif" + JASS_DELIM +
-							"            set s__File_List[this]=s__File_List[0]" + JASS_DELIM +
-							"            set s__File_List[0]=this" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"        function s__File_readEx takes integer this,boolean close returns string" + JASS_DELIM +
-							"            local string output= s__File_readPreload(this)" + JASS_DELIM +
-							"            local string buf= s__File_buffer[this]" + JASS_DELIM +
-							"            if close then" + JASS_DELIM +
-							"                call s__File_close(this)" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "LS[t]=" + FILE_LIBRARY_PREFIX + "LS[0]" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "LS[0]=t" + JASS_DELIM +
+							END_FUNCTION + JASS_DELIM +
+							"        function " + FILE_LIBRARY_PREFIX + "readEx takes integer t,boolean c returns string" + JASS_DELIM + // close c
+							"            local string o= " + FILE_LIBRARY_PREFIX + "readPreload(t)" + JASS_DELIM +
+							"            local string b= " + FILE_LIBRARY_PREFIX + "BF[t]" + JASS_DELIM + // buf b
+							"            if c then" + JASS_DELIM +
+							"                call " + FILE_LIBRARY_PREFIX + "close(t)" + JASS_DELIM +
 							"            endif" + JASS_DELIM +
-							"            if output==null then" + JASS_DELIM +
-							"                return buf" + JASS_DELIM +
+							"            if o==null then" + JASS_DELIM +
+							"                return b" + JASS_DELIM +
 							"            endif" + JASS_DELIM +
-							"            if buf != null then" + JASS_DELIM +
-							"                set output=output+buf" + JASS_DELIM +
+							"            if b!=null then" + JASS_DELIM +
+							"                set o=o+b" + JASS_DELIM +
 							"            endif" + JASS_DELIM +
-							"            return output" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"        function s__File_read takes integer this returns string" + JASS_DELIM +
-							"            return s__File_readEx(this,false)" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"        function s__File_readAndClose takes integer this returns string" + JASS_DELIM +
-							"            return s__File_readEx(this,true)" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"        function s__File_appendBuffer takes integer this,string contents returns integer" + JASS_DELIM +
-							"            set s__File_buffer[this]=s__File_buffer[this]+contents" + JASS_DELIM +
-							"            return this" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"        function s__File_readBuffer takes integer this returns string" + JASS_DELIM +
-							"            return s__File_buffer[this]" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"        function s__File_writeBuffer takes integer this,string contents returns nothing" + JASS_DELIM +
-							"            set s__File_buffer[this]=contents" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"        function s__File_create takes string filename returns integer" + JASS_DELIM +
-							"            return s__File_write(s__File_open(filename),\"\")" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"//Implemented from module FileIO___FileInit:" + JASS_DELIM +
-							"        function s__File_FileIO___FileInit__onInit takes nothing returns nothing" + JASS_DELIM +
-							"            local string originalTooltip" + JASS_DELIM +
-							"            // We can't use a single ability with multiple levels because" + JASS_DELIM +
-							"            // tooltips return the first level's value if the value hasn't" + JASS_DELIM +
-							"            // been set. This way we don't need to edit any object editor data." + JASS_DELIM +
-							"            set s__File_AbilityList[0]='Amls'" + JASS_DELIM +
-							"            set s__File_AbilityList[1]='Aroc'" + JASS_DELIM +
-							"            set s__File_AbilityList[2]='Amic'" + JASS_DELIM +
-							"            set s__File_AbilityList[3]='Amil'" + JASS_DELIM +
-							"            set s__File_AbilityList[4]='Aclf'" + JASS_DELIM +
-							"            set s__File_AbilityList[5]='Acmg'" + JASS_DELIM +
-							"            set s__File_AbilityList[6]='Adef'" + JASS_DELIM +
-							"            set s__File_AbilityList[7]='Adis'" + JASS_DELIM +
-							"            set s__File_AbilityList[8]='Afbt'" + JASS_DELIM +
-							"            set s__File_AbilityList[9]='Afbk'" + JASS_DELIM +
-							"            set s__File_ReadEnabled=(s__File_readEx((s__File_write(s__File_open(\"FileTester.pld\"),\"FileIO_\")),true))==\"FileIO_\" // INLINED!!" + JASS_DELIM +
-							"        endfunction" + JASS_DELIM +
-							"    function FileIO_Write takes string filename,string contents returns nothing" + JASS_DELIM +
-							"        call s__File_close(s__File_write(s__File_open(filename),contents))" + JASS_DELIM +
-							"    endfunction" + JASS_DELIM +
-							"    function FileIO_Read takes string filename returns string" + JASS_DELIM +
-							"        return s__File_readEx(s__File_open(filename),true)" + JASS_DELIM +
+							"            return o" + JASS_DELIM +
+							END_FUNCTION + JASS_DELIM +
+//							"        function " + FILE_LIBRARY_PREFIX + "read takes integer t returns string" + JASS_DELIM +
+//							"            return " + FILE_LIBRARY_PREFIX + "readEx(t,false)" + JASS_DELIM +
+//							END_FUNCTION + JASS_DELIM +
+//							"        function " + FILE_LIBRARY_PREFIX + "readAndClose takes integer t returns string" + JASS_DELIM +
+//							"            return " + FILE_LIBRARY_PREFIX + "readEx(t,true)" + JASS_DELIM +
+//							END_FUNCTION + JASS_DELIM +
+//							"        function " + FILE_LIBRARY_PREFIX + "appendBuffer takes integer t,string s returns integer" + JASS_DELIM +
+//							"            set " + FILE_LIBRARY_PREFIX + "BF[t]=" + FILE_LIBRARY_PREFIX + "BF[t]+s" + JASS_DELIM +
+//							"            return t" + JASS_DELIM +
+//							END_FUNCTION + JASS_DELIM +
+//							"        function " + FILE_LIBRARY_PREFIX + "readBuffer takes integer t returns string" + JASS_DELIM +
+//							"            return " + FILE_LIBRARY_PREFIX + "BF[t]" + JASS_DELIM +
+//							END_FUNCTION + JASS_DELIM +
+//							"        function " + FILE_LIBRARY_PREFIX + "writeBuffer takes integer t,string s returns nothing" + JASS_DELIM +
+//							"            set " + FILE_LIBRARY_PREFIX + "BF[t]=s" + JASS_DELIM +
+//							END_FUNCTION + JASS_DELIM +
+							"        function " + FILE_LIBRARY_PREFIX + "create takes string f returns integer" + JASS_DELIM +
+							"            return " + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(f),\"\")" + JASS_DELIM +
+							END_FUNCTION + JASS_DELIM +
+							//Implemented from module FileIO__FileInit:
+							"        function " + FILE_LIBRARY_PREFIX + "" + FILE_IO_PREFIX  + "__FileInit__onInit takes nothing returns nothing" + JASS_DELIM +
+							// We can't use a single ability with multiple levels because
+							// tooltips return the first level's value if the value hasn't
+							// been set. This way we don't need to edit any object editor data.
+							"            set " + FILE_LIBRARY_PREFIX + "AL[0]='Amls'" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "AL[1]='Aroc'" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "AL[2]='Amic'" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "AL[3]='Amil'" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "AL[4]='Aclf'" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "AL[5]='Acmg'" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "AL[6]='Adef'" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "AL[7]='Adis'" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "AL[8]='Afbt'" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "AL[9]='Afbk'" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "ReadEnabled=(" + FILE_LIBRARY_PREFIX + "readEx((" + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(\"FileTester.pld\"),\"" + FILE_IO_PREFIX  + "\")),true))==\"" + FILE_IO_PREFIX  + "\" // INLINED!!" + JASS_DELIM +
+							END_FUNCTION + JASS_DELIM +
+							"    function " + FILE_IO_PREFIX  + "Write takes string f,string s returns nothing" + JASS_DELIM +
+							"        call " + FILE_LIBRARY_PREFIX + "close(" + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(f),s))" + JASS_DELIM +
+							END_FUNCTION + JASS_DELIM +
+							"    function " + FILE_IO_PREFIX  + "Read takes string f returns string" + JASS_DELIM +
+							"        return " + FILE_LIBRARY_PREFIX + "readEx(" + FILE_LIBRARY_PREFIX + "open(f),true)" + JASS_DELIM +
 							END_FUNCTION, sb);
 					// endregion
 					// region custom functions
@@ -811,20 +812,20 @@ public class CoopRewriter extends ScriptRewriter {
 								END_FUNCTION, sb);
 					append("function " + ARCHON_PREFIX + "WriteString takes string cacheName,string title,string v,string fK returns nothing" + JASS_DELIM +
 							"local string p=\"XT87CampaignSplitter\\\\\"+cacheName+\"\\\\\"+title+\".pld\"" + JASS_DELIM +
-							"    call FileIO_Write(p,v+\"\\n\"+" + ARCHON_PREFIX + "IS62(StringHash(v+\"|\"+p+\"|\"+fK)))" + JASS_DELIM +
+							"    call " + FILE_IO_PREFIX  + "Write(p,v+\"\\n\"+" + ARCHON_PREFIX + "IS62(StringHash(v+\"|\"+p+\"|\"+fK)))" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"function " + ARCHON_PREFIX + "SyncContents takes string p,string fK returns nothing" + JASS_DELIM +
 							"    local integer i=0" + JASS_DELIM +
 							"    local integer j=0" + JASS_DELIM +
 							"    local integer len" + JASS_DELIM +
-							"    local string content=null" + JASS_DELIM +
+							"    local string content" + JASS_DELIM +
 							"    loop" + JASS_DELIM +
 							"        exitwhen not XT87ReadLinesLock" + JASS_DELIM +
 							"        call TriggerSleepAction(0.01)" + JASS_DELIM +
 							"    endloop" + JASS_DELIM +
 							"set XT87ReadLinesLock=true" + JASS_DELIM +
 							"    if GetLocalPlayer()==" + toMainPlayerFunc() + " then" + JASS_DELIM +
-							"        set content=(s__File_readEx(s__File_open((p)),true)) // INLINED!!" + JASS_DELIM +
+							"        set content=(" + FILE_LIBRARY_PREFIX + "readEx(" + FILE_LIBRARY_PREFIX + "open((p)),true)) // INLINED!!" + JASS_DELIM +
 							"        if content==null then" + JASS_DELIM +
 							"            set content=\"\"" + JASS_DELIM +
 							END_IF + JASS_DELIM +
@@ -880,7 +881,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"function Trig_" + ARCHON_PREFIX + "SyncData_Actions takes nothing returns nothing" + JASS_DELIM +
 							"    local string contents=BlzGetTriggerSyncData()" + JASS_DELIM +
 							"    local integer len=StringLength(contents)" + JASS_DELIM +
-							"    local string char=null" + JASS_DELIM +
+							"    local string char" + JASS_DELIM +
 							"    local string buffer=\"\"" + JASS_DELIM +
 							"    local integer curLine=0" + JASS_DELIM +
 							"    local integer i=0" + JASS_DELIM +
@@ -1748,9 +1749,20 @@ public class CoopRewriter extends ScriptRewriter {
 							"    local player p=" + s + "()" + JASS_DELIM +
 							"    if IsPlayerInForce(p," + FORCE_NAME + ") then" + JASS_DELIM +
 							"        return " + toMainPlayerFunc() + JASS_DELIM +
-							"    endif" + JASS_DELIM +
+							END_IF + JASS_DELIM +
 							"    return p" + JASS_DELIM +
 							END_FUNCTION, sb);
+				append("function " + ARCHON_PREFIX + "GetForceOfPlayer takes player p returns force" + JASS_DELIM +
+						"    local force f=CreateForce()" + JASS_DELIM +
+						"    local integer i=0" + JASS_DELIM +
+						"    if IsPlayerInForce(p," + FORCE_NAME + ") then" + JASS_DELIM +
+						loopOverPlayers("i",
+								"call ForceAddPlayer(f,Player(" + PLAYER_ID_ARRAY + "[i]))") + JASS_DELIM +
+						"    else" + JASS_DELIM +
+						"    call ForceAddPlayer(f,p)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"    return f" + JASS_DELIM +
+						END_FUNCTION, sb);
 				// region enforce sharing
 				append("function " + ENFORCE_ARCHON + " takes nothing returns nothing", sb);
 				for (W3I.Player player : secondaryPlayers) {
@@ -1799,8 +1811,8 @@ public class CoopRewriter extends ScriptRewriter {
 
 		if (line.trim().equals("globals")) {
 			for (String resourceName : getAllResourceNames())
-				append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync=null", sb);
-			append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare=null" + JASS_DELIM +
+				append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync", sb);
+			append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare" + JASS_DELIM +
 							"force " + FORCE_NAME + JASS_DELIM +
 							"location " + TEMP_POINT_NAME + JASS_DELIM +
 							"integer array " + PLAYER_ID_ARRAY + JASS_DELIM +
@@ -1809,28 +1821,26 @@ public class CoopRewriter extends ScriptRewriter {
 							"player " + AUX_PLAYER + JASS_DELIM +
 							"hashtable " + GENERAL_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
 							"hashtable " + SELECTION_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
-							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select=null" + JASS_DELIM +
-							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync=null"
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select" + JASS_DELIM +
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync"
 //							+ JASS_DELIM +
-//					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Deselect=null" + JASS_DELIM +
-//					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DeselectOnDeath=null"
+//					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Deselect" + JASS_DELIM +
+//					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DeselectOnDeath"
 					, sb);
 			if (WITH_CUSTOM_GAMECACHE)
-				append("hashtable " + LAST_CREATED_COOP_CACHE + "=null" + JASS_DELIM +
+				append("hashtable " + LAST_CREATED_COOP_CACHE + JASS_DELIM +
 						"integer array " + ABILITY_ARRAY + JASS_DELIM +
 						"integer " + ABILITY_ARRAY_SIZE + "=0" + JASS_DELIM +
 						"integer " + GH_HAS_ABILITY_INT + "=StringHash(\"" + GH_HAS_ABILITY_KEY + "\")" + JASS_DELIM +
 						"integer " + GH_DIALOG_BUTTON_TEXT_INT + "=StringHash(\"" + GH_DIALOG_BUTTON_TEXT_KEY + "\")" + JASS_DELIM +
 						"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill" + JASS_DELIM +
 						"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData" + JASS_DELIM +
-						"constant integer s__File_AbilityCount=10" + JASS_DELIM +
-						"constant integer s__File_PreloadLimit=200" + JASS_DELIM +
-						"integer s__File_Counter=0" + JASS_DELIM +
-						"integer array s__File_List" + JASS_DELIM +
-						"integer array s__File_AbilityList" + JASS_DELIM +
-						"boolean s__File_ReadEnabled=false" + JASS_DELIM +
-						"string array s__File_filename" + JASS_DELIM +
-						"string array s__File_buffer" + JASS_DELIM +
+						"integer " + FILE_LIBRARY_PREFIX + "CT=0" + JASS_DELIM + // Counter
+						"integer array " + FILE_LIBRARY_PREFIX + "LS" + JASS_DELIM + // List
+						"integer array " + FILE_LIBRARY_PREFIX + "AL" + JASS_DELIM + // AbilityList
+						"boolean " + FILE_LIBRARY_PREFIX + "ReadEnabled=false" + JASS_DELIM +
+						"string array " + FILE_LIBRARY_PREFIX + "FN" + JASS_DELIM +
+						"string array " + FILE_LIBRARY_PREFIX + "BF" + JASS_DELIM +
 						"string array XT87ReadLines" + JASS_DELIM +
 						"boolean XT87ReadLinesAreRead=false" + JASS_DELIM +
 						"boolean XT87ReadLinesLock=false" + JASS_DELIM +
@@ -1846,7 +1856,7 @@ public class CoopRewriter extends ScriptRewriter {
 			if (WITH_CUSTOM_GAMECACHE) {
 				append("    call InitTrig_" + ARCHON_PREFIX + "SyncData()" + JASS_DELIM +
 						"    call InitTrig_" + ARCHON_PREFIX + "WatchLearnedSkill()" + JASS_DELIM +
-						"    call ExecuteFunc(\"s__File_FileIO___FileInit__onInit\")", sb);
+						"    call ExecuteFunc(\"" + FILE_LIBRARY_PREFIX + "" + FILE_IO_PREFIX  + "__FileInit__onInit\")", sb);
 			}
 		} else if (line.contains("SetForceAllianceStateBJ("))
 			append("call " + ENFORCE_ARCHON + "()", sb);
