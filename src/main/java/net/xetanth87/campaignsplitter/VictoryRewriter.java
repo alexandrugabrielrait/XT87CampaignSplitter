@@ -40,7 +40,7 @@ public class VictoryRewriter extends ScriptRewriter {
 			if (addNextLevelMessage)
 				append(VICTORY_CALL + words.get(0) + ", true,true)" + JASS_DELIM +
 						"    if udg_XT87CSNextLevel!=\"\" then" + JASS_DELIM +
-						"        call DisplayTimedTextToForce(GetForceOfPlayer(" + words.get(0) + "),0,GetLocalizedString(\"CONTINUE_PLAYING\")+\":\\n|cffffcc00\"+udg_XT87CSNextLevel+\"|r\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\")" + JASS_DELIM +
+						"        call DisplayTimedTextToPlayer(" + words.get(0) + ",0,0,0,GetLocalizedString(\"CONTINUE_PLAYING\")+\":\\n|cffffcc00\"+udg_XT87CSNextLevel+\"|r\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\")" + JASS_DELIM +
 						"    else" + JASS_DELIM +
 						"    endif", sb);
 			else
