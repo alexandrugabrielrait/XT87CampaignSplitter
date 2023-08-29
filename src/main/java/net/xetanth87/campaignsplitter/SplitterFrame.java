@@ -21,7 +21,6 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static net.xetanth87.campaignsplitter.XT87Utils.getLocalizedString;
 
@@ -81,6 +80,26 @@ public class SplitterFrame extends JFrame {
 		}
 	}
 
+	private static JPanel createPanel(Container parent) {
+		JPanel panel = new JPanel();
+		parent.add(panel);
+		panel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
+		return panel;
+	}
+
+	private static void addTooltips(String labelTag, JLabel label, JComponent component) {
+		String tooltipText = getLocalizedString(labelTag + "_tooltip");
+		label.setToolTipText(tooltipText);
+		component.setToolTipText(tooltipText);
+	}
+
+	private static void addLabelAndComponent(JPanel panel, String labelTag, JComponent component) {
+		JLabel label = new JLabel(getLocalizedString(labelTag));
+		panel.add(label);
+		panel.add(component);
+		addTooltips(labelTag, label, component);
+	}
+
 	public SplitterFrame() {
 		super(APP_TITLE);
 		setSize(700, 660);
@@ -93,74 +112,50 @@ public class SplitterFrame extends JFrame {
 
 		JPanel panel = new JPanel();
 		optionsPanel.add(panel);
-		panel.add(new JLabel(getLocalizedString("difficulty_selector_check")));
+		String labelTag = "difficulty_selector_check";
+		JLabel label = new JLabel(getLocalizedString(labelTag));
+		panel.add(label);
+		label.setToolTipText(getLocalizedString(labelTag + "_tooltip"));
 		difficultySelectorGroup = new ButtonGroup();
 		JRadioButton radioButton;
 		for (XT87Utils.TriOption option : XT87Utils.TriOption.values()) {
-			String label = "difficulty_selector_" + option.toString().toLowerCase(Locale.ROOT);
-			radioButton = new JRadioButton(getLocalizedString(label));
+			labelTag = "difficulty_selector_" + option.toString().toLowerCase(Locale.ROOT);
+			radioButton = new JRadioButton(getLocalizedString(labelTag));
 			radioButton.setFocusPainted(false);
 			radioButton.setActionCommand(option.toString());
 			if (option == difficultySelectorOption)
 				radioButton.setSelected(true);
-			radioButton.setToolTipText(getLocalizedString(label + "_tooltip"));
+			radioButton.setToolTipText(getLocalizedString(labelTag + "_tooltip"));
 			radioButton.addActionListener(new DifficultySelectorOptionL(option));
 			panel.add(radioButton);
 			difficultySelectorGroup.add(radioButton);
 		}
 
-		String label;
-		panel = new JPanel();
-		optionsPanel.add(panel);
-		panel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
-		label = "campaign_preview_check";
-		panel.add(new JLabel(getLocalizedString(label)));
+		panel = createPanel(optionsPanel);
+		addLabelAndComponent(panel, "campaign_preview_check", campaignPreviewCheck);
 		campaignPreviewCheck.setSelected(true);
-		panel.add(campaignPreviewCheck);
-		campaignPreviewCheck.setToolTipText(getLocalizedString(label + "_tooltip"));
-		panel.add(new JLabel(getLocalizedString("next_level_name_check")));
+		addLabelAndComponent(panel, "next_level_name_check", nextLevelCheck);
 		nextLevelCheck.setSelected(true);
-		panel.add(nextLevelCheck);
-		nextLevelCheck.setToolTipText(getLocalizedString(label + "_tooltip"));
 
-		panel = new JPanel();
-		optionsPanel.add(panel);
-		panel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
-		label = "legacy_assets_check";
-		panel.add(new JLabel(getLocalizedString(label)));
+		panel = createPanel(optionsPanel);
+		addLabelAndComponent(panel, "legacy_assets_check", legacyAssetsCheck);
 		legacyAssetsCheck.setSelected(true);
-		panel.add(legacyAssetsCheck);
-		legacyAssetsCheck.setToolTipText(getLocalizedString(label + "_tooltip"));
-		label = "remove_upkeep_check";
-		panel.add(new JLabel(getLocalizedString(label)));
+		addLabelAndComponent(panel, "remove_upkeep_check", upkeepRemovalCheck);
 		upkeepRemovalCheck.setSelected(false);
-		panel.add(upkeepRemovalCheck);
-		upkeepRemovalCheck.setToolTipText(getLocalizedString(label + "_tooltip"));
 
-		panel = new JPanel();
-		optionsPanel.add(panel);
-		panel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
-		label = "archon_mode_dropdown";
-		panel.add(new JLabel(getLocalizedString(label)));
-		panel.add(archonModeAddedSlotsDropdown);
+		panel = createPanel(optionsPanel);
+		addLabelAndComponent(panel, "archon_mode_dropdown", archonModeAddedSlotsDropdown);
 		for (int i = 0; i < 24; i++)
 			archonModeAddedSlotsDropdown.addItem(new ArchonModeAddedSlotsVariant(i));
-		archonModeAddedSlotsDropdown.setToolTipText(getLocalizedString(label + "_tooltip"));
 		archonModeAddedSlotsDropdown.addItemListener(e -> {
 			enableDisableToDownloadFolderCheck();
 		});
-		label = "to_download_folder_check";
-		panel.add(new JLabel(getLocalizedString(label)));
-		toDownloadFolderCheck.setSelected(false);
-		panel.add(toDownloadFolderCheck);
-		toDownloadFolderCheck.setToolTipText(getLocalizedString(label + "_tooltip"));
+		addLabelAndComponent(panel, "to_download_folder_check", toDownloadFolderCheck);
 		enableDisableToDownloadFolderCheck();
 
 		openButton.addActionListener(this::openAction);
 		splitButton.addActionListener(this::splitAction);
-		panel = new JPanel();
-		add(panel);
-		panel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
+		panel = createPanel(this);
 		panel.add(filePathField);
 		panel.add(openButton);
 		openButton.setFocusPainted(false);
@@ -230,12 +225,12 @@ public class SplitterFrame extends JFrame {
 				return;
 			JComboBox<LanguageVariant> languageDropdown = new JComboBox<>();
 			Arrays.stream(SplitterLanguage.values()).forEach(x ->
-					{
-						LanguageVariant variant = new LanguageVariant(x);
-						languageDropdown.addItem(variant);
-						if (x == SplitterLanguage.selectedLanguage)
-							languageDropdown.setSelectedItem(variant);
-					});
+			{
+				LanguageVariant variant = new LanguageVariant(x);
+				languageDropdown.addItem(variant);
+				if (x == SplitterLanguage.selectedLanguage)
+					languageDropdown.setSelectedItem(variant);
+			});
 
 			JPanel panel2 = new JPanel();
 			panel2.add(new JLabel("Select Language:"));
