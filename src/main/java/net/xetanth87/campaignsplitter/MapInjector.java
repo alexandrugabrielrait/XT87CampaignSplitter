@@ -547,7 +547,8 @@ public class MapInjector {
 		mergeData(new W3Q(), offsets.campaignKeyOffset);
 		cs.IncrementValueProgressBar(1);
 
-		boolean editScript = withDifficultySelector || cs.withCampaignPreview || cs.withLegacyAssets
+		boolean editScript = withDifficultySelector || cs.withCampaignPreview
+				|| cs.withLegacyAssetsSD || cs.withLegacyAssetsHD
 				|| cs.withNextLevel || addedCoopPlayers > 0;
 
 		if (editScript) {

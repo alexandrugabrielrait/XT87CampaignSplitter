@@ -38,11 +38,12 @@ public class SplitterFrame extends JFrame {
 	private final ButtonGroup difficultySelectorGroup;
 	private final JCheckBox campaignPreviewCheck = new JCheckBox();
 	private final JCheckBox nextLevelCheck = new JCheckBox();
-	private final JCheckBox legacyAssetsCheck = new JCheckBox();
+	private final JCheckBox legacyAssetsSDCheck = new JCheckBox();
+	private final JCheckBox legacyAssetsHDCheck = new JCheckBox();
 	private final JCheckBox upkeepRemovalCheck = new JCheckBox();
 	private final JCheckBox toDownloadFolderCheck = new JCheckBox();
 	private final JComboBox<ArchonModeAddedSlotsVariant> archonModeAddedSlotsDropdown = new JComboBox<>();
-	private final List<? extends JComponent> componentList = Arrays.asList(openButton, campaignPreviewCheck, nextLevelCheck, legacyAssetsCheck, upkeepRemovalCheck, toDownloadFolderCheck);
+	private final List<? extends JComponent> componentList = Arrays.asList(openButton, campaignPreviewCheck, nextLevelCheck, legacyAssetsSDCheck, legacyAssetsHDCheck, upkeepRemovalCheck, toDownloadFolderCheck);
 
 	private static class ArchonModeAddedSlotsVariant {
 		private final int value;
@@ -93,16 +94,17 @@ public class SplitterFrame extends JFrame {
 		component.setToolTipText(tooltipText);
 	}
 
-	private static void addLabelAndComponent(JPanel panel, String labelTag, JComponent component) {
+	private static JLabel addLabelAndComponent(JPanel panel, String labelTag, JComponent component) {
 		JLabel label = new JLabel(getLocalizedString(labelTag));
 		panel.add(label);
 		panel.add(component);
 		addTooltips(labelTag, label, component);
+		return label;
 	}
 
 	public SplitterFrame() {
 		super(APP_TITLE);
-		setSize(700, 660);
+		setSize(700, 700);
 		setResizable(false);
 		setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		setLayout(new FlowLayout());
@@ -112,8 +114,14 @@ public class SplitterFrame extends JFrame {
 
 		JPanel panel = new JPanel();
 		optionsPanel.add(panel);
+		JLabel label = new JLabel(APP_TITLE + " v" + CampaignSplitter.getVersion());
+		panel.add(label);
+		label.setFont(label.getFont().deriveFont(label.getFont().getStyle() | Font.BOLD));
+
+		panel = new JPanel();
+		optionsPanel.add(panel);
 		String labelTag = "difficulty_selector_check";
-		JLabel label = new JLabel(getLocalizedString(labelTag));
+		label = new JLabel(getLocalizedString(labelTag));
 		panel.add(label);
 		label.setToolTipText(getLocalizedString(labelTag + "_tooltip"));
 		difficultySelectorGroup = new ButtonGroup();
@@ -138,8 +146,10 @@ public class SplitterFrame extends JFrame {
 		nextLevelCheck.setSelected(true);
 
 		panel = createPanel(optionsPanel);
-		addLabelAndComponent(panel, "legacy_assets_check", legacyAssetsCheck);
-		legacyAssetsCheck.setSelected(true);
+		addLabelAndComponent(panel, "legacy_assets_sd_check", legacyAssetsSDCheck);
+		legacyAssetsSDCheck.setSelected(true);
+		addLabelAndComponent(panel, "legacy_assets_hd_check", legacyAssetsHDCheck);
+		legacyAssetsHDCheck.setSelected(false);
 		addLabelAndComponent(panel, "remove_upkeep_check", upkeepRemovalCheck);
 		upkeepRemovalCheck.setSelected(false);
 
@@ -150,7 +160,7 @@ public class SplitterFrame extends JFrame {
 		archonModeAddedSlotsDropdown.addItemListener(e -> {
 			enableDisableToDownloadFolderCheck();
 		});
-		addLabelAndComponent(panel, "to_download_folder_check", toDownloadFolderCheck);
+		JLabel toDownloadFolderLabel = addLabelAndComponent(panel, "to_download_folder_check", toDownloadFolderCheck);
 		enableDisableToDownloadFolderCheck();
 
 		openButton.addActionListener(this::openAction);
@@ -264,14 +274,15 @@ public class SplitterFrame extends JFrame {
 		menuItem.addActionListener(new ActionListenerInPopup(this::splitAction));
 		menu.add(menuItem);
 
-		menuItem = new JMenuItem(getLocalizedString("menu_item_disable_scripts"));
+		menuItem = new JMenuItem(getLocalizedString("menu_item_uncheck_all"));
 		menuItem.setAccelerator(KeyStroke.getKeyStroke('J', KeyEvent.CTRL_DOWN_MASK));
 		menuItem.addActionListener(e -> {
 			if (running)
 				return;
 			campaignPreviewCheck.setSelected(false);
 			nextLevelCheck.setSelected(false);
-			legacyAssetsCheck.setSelected(false);
+			legacyAssetsSDCheck.setSelected(false);
+			legacyAssetsHDCheck.setSelected(false);
 			upkeepRemovalCheck.setSelected(false);
 			archonModeAddedSlotsDropdown.setSelectedIndex(0);
 			toDownloadFolderCheck.setSelected(false);
@@ -288,7 +299,11 @@ public class SplitterFrame extends JFrame {
 						"Click \"" + openButton.getText() + "\" to select a Warcraft III Custom Campaign file (\"*.w3n\").\n" +
 								"Click \"" + splitButton.getText() + "\" to split the campaign (the campaign file will not be altered).\n" +
 								"A folder with the same name as the campaign will be created in the same location.\n" +
-								"This folder will contain all extracted maps, merged with campaign data.",
+								"This folder will contain all extracted maps, merged with campaign data.\n" +
+								"\n" +
+								"For Archon Mode, all players need to select the exact same options, use the same version of the tool and of the campaign!\n" +
+								"The lobby host needs to have the \"" + toDownloadFolderLabel.getText() + "\" option unchecked.\n" +
+								"All other players need to have the \"" + toDownloadFolderLabel.getText() + "\" option checked.",
 						APP_TITLE + " - " + getLocalizedString("menu_item_help"), JOptionPane.QUESTION_MESSAGE))
 		);
 		menu.add(menuItem);
@@ -504,7 +519,8 @@ public class SplitterFrame extends JFrame {
 				cs.withCampaignPreview = campaignPreviewCheck.isSelected();
 				cs.withNextLevel = nextLevelCheck.isSelected();
 				cs.withUpkeepRemoval = upkeepRemovalCheck.isSelected();
-				cs.withLegacyAssets = legacyAssetsCheck.isSelected();
+				cs.withLegacyAssetsSD = legacyAssetsSDCheck.isSelected();
+				cs.withLegacyAssetsHD = legacyAssetsHDCheck.isSelected();
 				cs.archonModeAddedSlots = getArchonModeAddedSlotsVariant();
 				cs.toDownloadFolder = toDownloadFolderCheck.isSelected() && cs.archonModeAddedSlots > 0;
 				cs.splitCampaign();

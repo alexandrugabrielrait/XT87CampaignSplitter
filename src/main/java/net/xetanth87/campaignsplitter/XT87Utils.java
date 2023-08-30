@@ -1,6 +1,5 @@
 package net.xetanth87.campaignsplitter;
 
-import com.ibm.icu.impl.Assert;
 import net.moonlightflower.wc3libs.bin.ObjMod;
 import net.moonlightflower.wc3libs.bin.Wc3BinInputStream;
 import net.moonlightflower.wc3libs.bin.app.W3I;
@@ -8,7 +7,6 @@ import net.moonlightflower.wc3libs.dataTypes.app.Controller;
 import net.moonlightflower.wc3libs.port.JMpqPort;
 import net.moonlightflower.wc3libs.port.MpqPort;
 import systems.crigges.jmpq3.JMpqEditor;
-import systems.crigges.jmpq3.MPQOpenOption;
 
 import javax.swing.filechooser.FileSystemView;
 import java.io.File;
@@ -18,8 +16,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.Stack;

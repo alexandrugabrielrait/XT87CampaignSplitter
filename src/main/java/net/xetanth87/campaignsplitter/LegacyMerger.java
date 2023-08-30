@@ -61,8 +61,11 @@ public class LegacyMerger {
 		for (IMP.Obj o : imports.getObjs()) {
 			originalImportList.add(o.getPath());
 		}
-		boolean sdValue = AddLegacyAssets(cs, imports, originalImportList, false);
-		boolean hdValue = AddLegacyAssets(cs, imports, originalImportList, true);
+		boolean sdValue = false, hdValue = false;
+		if (cs.withLegacyAssetsSD)
+			sdValue = AddLegacyAssets(cs, imports, originalImportList, false);
+		if (cs.withLegacyAssetsHD)
+			hdValue = AddLegacyAssets(cs, imports, originalImportList, true);
 		return sdValue || hdValue;
 	}
 
@@ -78,7 +81,7 @@ public class LegacyMerger {
 				zipFile = null;
 			}
 			if (zipFile == null) {
-				System.out.println("Legacy" + (isHd ? "HD" : "") + " asset archive was not found at expected path: " + zipDirPath);
+				System.out.println((isHd ? "HD" : "SD") + " Legacy Assets archive was not found at expected path: " + zipDirPath);
 				return false;
 			}
 			Enumeration<? extends ZipEntry> entries = zipFile.entries();

@@ -45,12 +45,17 @@ public class CampaignSplitter {
 	public final String tempDirName;
 	public int buttonCount, archonModeAddedSlots, archonModeRealAddedSlots;
 	public XT87Utils.TriOption difficultySelectorOption = XT87Utils.TriOption.SMART;
-	public boolean withDifficultySelector = false, withCampaignPreview = false, withUpkeepRemoval = false, withLegacyAssets = true, withNextLevel = true, hasSkins = false, toDownloadFolder = false;
+	public boolean withDifficultySelector = false, withCampaignPreview = false, withUpkeepRemoval = false,
+			withLegacyAssetsSD = true, withLegacyAssetsHD = true, withNextLevel = true, hasSkins = false, toDownloadFolder = false;
 	public W3F campaignData;
 	protected boolean initializedProgressBar = false;
 	public WTS campStrings = null;
 	public Map<String, String> buttonNameMap = new HashMap<>();
 	private int stepsPerMap = 0;
+
+	public static String getVersion() {
+		return "2.00";
+	}
 
 	public void InitializeProgressBar(int i) {
 		initializedProgressBar = true;
@@ -91,11 +96,10 @@ public class CampaignSplitter {
 		this.campFile = campFile;
 		String campaignName = getWithoutExtension(campFile.getName());
 		splitPath = campFile.getParentFile().getAbsolutePath() + "/" + campaignName;
-		tempDirName  = "temp_" + campaignName;
+		tempDirName = "temp_" + campaignName;
 	}
 
-	public String getSplitPath()
-	{
+	public String getSplitPath() {
 		if (toDownloadFolder)
 			return DOWNLOAD_FOLDER;
 		return splitPath;
@@ -111,9 +115,8 @@ public class CampaignSplitter {
 		}
 	}
 
-	public String getFeatureDescription()
-	{
-		String featureDescription = "Xetanth87's Campaign Splitter v" + "2.00";// getClass().getPackage().getImplementationVersion();
+	public String getFeatureDescription() {
+		String featureDescription = "Xetanth87's Campaign Splitter v" + getVersion();// getClass().getPackage().getImplementationVersion();
 		if (archonModeAddedSlots > 0)
 			featureDescription += "\n- Archon Mode (" + (archonModeRealAddedSlots + 1) + " slots)";
 		if (withDifficultySelector)
@@ -122,8 +125,10 @@ public class CampaignSplitter {
 			featureDescription += "\n- Campaign Preview";
 		if (withNextLevel)
 			featureDescription += "\n- Next Level Name";
-		if (withLegacyAssets)
-			featureDescription += "\n- Legacy Assets";
+		if (withLegacyAssetsSD)
+			featureDescription += "\n- SD Legacy Assets";
+		if (withLegacyAssetsHD)
+			featureDescription += "\n- HD Legacy Assets";
 		if (withUpkeepRemoval)
 			featureDescription += "\n-Upkeep removed";
 		return featureDescription;
@@ -133,8 +138,8 @@ public class CampaignSplitter {
 		File importsDir = new File(getImportsPath());
 		importsDir.mkdirs();
 		List<String> extractedFileNames = Stream.of(WTS.GAME_PATH, MiscTXT.GAME_PATH,
-				SkinTXT.GAME_PATH, W3U.GAME_PATH, W3T.GAME_PATH, W3B.GAME_PATH,
-				W3D.GAME_PATH, W3A.GAME_PATH, W3H.GAME_PATH, W3Q.GAME_PATH)
+						SkinTXT.GAME_PATH, W3U.GAME_PATH, W3T.GAME_PATH, W3B.GAME_PATH,
+						W3D.GAME_PATH, W3A.GAME_PATH, W3H.GAME_PATH, W3Q.GAME_PATH)
 				.map(x -> XT87Utils.toCampaignPath(x.getName())).collect(Collectors.toList());
 		System.out.println("Extracting campaign configuration files.");
 		for (String fileName : extractedFileNames) {
@@ -201,7 +206,7 @@ public class CampaignSplitter {
 			}
 		}
 
-		if (withLegacyAssets) {
+		if (withLegacyAssetsSD || withLegacyAssetsHD) {
 			System.out.println("Extracting legacy asset files.");
 			boolean noCampaignImports = importsListFile == null;
 			if (noCampaignImports) {
