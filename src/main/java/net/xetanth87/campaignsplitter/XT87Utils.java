@@ -16,9 +16,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.Stack;
+import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
 
 public class XT87Utils {
@@ -227,16 +229,21 @@ public class XT87Utils {
 		return result;
 	}
 
-	public static String getLocalizedString(String label)
+	public static String getLocalizedString(String label, Locale locale)
 	{
 		try {
-			ResourceBundle bundle = ResourceBundle.getBundle("properties/Localization", SplitterLanguage.selectedLanguage.getLocale());
+			ResourceBundle bundle = ResourceBundle.getBundle("properties/Localization", locale);
 			return bundle.getString(label);
 		}
 		catch (Throwable ignored)
 		{
 			return label;
 		}
+	}
+
+	public static String getLocalizedString(String label)
+	{
+		return getLocalizedString(label, SplitterLanguage.selectedLanguage.getLocale());
 	}
 
 	public static String getUnicodeString(String readable)
@@ -248,5 +255,15 @@ public class XT87Utils {
 		{
 			return readable;
 		}
+	}
+
+	public static void savePreference(String key, String value)
+	{
+		Preferences.userNodeForPackage(XT87Utils.class).put(key, value);
+	}
+
+	public static String loadPreference(String key)
+	{
+		return Preferences.userNodeForPackage(XT87Utils.class).get(key, null);
 	}
 }

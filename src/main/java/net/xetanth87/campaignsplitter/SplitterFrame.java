@@ -75,8 +75,6 @@ public class SplitterFrame extends JFrame {
 		}
 
 		public String toString() {
-			if (language == SplitterLanguage.DEFAULT)
-				return getLocalizedString("language_default");
 			return language.getDisplayName();
 		}
 	}
@@ -251,9 +249,10 @@ public class SplitterFrame extends JFrame {
 
 			if (result == JOptionPane.OK_OPTION) {
 				SplitterLanguage selectedLanguage = ((LanguageVariant) Objects.requireNonNull(languageDropdown.getSelectedItem())).language;
-				JOptionPane.showMessageDialog(null, "Language selected: " + selectedLanguage.getDisplayName(),
-						"Preferences Saved", JOptionPane.INFORMATION_MESSAGE);
 				SplitterLanguage.selectedLanguage = selectedLanguage;
+				JOptionPane.showMessageDialog(null, String.format(getLocalizedString("language_selected_message"), selectedLanguage.getDisplayName()),
+						"Preferences Saved", JOptionPane.INFORMATION_MESSAGE);
+				SplitterLanguage.saveLanguage(selectedLanguage);
 				dispose();
 				startFrame();
 			}
@@ -572,6 +571,7 @@ public class SplitterFrame extends JFrame {
 	}
 
 	private static void startFrame() {
+		SplitterLanguage.loadLanguage();
 		SplitterFrame frame = new SplitterFrame();
 		PrintStream origOut = System.out;
 		PrintStream areaOut = new AreaPrintStream(origOut, frame, "");

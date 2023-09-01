@@ -1,38 +1,62 @@
 package net.xetanth87.campaignsplitter;
 
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.Optional;
+
+import static net.xetanth87.campaignsplitter.XT87Utils.getLocalizedString;
 
 public enum SplitterLanguage {
-	DEFAULT(null, Locale.getDefault()),
-	ENGLISH("English", Locale.ENGLISH),
-	SPANISH("Español", new Locale("es")),
-	GERMAN("Deutsch", Locale.GERMAN),
-	FRENCH("Français", Locale.FRENCH),
-	ITALIAN("Italiano", Locale.ITALIAN),
-	PORTUGUESE("Português", new Locale("pt")),
-	POLISH("Polski", new Locale("pl")),
-	RUSSIAN("Русский", new Locale("ru")),
-	ROMANIAN("Română", new Locale("ro")),
-	UKRAINIAN("Українська", new Locale("ua")),
-	CHINESE("中文", Locale.CHINESE),
-	KOREAN("한국어", Locale.KOREAN);
+	DEFAULT("default", Locale.getDefault()),
+	ENGLISH("en", Locale.ENGLISH),
+	SPANISH("es", new Locale("es")),
+	GERMAN("de", Locale.GERMAN),
+	//FRENCH("fr", Locale.FRENCH),
+	//ITALIAN("it", Locale.ITALIAN),
+	//PORTUGUESE("pt", new Locale("pt")),
+	//POLISH("pl", new Locale("pl")),
+	RUSSIAN("ru", new Locale("ru")),
+	ROMANIAN("ro", new Locale("ro")),
+	//UKRAINIAN("ua", new Locale("ua")),
+	CHINESE("zh", Locale.CHINESE);
+	//KOREAN("ko", Locale.KOREAN);
+
+	public static final String PREF_PREFIX = "SL";
+	public static final String PREF_LANGUAGE = PREF_PREFIX + "Language";
 
 	public static SplitterLanguage selectedLanguage = SplitterLanguage.DEFAULT;
-	private final String displayName;
+	private final String languageCode;
 	private final Locale locale;
 
-	SplitterLanguage(String displayName, Locale locale) {
-		this.displayName = displayName;
+	SplitterLanguage(String languageCode, Locale locale) {
+		this.languageCode = languageCode;
 		this.locale = locale;
 	}
 
-	public String getDisplayName() {
-		if (this == DEFAULT)
-			return XT87Utils.getLocalizedString("language_default");
-		return XT87Utils.getUnicodeString(displayName);
+	public String getLanguageCode() {
+		return languageCode;
 	}
 
 	public Locale getLocale() {
 		return locale;
+	}
+
+	public static void saveLanguage(SplitterLanguage language) {
+		XT87Utils.savePreference(PREF_LANGUAGE, language.languageCode);
+	}
+
+	public static void loadLanguage() {
+		String languageCode = XT87Utils.loadPreference(PREF_LANGUAGE);
+		SplitterLanguage.selectedLanguage = Arrays.stream(SplitterLanguage.values())
+				.filter(x -> Objects.equals(x.getLanguageCode(), languageCode))
+				.findFirst().orElse(DEFAULT);
+	}
+
+	public String getDisplayName()
+	{
+		if (this == SplitterLanguage.DEFAULT)
+			return getLocalizedString("language_default");
+		return XT87Utils.getLocalizedString("language_name", locale);
 	}
 }
