@@ -22,6 +22,13 @@ import net.moonlightflower.wc3libs.txt.TXTSectionId;
 import net.moonlightflower.wc3libs.txt.WTS;
 import net.moonlightflower.wc3libs.txt.app.MiscTXT;
 import net.moonlightflower.wc3libs.txt.app.SkinTXT;
+import net.xetanth87.campaignsplitter.rewriters.CoopRewriter;
+import net.xetanth87.campaignsplitter.rewriters.DifficultySelectorRewriter;
+import net.xetanth87.campaignsplitter.rewriters.FakeUserPlayerRewriter;
+import net.xetanth87.campaignsplitter.rewriters.MinimapRewriter;
+import net.xetanth87.campaignsplitter.rewriters.ScriptRewriter;
+import net.xetanth87.campaignsplitter.rewriters.VictoryRewriter;
+import net.xetanth87.campaignsplitter.util.XT87Utils;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.JMpqException;
 import systems.crigges.jmpq3.MPQOpenOption;
@@ -45,11 +52,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static net.xetanth87.campaignsplitter.XT87Utils.FAKE_PLAYER_CONTROLLER;
-import static net.xetanth87.campaignsplitter.XT87Utils.STRING_PREFIX;
-import static net.xetanth87.campaignsplitter.XT87Utils.getWithoutExtension;
-import static net.xetanth87.campaignsplitter.XT87Utils.offsetCampaignDataString;
-import static net.xetanth87.campaignsplitter.XT87Utils.stringIndexToInt;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.FAKE_PLAYER_CONTROLLER;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.STRING_PREFIX;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.getWithoutExtension;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.offsetCampaignDataString;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.stringIndexToInt;
 
 public class MapInjector {
 	public CampaignSplitter cs;
@@ -284,13 +291,14 @@ public class MapInjector {
 
 	public void mergeMisc() {
 		MiscTXT txt = null;
+		boolean withModification = cs.withUpkeepRemoval || addedCoopPlayers > 0;
 		try {
 			txt = new MiscTXT();
 			txt.read(new File(XT87Utils.toCampaignPath(cs.getTempPath(MiscTXT.GAME_PATH.getName()))));
 		} catch (Throwable e) {
 			if (!(e instanceof IOException))
 				System.err.println(e.getMessage());
-			if (!cs.withUpkeepRemoval)
+			if (!withModification)
 				return;
 		}
 		try {
@@ -310,18 +318,25 @@ public class MapInjector {
 				System.err.println(e.getMessage());
 		} finally {
 			try {
-				if (cs.withUpkeepRemoval) {
+				if (withModification) {
 					if (txt == null)
 						txt = new MiscTXT();
 					final TXTSectionId sectionId = TXTSectionId.valueOf("Misc");
 					TXT.Section section = txt.getSection(sectionId);
 					if (section == null)
 						section = txt.addSection(sectionId);
-					String tax = "0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00";
-					String usage = "10000,10000,10000,10000,10000,10000,10000,10000,10000,10000";
-					section.setLine(FieldId.valueOf("UpkeepGoldTax"), tax);
-					section.setLine(FieldId.valueOf("UpkeepLumberTax"), tax);
-					section.setLine(FieldId.valueOf("UpkeepUsage"), usage);
+					if (cs.withUpkeepRemoval) {
+						String tax = "0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00";
+						String usage = "10000,10000,10000,10000,10000,10000,10000,10000,10000,10000";
+						section.setLine(MiscTXT.State.RESOURCES_SUPPLY_UPKEEP_COSTS_GOLD.getFieldId(), tax);
+						section.setLine(MiscTXT.State.RESOURCES_SUPPLY_UPKEEP_COSTS_LUMBER.getFieldId(), tax);
+						section.setLine(MiscTXT.State.RESOURCES_SUPPLY_UPKEEP_LEVELS.getFieldId(), usage);
+					}
+					if (cs.archonModeAddedSlots > 0)
+					{
+						section.setLine(MiscTXT.State.TRADING_INC_SMALL.getFieldId(), "0");
+						section.setLine(MiscTXT.State.TRADING_INC_LARGE.getFieldId(), "0");
+					}
 				}
 				insertDataFile(txt, MiscTXT.GAME_PATH.getPath());
 			} catch (Throwable e) {

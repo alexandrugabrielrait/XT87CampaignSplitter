@@ -1,8 +1,9 @@
-package net.xetanth87.campaignsplitter;
+package net.xetanth87.campaignsplitter.rewriters;
 
-import java.util.ArrayList;
+import net.xetanth87.campaignsplitter.MapInjector;
+import net.xetanth87.campaignsplitter.util.XT87Utils;
+
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class UsedPlayersScriptReader extends ScriptRewriter {

@@ -1,5 +1,7 @@
 package net.xetanth87.campaignsplitter;
 
+import net.xetanth87.campaignsplitter.util.XT87Utils;
+
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
@@ -22,7 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-import static net.xetanth87.campaignsplitter.XT87Utils.getLocalizedString;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.getLocalizedString;
 
 public class SplitterFrame extends JFrame {
 	public static final String AUTHOR = "Xetanth87";

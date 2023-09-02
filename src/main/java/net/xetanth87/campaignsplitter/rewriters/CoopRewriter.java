@@ -1,6 +1,9 @@
-package net.xetanth87.campaignsplitter;
+package net.xetanth87.campaignsplitter.rewriters;
 
 import net.moonlightflower.wc3libs.bin.app.W3I;
+import net.xetanth87.campaignsplitter.MapInjector;
+import net.xetanth87.campaignsplitter.util.CoopCallAdjustments;
+import net.xetanth87.campaignsplitter.util.XT87Utils;
 import org.antlr.v4.runtime.misc.Pair;
 import org.antlr.v4.runtime.misc.Triple;
 
@@ -21,7 +24,7 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final String TRIGGER_PREFIX = "t_";
 	private static final String ARCHON_PREFIX_BASE = "XT87A";
 	private static final String ARCHON_PREFIX = ARCHON_PREFIX_BASE + "S";
-	private static final String  FILE_IO_PREFIX = ARCHON_PREFIX_BASE + "I";
+	private static final String FILE_IO_PREFIX = ARCHON_PREFIX_BASE + "I";
 	private static final String FILE_LIBRARY_PREFIX = ARCHON_PREFIX_BASE + "F";
 	private static final String FORCE_NAME = ARCHON_PREFIX + "Force";
 	private static final String TEMP_POINT_NAME = ARCHON_PREFIX + "TempPoint";
@@ -35,8 +38,10 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final String ABILITY_ARRAY = ARCHON_PREFIX + "AbilityArray";
 	private static final String ABILITY_ARRAY_SIZE = ABILITY_ARRAY + "SIZE";
 	private static final String HASH_ARRAY = ARCHON_PREFIX + "HA";
+
 	private static final String LOCAL_DECLARATION = "local ";
 	private static final String DIALOG_DECLARATION = "dialog ";
+	private static final String TIMER_DECLARATION = "timer ";
 
 	private static final int FILE_LIBRARY_ABILITY_COUNT = 10;
 	private static final int FILE_LIBRARY_PRELOAD_LIMIT = 200;
@@ -164,6 +169,7 @@ public class CoopRewriter extends ScriptRewriter {
 	public List<W3I.Player> secondaryPlayers;
 	public List<Integer> allPlayerNumbers;
 	public List<String> dialogNames;
+	public List<String> timerNames;
 	public Map<String, Integer> cacheFieldMap;
 
 	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers) {
@@ -175,6 +181,7 @@ public class CoopRewriter extends ScriptRewriter {
 		allPlayerNumbers.add(mainPlayer.getNum());
 		secondaryPlayers.forEach(x -> allPlayerNumbers.add(x.getNum()));
 		dialogNames = new ArrayList<>();
+		timerNames = new ArrayList<>();
 	}
 
 	public static String getNewPath(String oldPath) {
@@ -315,7 +322,12 @@ public class CoopRewriter extends ScriptRewriter {
 				"SetUserControlForceOn",
 				"SetUserControlForceOff",
 				"CinematicModeExBJ",
-				"CinematicModeBJ"
+				"CinematicModeBJ",
+				"PauseGame",
+				"PauseGameOn",
+				"PauseGameOff",
+				"SuspendTimeOfDay",
+				"UseTimeOfDayBJ"
 		))
 			for (String prefix : Arrays.asList("(", " ", ",", "="))
 				for (String suffix : Arrays.asList("(", " ")) {
@@ -426,16 +438,23 @@ public class CoopRewriter extends ScriptRewriter {
 
 		// variable declarations
 		{
+			boolean local = false;
 			String trimmedLine = line.trim();
-			if (trimmedLine.startsWith(LOCAL_DECLARATION))
+			if (trimmedLine.startsWith(LOCAL_DECLARATION)) {
+				local = true;
 				trimmedLine = trimmedLine.substring(LOCAL_DECLARATION.length()).trim();
+			}
+			String declaredObject = trimmedLine.substring(trimmedLine.indexOf(' ') + 1).trim();
+			if (declaredObject.contains("="))
+				declaredObject = declaredObject.substring(0, declaredObject.indexOf('=')).trim();
 			if (trimmedLine.startsWith("gamecache "))
 				line = line.replaceFirst("gamecache ", "hashtable ");
 			else if (trimmedLine.startsWith(DIALOG_DECLARATION)) {
-				String auxLine = trimmedLine.substring(DIALOG_DECLARATION.length()).trim();
-				if (auxLine.contains("="))
-					auxLine = auxLine.substring(0, auxLine.indexOf('='));
-				dialogNames.add(auxLine.trim());
+				if (!local)
+					dialogNames.add(declaredObject);
+			} else if (trimmedLine.startsWith(TIMER_DECLARATION)) {
+				if (!local)
+					timerNames.add(declaredObject);
 			}
 		}
 
@@ -455,6 +474,7 @@ public class CoopRewriter extends ScriptRewriter {
 				}
 				for (String key : getCommonHashKeys())
 					append("set " + getCommonHashFunc(key) + "=StringHash(\"" + key + "\")", sb);
+				append("set bj_pauseAllUnitsFlag=false", sb);
 				append("call " + ENFORCE_ARCHON + "()" + JASS_DELIM +
 						"if (GetLocalPlayer()!=" + toMainPlayerFunc() + ") then" + JASS_DELIM +
 						"call SetReservedLocalHeroButtons(0)" + JASS_DELIM +
@@ -473,14 +493,16 @@ public class CoopRewriter extends ScriptRewriter {
 			insideInitGlobals = true;
 
 		if (Arrays.asList("config", "InitCustomPlayerSlots").contains(insideFunction)) {
-			if (line.contains(SETPLAYERCOLOR + toMainPlayerFunc())) {
+			if (line.contains(SETPLAYERCOLOR)) {
 				String[] params = getParamsFromLine(line);
-				// recolor players to blue and yellow
-				assert params != null;
-				append(line.replace(params[1], CONVERTPLAYERCOLOR + "1)"), sb);
-				String secondaryColorLine = line.replace(params[1], CONVERTPLAYERCOLOR + "4)");
-				for (W3I.Player player : secondaryPlayers) {
-					append(secondaryColorLine.replace(toMainPlayerFunc(), toPlayerFunc(player.getNum())), sb);
+				if (params != null && params.length == 2 && params[0].equals(toMainPlayerFunc())) {
+					// recolor players to blue and yellow
+					assert params != null;
+					append(line.replace(params[1], CONVERTPLAYERCOLOR + "1)"), sb);
+					String secondaryColorLine = line.replace(params[1], CONVERTPLAYERCOLOR + "4)");
+					for (W3I.Player player : secondaryPlayers) {
+						append(secondaryColorLine.replace(toMainPlayerFunc(), toPlayerFunc(player.getNum())), sb);
+					}
 				}
 				return;
 			}
@@ -661,7 +683,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"            return " + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(f),\"\")" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							//Implemented from module FileIO__FileInit:
-							"        function " + FILE_LIBRARY_PREFIX + "" + FILE_IO_PREFIX  + "__FileInit__onInit takes nothing returns nothing" + JASS_DELIM +
+							"        function " + FILE_LIBRARY_PREFIX + "" + FILE_IO_PREFIX + "__FileInit__onInit takes nothing returns nothing" + JASS_DELIM +
 							// We can't use a single ability with multiple levels because
 							// tooltips return the first level's value if the value hasn't
 							// been set. This way we don't need to edit any object editor data.
@@ -675,12 +697,12 @@ public class CoopRewriter extends ScriptRewriter {
 							"            set " + FILE_LIBRARY_PREFIX + "AL[7]='Adis'" + JASS_DELIM +
 							"            set " + FILE_LIBRARY_PREFIX + "AL[8]='Afbt'" + JASS_DELIM +
 							"            set " + FILE_LIBRARY_PREFIX + "AL[9]='Afbk'" + JASS_DELIM +
-							"            set " + FILE_LIBRARY_PREFIX + "ReadEnabled=(" + FILE_LIBRARY_PREFIX + "readEx((" + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(\"FileTester.pld\"),\"" + FILE_IO_PREFIX  + "\")),true))==\"" + FILE_IO_PREFIX  + "\" // INLINED!!" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "ReadEnabled=(" + FILE_LIBRARY_PREFIX + "readEx((" + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(\"FileTester.pld\"),\"" + FILE_IO_PREFIX + "\")),true))==\"" + FILE_IO_PREFIX + "\" // INLINED!!" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
-							"    function " + FILE_IO_PREFIX  + "Write takes string f,string s returns nothing" + JASS_DELIM +
+							"    function " + FILE_IO_PREFIX + "Write takes string f,string s returns nothing" + JASS_DELIM +
 							"        call " + FILE_LIBRARY_PREFIX + "close(" + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(f),s))" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
-							"    function " + FILE_IO_PREFIX  + "Read takes string f returns string" + JASS_DELIM +
+							"    function " + FILE_IO_PREFIX + "Read takes string f returns string" + JASS_DELIM +
 							"        return " + FILE_LIBRARY_PREFIX + "readEx(" + FILE_LIBRARY_PREFIX + "open(f),true)" + JASS_DELIM +
 							END_FUNCTION, sb);
 					// endregion
@@ -812,7 +834,7 @@ public class CoopRewriter extends ScriptRewriter {
 								END_FUNCTION, sb);
 					append("function " + ARCHON_PREFIX + "WriteString takes string cacheName,string title,string v,string fK returns nothing" + JASS_DELIM +
 							"local string p=\"XT87CampaignSplitter\\\\\"+cacheName+\"\\\\\"+title+\".pld\"" + JASS_DELIM +
-							"    call " + FILE_IO_PREFIX  + "Write(p,v+\"\\n\"+" + ARCHON_PREFIX + "IS62(StringHash(v+\"|\"+p+\"|\"+fK)))" + JASS_DELIM +
+							"    call " + FILE_IO_PREFIX + "Write(p,v+\"\\n\"+" + ARCHON_PREFIX + "IS62(StringHash(v+\"|\"+p+\"|\"+fK)))" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"function " + ARCHON_PREFIX + "SyncContents takes string p,string fK returns nothing" + JASS_DELIM +
 							"    local integer i=0" + JASS_DELIM +
@@ -1005,6 +1027,43 @@ public class CoopRewriter extends ScriptRewriter {
 							END_FUNCTION, sb);
 					append("function " + ARCHON_PREFIX + "CinematicModeBJ takes boolean b, force f returns nothing" + JASS_DELIM +
 							"call " + ARCHON_PREFIX + "CinematicModeExBJ(b,f,bj_CINEMODE_INTERFACEFADE)" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "PauseStartedTimer takes boolean b, timer t returns nothing" + JASS_DELIM +
+							"if TimerGetRemaining(t)>0 then" + JASS_DELIM +
+							"call PauseTimerBJ(b,t)" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "PauseGame takes boolean b returns nothing" + JASS_DELIM +
+							"if " + ARCHON_PREFIX + "GIP!=b then" + JASS_DELIM +
+							"if b then" + JASS_DELIM +
+							"set " + ARCHON_PREFIX + "UPA=bj_pauseAllUnitsFlag" + JASS_DELIM +
+							"set " + ARCHON_PREFIX + "RGS=GetGameSpeed()" + JASS_DELIM +
+							"call SuspendTimeOfDay(true)" + JASS_DELIM +
+							"call SetGameSpeed(MAP_SPEED_SLOWEST)" + JASS_DELIM +
+							"else" + JASS_DELIM +
+							"call SuspendTimeOfDay(" + ARCHON_PREFIX + "TDS)" + JASS_DELIM +
+							"call SetGameSpeed(" + ARCHON_PREFIX + "RGS)" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							"if not " + ARCHON_PREFIX + "UPA and b!=bj_pauseAllUnitsFlag then" + JASS_DELIM +
+							"call PauseAllUnitsBJ(b)" + JASS_DELIM +
+							END_IF, sb);
+					for (String timerName : timerNames)
+						append("call " + ARCHON_PREFIX + "PauseStartedTimer(b," + timerName + ")", sb);
+					append("set " + ARCHON_PREFIX + "GIP=b" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "PauseGameOn takes nothing returns nothing" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "PauseGame(true)" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "PauseGameOff takes nothing returns nothing" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "PauseGame(false)" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "SuspendTimeOfDay takes boolean b returns nothing" + JASS_DELIM +
+							"set " + ARCHON_PREFIX + "TDS=b" + JASS_DELIM +
+							"call SuspendTimeOfDay(b)" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "UseTimeOfDayBJ takes boolean b returns nothing" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "SuspendTimeOfDay(not b)" + JASS_DELIM +
 							END_FUNCTION, sb);
 					// endregion
 					// region GetFlushIndex function
@@ -1676,6 +1735,60 @@ public class CoopRewriter extends ScriptRewriter {
 							END_FUNCTION, sb);
 				}
 				// endregion
+				// region replace multiplayer chat menu
+				append("function Trig_" + ARCHON_PREFIX + "ReplaceMenu_Actions takes nothing returns nothing" + JASS_DELIM +
+						"local integer i=0" + JASS_DELIM +
+						"local boolean b=BlzFrameIsVisible(BlzGetFrameByName(\"AllianceDialog\",0))" + JASS_DELIM +
+						DebugOnly("call BJDebugMsg(\"a\")" + JASS_DELIM) +
+						"if not " + ARCHON_PREFIX + "AlliesMenuAvail and b then" + JASS_DELIM +
+						"set " + ARCHON_PREFIX + "AlliesMenuAvail=true" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceAcceptButton\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceBackdrop\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceCancelButton\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceDialogScrollBar\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceTitle\",0),false)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"if " + ARCHON_PREFIX + "AlliesMenuAvail then" + JASS_DELIM +
+						"if b then" + JASS_DELIM +
+						"loop" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceSlot\",i),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"AlliedVictoryCheckBox\",i),false)" + JASS_DELIM +
+						"set i=i+1" + JASS_DELIM +
+						"exitwhen i>=bj_MAX_PLAYERS" + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"ResourceTradingTitle\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"PlayersHeader\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllyHeader\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"VisionHeader\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"UnitsHeader\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"GoldHeader\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"LumberHeader\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"AlliedVictoryLabel\",0),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogArea\",0),true)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogAreaScrollBar\",0),true)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogAreaBackdrop\",0),true)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogOkButton\",0),true)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogTitle\",0),true)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogDialog\",0),b)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function InitTrig_" + ARCHON_PREFIX + "ReplaceMenu takes nothing returns nothing" + JASS_DELIM +
+						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu=CreateTrigger()" + JASS_DELIM +
+						"    call TriggerRegisterTimerEventPeriodic(" + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu,0.05)" + JASS_DELIM +
+						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu,function Trig_" + ARCHON_PREFIX + "ReplaceMenu_Actions)" + JASS_DELIM +
+						END_FUNCTION, sb);
+				// endregion
+				// region pause test
+				append("function Trig_" + ARCHON_PREFIX + "PauseTest_Actions takes nothing returns nothing" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "PauseGame(not bj_pauseAllUnitsFlag)" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function InitTrig_" + ARCHON_PREFIX + "PauseTest takes nothing returns nothing" + JASS_DELIM +
+						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest=CreateTrigger()" + JASS_DELIM +
+						"    call TriggerRegisterPlayerChatEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest," + toMainPlayerFunc() + ",\"-p\",true)" + JASS_DELIM +
+						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest,function Trig_" + ARCHON_PREFIX + "PauseTest_Actions)" + JASS_DELIM +
+						END_FUNCTION, sb);
+				// endregion
 				// region give units to main player
 				append("function Trig_" + ARCHON_PREFIX + "UnitShare_Conditions takes nothing returns boolean", sb);
 				for (int playerNumber : allPlayerNumbers) {
@@ -1810,6 +1923,8 @@ public class CoopRewriter extends ScriptRewriter {
 							append(READ_LOCK_CODE, sb);
 							break;
 						}
+			if ("CustomDefeatBJ".equals(trimmedCall))
+				append("call " + ARCHON_PREFIX + "PauseGameOn()", sb);
 		}
 
 		if (line.trim().equals("globals")) {
@@ -1825,7 +1940,14 @@ public class CoopRewriter extends ScriptRewriter {
 							"hashtable " + GENERAL_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
 							"hashtable " + SELECTION_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select" + JASS_DELIM +
-							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync"
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync" + JASS_DELIM +
+							"boolean " + ARCHON_PREFIX + "AlliesMenuAvail=false" + JASS_DELIM +
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu" + JASS_DELIM +
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest" + JASS_DELIM +
+							"boolean " + ARCHON_PREFIX + "UPA=false" + JASS_DELIM + // units paused already
+							"boolean " + ARCHON_PREFIX + "GIP=false" + JASS_DELIM + // game is paused
+							"boolean " + ARCHON_PREFIX + "TDS=false" + JASS_DELIM + // time of day suspended
+							"gamespeed " + ARCHON_PREFIX + "RGS=MAP_SPEED_NORMAL" // real game speed
 //							+ JASS_DELIM +
 //					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Deselect" + JASS_DELIM +
 //					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DeselectOnDeath"
@@ -1854,12 +1976,12 @@ public class CoopRewriter extends ScriptRewriter {
 		} else if (line.contains("function InitCustomTriggers takes")) {
 			for (String resourceName : getAllResourceNames())
 				append("    call InitTrig_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
-			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync"))//, "Deselect", "DeselectOnDeath"))
+			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync"/*, "ReplaceMenu"*/, "PauseTest"))//, "Deselect", "DeselectOnDeath"))
 				append("    call InitTrig_" + ARCHON_PREFIX + triggerName + "()", sb);
 			if (WITH_CUSTOM_GAMECACHE) {
 				append("    call InitTrig_" + ARCHON_PREFIX + "SyncData()" + JASS_DELIM +
 						"    call InitTrig_" + ARCHON_PREFIX + "WatchLearnedSkill()" + JASS_DELIM +
-						"    call ExecuteFunc(\"" + FILE_LIBRARY_PREFIX + "" + FILE_IO_PREFIX  + "__FileInit__onInit\")", sb);
+						"    call ExecuteFunc(\"" + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "__FileInit__onInit\")", sb);
 			}
 		} else if (line.contains("SetForceAllianceStateBJ("))
 			append("call " + ENFORCE_ARCHON + "()", sb);

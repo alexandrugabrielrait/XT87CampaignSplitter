@@ -1,8 +1,8 @@
-package net.xetanth87.campaignsplitter;
+package net.xetanth87.campaignsplitter.rewriters;
+
+import net.xetanth87.campaignsplitter.MapInjector;
 
 import java.util.Set;
-
-import static net.xetanth87.campaignsplitter.XT87Utils.FAKE_PLAYER_CONTROLLER;
 
 public class FakeUserPlayerRewriter extends ScriptRewriter {
 	private final Set<Integer> fakeUserPlayersSet;

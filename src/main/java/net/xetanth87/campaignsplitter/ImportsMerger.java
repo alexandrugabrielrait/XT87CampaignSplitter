@@ -1,6 +1,8 @@
 package net.xetanth87.campaignsplitter;
 
 import net.moonlightflower.wc3libs.bin.app.IMP;
+import net.xetanth87.campaignsplitter.rewriters.CoopRewriter;
+import net.xetanth87.campaignsplitter.util.XT87Utils;
 
 import java.io.File;
 import java.io.InputStream;

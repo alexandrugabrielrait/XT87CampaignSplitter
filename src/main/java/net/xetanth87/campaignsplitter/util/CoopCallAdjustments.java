@@ -1,4 +1,4 @@
-package net.xetanth87.campaignsplitter;
+package net.xetanth87.campaignsplitter.util;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,7 +42,7 @@ public class CoopCallAdjustments {
 		}
 	}
 
-	static Map<String, AdjustmentDetails> callParameters = new HashMap<>();
+	public static Map<String, AdjustmentDetails> callParameters = new HashMap<>();
 
 	private static AdjustmentDetails addCallParameters(String functionName, List<Integer> list)
 	{

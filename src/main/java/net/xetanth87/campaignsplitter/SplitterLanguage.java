@@ -1,11 +1,12 @@
 package net.xetanth87.campaignsplitter;
 
+import net.xetanth87.campaignsplitter.util.XT87Utils;
+
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Optional;
 
-import static net.xetanth87.campaignsplitter.XT87Utils.getLocalizedString;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.getLocalizedString;
 
 public enum SplitterLanguage {
 	DEFAULT("default", Locale.getDefault()),

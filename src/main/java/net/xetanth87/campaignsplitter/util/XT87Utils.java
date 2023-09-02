@@ -1,4 +1,4 @@
-package net.xetanth87.campaignsplitter;
+package net.xetanth87.campaignsplitter.util;
 
 import net.moonlightflower.wc3libs.bin.ObjMod;
 import net.moonlightflower.wc3libs.bin.Wc3BinInputStream;
@@ -6,6 +6,10 @@ import net.moonlightflower.wc3libs.bin.app.W3I;
 import net.moonlightflower.wc3libs.dataTypes.app.Controller;
 import net.moonlightflower.wc3libs.port.JMpqPort;
 import net.moonlightflower.wc3libs.port.MpqPort;
+import net.xetanth87.campaignsplitter.MapInjector;
+import net.xetanth87.campaignsplitter.rewriters.ScriptRewriter;
+import net.xetanth87.campaignsplitter.SplitterLanguage;
+import net.xetanth87.campaignsplitter.rewriters.UsedPlayersScriptReader;
 import systems.crigges.jmpq3.JMpqEditor;
 
 import javax.swing.filechooser.FileSystemView;

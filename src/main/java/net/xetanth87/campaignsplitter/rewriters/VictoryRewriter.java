@@ -1,4 +1,6 @@
-package net.xetanth87.campaignsplitter;
+package net.xetanth87.campaignsplitter.rewriters;
+
+import net.xetanth87.campaignsplitter.MapInjector;
 
 import java.util.Arrays;
 import java.util.List;
@@ -35,8 +37,8 @@ public class VictoryRewriter extends ScriptRewriter {
 		if (line.contains(VICTORY_CALL)) {
 			line = line.substring(line.indexOf(VICTORY_CALL) + VICTORY_CALL.length());
 			List<String> words = Arrays.stream(line.substring(0, line.lastIndexOf(')')).split(",")).map(String::trim).collect(Collectors.toList());
-			append(//VICTORY_CALL + words[0] + ", true," + words[2] +  ")"
-					VICTORY_CALL + words.get(0) + ", true,true)", sb);
+			//append(//VICTORY_CALL + words[0] + ", true," + words[2] +  ")"
+			//		VICTORY_CALL + words.get(0) + ", true,true)", sb);
 			if (addNextLevelMessage)
 				append(VICTORY_CALL + words.get(0) + ", true,true)" + JASS_DELIM +
 						"    if udg_XT87CSNextLevel!=\"\" then" + JASS_DELIM +

@@ -1,4 +1,6 @@
-package net.xetanth87.campaignsplitter;
+package net.xetanth87.campaignsplitter.rewriters;
+
+import net.xetanth87.campaignsplitter.MapInjector;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,10 +13,11 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 	public Set<String> initializationTriggers = null;//, periodicTimeTriggers = null;
 	public Map<String, Integer> elapsedTimeIndices = null, periodicTimeIndices = null;
 	public boolean triggersAdded, insideInitialization, insideInitGlobals;
+	private static final String DS_PREFIX_BASE = "XT87DS";
 	public static final String ELAPSED_TIME_REGISTER = "call TriggerRegisterTimerEventSingle(";
-	public static final String ELAPSED_TIMER_PREFIX = "XT87CSElapsedTimer_";
+	public static final String ELAPSED_TIMER_PREFIX = DS_PREFIX_BASE + "ElapsedTimer_";
 	public static final String PERIODIC_TIME_REGISTER = "call TriggerRegisterTimerEventPeriodic(";
-	public static final String PERIODIC_TIMER_PREFIX = "XT87CSPeriodicTimer_";
+	public static final String PERIODIC_TIMER_PREFIX = DS_PREFIX_BASE + "PeriodicTimer_";
 
 	public DifficultySelectorRewriter(MapInjector mi, int playerId) {
 		super(mi);
@@ -86,8 +89,8 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 			if (line.contains(END_FUNCTION)) {
 				insideInitGlobals = false;
 				sb.append(JASS_DELIM +
-						"    set XT87CSDifDialog=DialogCreate()" + JASS_DELIM +
-						"    set XT87CSMapInitialization=CreateTimer()");
+						"    set " + DS_PREFIX_BASE + "DifDialog=DialogCreate()" + JASS_DELIM +
+						"    set " + DS_PREFIX_BASE + "MapInitialization=CreateTimer()");
 				for (int i = 0; i < elapsedTimeIndices.size(); i++)
 					sb.append(JASS_DELIM +
 							"    set " + ELAPSED_TIMER_PREFIX + i + "=CreateTimer()");
@@ -99,8 +102,7 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 		if (line.contains(ELAPSED_TIME_REGISTER)) {
 			String[] params = getParamsFromLine(line);
 			line = "    call TriggerRegisterTimerExpireEventBJ(" + params[0] + "," + ELAPSED_TIMER_PREFIX + elapsedTimeIndices.get(params[1]) + " )";
-		}
-		else if (line.contains(PERIODIC_TIME_REGISTER)) {
+		} else if (line.contains(PERIODIC_TIME_REGISTER)) {
 			String[] params = getParamsFromLine(line);
 			line = "    call TriggerRegisterTimerExpireEventBJ(" + params[0] + "," + PERIODIC_TIMER_PREFIX + periodicTimeIndices.get(params[1]) + " )";
 		}
@@ -112,42 +114,42 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 //		}
 		else if (!triggersAdded && line.contains("function Trig")) {
 			sb.append(JASS_DELIM +
-					"function Trig_XT87CS_Dif_Init_Actions takes nothing returns nothing" + JASS_DELIM +
-					"    local string XT87CSDifDiagEasyName=GetLocalizedString(\"EASY\")" + JASS_DELIM +
+					"function Trig_" + DS_PREFIX_BASE + "_Dif_Init_Actions takes nothing returns nothing" + JASS_DELIM +
+					"    local string " + DS_PREFIX_BASE + "DifDiagEasyName=GetLocalizedString(\"EASY\")" + JASS_DELIM +
 					"    call PauseGameOn()" + JASS_DELIM +
-					"    call DialogSetMessage(XT87CSDifDialog,GetLocalizedString(\"SELECT_DIFFICULTY_LEVEL\"))" + JASS_DELIM +
-					"    if XT87CSDifDiagEasyName == \"Story\" then" + JASS_DELIM +
-					"        set XT87CSDifDiagEasyName=\"Easy\"" + JASS_DELIM +
+					"    call DialogSetMessage(" + DS_PREFIX_BASE + "DifDialog,GetLocalizedString(\"SELECT_DIFFICULTY_LEVEL\"))" + JASS_DELIM +
+					"    if " + DS_PREFIX_BASE + "DifDiagEasyName == \"Story\" then" + JASS_DELIM +
+					"        set " + DS_PREFIX_BASE + "DifDiagEasyName=\"Easy\"" + JASS_DELIM +
 					"    endif" + JASS_DELIM +
-					"    set XT87CSDifButtonEasy=DialogAddButton(XT87CSDifDialog,\"|cff00ff00\"+XT87CSDifDiagEasyName+\"|r\",0)" + JASS_DELIM +
-					"    set XT87CSDifButtonNormal=DialogAddButton(XT87CSDifDialog,\"|cffffff00\"+GetLocalizedString(\"NORMAL\")+\"|r\",0)" + JASS_DELIM +
-					"    set XT87CSDifButttonHard=DialogAddButton(XT87CSDifDialog,\"|cffff0000\"+GetLocalizedString(\"HARD\")+\"|r\",0)" + JASS_DELIM +
-					"    call DialogDisplay(Player(" + playerId + "),XT87CSDifDialog,true)" + JASS_DELIM +
+					"    set " + DS_PREFIX_BASE + "DifButtonEasy=DialogAddButton(" + DS_PREFIX_BASE + "DifDialog,\"|cff00ff00\"+" + DS_PREFIX_BASE + "DifDiagEasyName+\"|r\",0)" + JASS_DELIM +
+					"    set " + DS_PREFIX_BASE + "DifButtonNormal=DialogAddButton(" + DS_PREFIX_BASE + "DifDialog,\"|cffffff00\"+GetLocalizedString(\"NORMAL\")+\"|r\",0)" + JASS_DELIM +
+					"    set " + DS_PREFIX_BASE + "DifButttonHard=DialogAddButton(" + DS_PREFIX_BASE + "DifDialog,\"|cffff0000\"+GetLocalizedString(\"HARD\")+\"|r\",0)" + JASS_DELIM +
+					"    call DialogDisplay(Player(" + playerId + ")," + DS_PREFIX_BASE + "DifDialog,true)" + JASS_DELIM +
 					END_FUNCTION + JASS_DELIM +
-					"function InitTrig_XT87CS_Dif_Init takes nothing returns nothing" + JASS_DELIM +
-					"    set gg_trg_XT87CS_Dif_Init=CreateTrigger()" + JASS_DELIM +
-					"    call TriggerRegisterTimerEventSingle(gg_trg_XT87CS_Dif_Init,0.01)" + JASS_DELIM +
-					"    call TriggerAddAction(gg_trg_XT87CS_Dif_Init,function Trig_XT87CS_Dif_Init_Actions)" + JASS_DELIM +
+					"function InitTrig_" + DS_PREFIX_BASE + "_Dif_Init takes nothing returns nothing" + JASS_DELIM +
+					"    set gg_trg_" + DS_PREFIX_BASE + "_Dif_Init=CreateTrigger()" + JASS_DELIM +
+					"    call TriggerRegisterTimerEventSingle(gg_trg_" + DS_PREFIX_BASE + "_Dif_Init,0.01)" + JASS_DELIM +
+					"    call TriggerAddAction(gg_trg_" + DS_PREFIX_BASE + "_Dif_Init,function Trig_" + DS_PREFIX_BASE + "_Dif_Init_Actions)" + JASS_DELIM +
 					END_FUNCTION + JASS_DELIM +
-					"function Trig_XT87CS_Dif_Click_Actions takes nothing returns nothing" + JASS_DELIM +
-					"    if GetClickedButton()==XT87CSDifButtonEasy then" + JASS_DELIM +
+					"function Trig_" + DS_PREFIX_BASE + "_Dif_Click_Actions takes nothing returns nothing" + JASS_DELIM +
+					"    if GetClickedButton()==" + DS_PREFIX_BASE + "DifButtonEasy then" + JASS_DELIM +
 					"        call SetGameDifficulty(MAP_DIFFICULTY_EASY)" + JASS_DELIM +
 					"    else" + JASS_DELIM +
-					"        if GetClickedButton()==XT87CSDifButtonNormal then" + JASS_DELIM +
+					"        if GetClickedButton()==" + DS_PREFIX_BASE + "DifButtonNormal then" + JASS_DELIM +
 					"            call SetGameDifficulty(MAP_DIFFICULTY_NORMAL)" + JASS_DELIM +
 					"        else" + JASS_DELIM +
-					"            if GetClickedButton()==XT87CSDifButttonHard then" + JASS_DELIM +
+					"            if GetClickedButton()==" + DS_PREFIX_BASE + "DifButttonHard then" + JASS_DELIM +
 					"                call SetGameDifficulty(MAP_DIFFICULTY_HARD)" + JASS_DELIM +
 					"            else" + JASS_DELIM +
 					"                call SetGameDifficulty(MAP_DIFFICULTY_INSANE)" + JASS_DELIM +
 					"            endif" + JASS_DELIM +
 					"        endif" + JASS_DELIM +
 					"    endif" + JASS_DELIM +
-					"    call DialogClear(XT87CSDifDialog)" + JASS_DELIM +
-					"    call DialogDestroy(XT87CSDifDialog)" + JASS_DELIM +
+					"    call DialogClear(" + DS_PREFIX_BASE + "DifDialog)" + JASS_DELIM +
+					"    call DialogDestroy(" + DS_PREFIX_BASE + "DifDialog)" + JASS_DELIM +
 					"    call PauseGameOff()" + JASS_DELIM +
 					"    call CinematicFadeBJ(bj_CINEFADETYPE_FADEIN,0.00,\"ReplaceableTextures\\\\CameraMasks\\\\Black_mask.blp\",0,0,0,0)" + JASS_DELIM +
-					"    call StartTimerBJ(XT87CSMapInitialization,false,0.00)");
+					"    call StartTimerBJ(" + DS_PREFIX_BASE + "MapInitialization,false,0.00)");
 			if (!elapsedTimeIndices.isEmpty() || !periodicTimeIndices.isEmpty())
 				sb.append(JASS_DELIM +
 						"    call TriggerSleepAction( 0.01 )");
@@ -162,23 +164,23 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 //						"    " + XT87Utils.ENABLE_TRIGGER + periodicTimeTrigger + ")");
 			sb.append(JASS_DELIM +
 					END_FUNCTION + JASS_DELIM +
-					"function InitTrig_XT87CS_Dif_Click takes nothing returns nothing" + JASS_DELIM +
-					"    set gg_trg_XT87CS_Dif_Click=CreateTrigger()" + JASS_DELIM +
-					"    call TriggerRegisterDialogEventBJ(gg_trg_XT87CS_Dif_Click,XT87CSDifDialog)" + JASS_DELIM +
-					"    call TriggerAddAction(gg_trg_XT87CS_Dif_Click,function Trig_XT87CS_Dif_Click_Actions)" + JASS_DELIM +
+					"function InitTrig_" + DS_PREFIX_BASE + "_Dif_Click takes nothing returns nothing" + JASS_DELIM +
+					"    set gg_trg_" + DS_PREFIX_BASE + "_Dif_Click=CreateTrigger()" + JASS_DELIM +
+					"    call TriggerRegisterDialogEventBJ(gg_trg_" + DS_PREFIX_BASE + "_Dif_Click," + DS_PREFIX_BASE + "DifDialog)" + JASS_DELIM +
+					"    call TriggerAddAction(gg_trg_" + DS_PREFIX_BASE + "_Dif_Click,function Trig_" + DS_PREFIX_BASE + "_Dif_Click_Actions)" + JASS_DELIM +
 					END_FUNCTION);
 			triggersAdded = true;
 		}
 		append(line, sb);
 		if (line.equals("globals")) {
 			sb.append(JASS_DELIM +
-					"dialog XT87CSDifDialog" + JASS_DELIM +
-					"button XT87CSDifButtonEasy" + JASS_DELIM +
-					"button XT87CSDifButtonNormal" + JASS_DELIM +
-					"button XT87CSDifButttonHard" + JASS_DELIM +
-					"timer XT87CSMapInitialization" + JASS_DELIM +
-					"trigger gg_trg_XT87CS_Dif_Init" + JASS_DELIM +
-					"trigger gg_trg_XT87CS_Dif_Click");
+					"dialog " + DS_PREFIX_BASE + "DifDialog" + JASS_DELIM +
+					"button " + DS_PREFIX_BASE + "DifButtonEasy" + JASS_DELIM +
+					"button " + DS_PREFIX_BASE + "DifButtonNormal" + JASS_DELIM +
+					"button " + DS_PREFIX_BASE + "DifButttonHard" + JASS_DELIM +
+					"timer " + DS_PREFIX_BASE + "MapInitialization" + JASS_DELIM +
+					"trigger gg_trg_" + DS_PREFIX_BASE + "_Dif_Init" + JASS_DELIM +
+					"trigger gg_trg_" + DS_PREFIX_BASE + "_Dif_Click");
 			for (int i = 0; i < elapsedTimeIndices.size(); i++)
 				sb.append(JASS_DELIM +
 						"timer " + ELAPSED_TIMER_PREFIX + i);
@@ -189,15 +191,15 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 			insideInitGlobals = true;
 		} else if (line.contains("function InitCustomTriggers takes")) {
 			sb.append(JASS_DELIM +
-					"    call InitTrig_XT87CS_Dif_Init()" + JASS_DELIM +
-					"    call InitTrig_XT87CS_Dif_Click()");
+					"    call InitTrig_" + DS_PREFIX_BASE + "_Dif_Init()" + JASS_DELIM +
+					"    call InitTrig_" + DS_PREFIX_BASE + "_Dif_Click()");
 		} else if (line.contains("function RunInitializationTriggers takes") || line.contains("function main takes")) {
 			insideInitialization = true;
 		} else {
 			for (String trigger : initializationTriggers) {
 				if (line.contains("set " + trigger + "=") || line.contains("set " + trigger + " ")) {
 					sb.append(JASS_DELIM +
-							"    call TriggerRegisterTimerExpireEventBJ(" + trigger + ", XT87CSMapInitialization )");
+							"    call TriggerRegisterTimerExpireEventBJ(" + trigger + ", " + DS_PREFIX_BASE + "MapInitialization )");
 					initializationTriggers.remove(trigger);
 					break;
 				}

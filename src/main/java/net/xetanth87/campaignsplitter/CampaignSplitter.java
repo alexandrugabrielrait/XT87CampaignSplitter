@@ -12,6 +12,7 @@ import net.moonlightflower.wc3libs.bin.app.objMod.W3U;
 import net.moonlightflower.wc3libs.txt.WTS;
 import net.moonlightflower.wc3libs.txt.app.MiscTXT;
 import net.moonlightflower.wc3libs.txt.app.SkinTXT;
+import net.xetanth87.campaignsplitter.util.XT87Utils;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.MPQOpenOption;
 
@@ -26,15 +27,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static net.xetanth87.campaignsplitter.XT87Utils.DOWNLOAD_FOLDER;
-import static net.xetanth87.campaignsplitter.XT87Utils.STRING_PREFIX;
-import static net.xetanth87.campaignsplitter.XT87Utils.buttonText;
-import static net.xetanth87.campaignsplitter.XT87Utils.getWithoutExtension;
-import static net.xetanth87.campaignsplitter.XT87Utils.stringIndexToInt;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.DOWNLOAD_FOLDER;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.STRING_PREFIX;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.buttonText;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.getWithoutExtension;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.stringIndexToInt;
 
 public class CampaignSplitter {
 	public static final String IMPORTS_DIR_NAME = "imports";
@@ -43,7 +45,7 @@ public class CampaignSplitter {
 	public final File campFile;
 	public final String splitPath;
 	public final String tempDirName;
-	public int buttonCount, archonModeAddedSlots, archonModeRealAddedSlots;
+	public int buttonCount, totalMapCount, archonModeAddedSlots, archonModeRealAddedSlots;
 	public XT87Utils.TriOption difficultySelectorOption = XT87Utils.TriOption.SMART;
 	public boolean withDifficultySelector = false, withCampaignPreview = false, withUpkeepRemoval = false,
 			withLegacyAssetsSD = true, withLegacyAssetsHD = true, withNextLevel = true, hasSkins = false, toDownloadFolder = false;
@@ -230,6 +232,12 @@ public class CampaignSplitter {
 		System.out.println(campFile.getAbsolutePath());
 		campaignData = W3F.ofCampaignFile(campFile);
 		buttonCount = campaignData.getMaps().size();
+		List<W3F.ListedMapEntry> orderedMaps = new ArrayList<>();
+		campaignData.getMaps().forEach(x ->
+				campaignData.getListedMaps().stream().filter(y -> y.getMapPath().equals(x.getMapPath())).findFirst().ifPresent(orderedMaps::add));
+		campaignData.getListedMaps().stream().filter(x -> !orderedMaps.contains(x)).forEach(orderedMaps::add);
+		totalMapCount = orderedMaps.size();
+
 		SetValueProgressBar(0);
 		{
 			File splitDir = new File(getSplitPath());
@@ -244,23 +252,29 @@ public class CampaignSplitter {
 			JMpqEditor campEditor = new JMpqEditor(campFile, MPQOpenOption.READ_ONLY);
 			extractCampaignFiles(campEditor);
 			System.out.println("Difficulty selector: " + (withDifficultySelector ? "enabled" : "disabled") + ".");
-			for (int i = 0; i < buttonCount; i++) {
-				W3F.MapEntry mapEntry = campaignData.getMaps().get(i);
-				String title = mapEntry.getChapterTitle();
-				if (title == null || !title.contains(STRING_PREFIX))
-					throw new Exception("Invalid chapter title for map " + mapEntry.getMapPath() + ": \"" + title + "\" (Broken campaign)");
-				int chapterTitleIndex = stringIndexToInt(title);
-				title = mapEntry.getMapTitle();
-				if (title == null || !title.contains(STRING_PREFIX))
-					throw new Exception("Invalid map title for map " + mapEntry.getMapPath() + ": \"" + title + "\" (Broken campaign)");
-				int mapTitleIndex = stringIndexToInt(title);
-				String buttonTitle = buttonText(i, buttonCount) + campStrings.getKeyedEntries().get(chapterTitleIndex) + ": " + campStrings.getKeyedEntries().get(mapTitleIndex);
+			for (int i = 0; i < totalMapCount; i++) {
+				W3F.ListedMapEntry map = orderedMaps.get(i);
+				W3F.MapEntry button = campaignData.getMaps().stream().filter(x -> x.getMapPath().equals(map.getMapPath())).findFirst().orElse(null);
+				boolean hasButton = button != null;
+				String title = hasButton ? button.getChapterTitle() : "Extra";
+				if (hasButton) {
+					if (title == null || !title.contains(STRING_PREFIX))
+						throw new Exception("Invalid chapter title for map " + button.getMapPath() + ": \"" + title + "\" (Broken campaign)");
+					int chapterTitleIndex = stringIndexToInt(title);
+					title = button.getMapTitle();
+					if (title == null || !title.contains(STRING_PREFIX))
+						throw new Exception("Invalid map title for map " + button.getMapPath() + ": \"" + title + "\" (Broken campaign)");
+					int mapTitleIndex = stringIndexToInt(title);
+					String buttonTitle = buttonText(i, buttonCount) + campStrings.getKeyedEntries().get(chapterTitleIndex) + ": " + campStrings.getKeyedEntries().get(mapTitleIndex);
 				campStrings.addEntry(mapTitleIndex, buttonTitle);
-				buttonNameMap.put(mapEntry.getMapPath().toLowerCase(), buttonTitle);
+				buttonNameMap.put(button.getMapPath().toLowerCase(), buttonTitle);
+				}
 			}
-			for (int i = 0; i < buttonCount; i++) {
-				W3F.MapEntry mapEntry = campaignData.getMaps().get(i);
-				String fileName = mapEntry.getMapPath();
+			for (int i = 0; i < totalMapCount; i++) {
+				W3F.ListedMapEntry map = orderedMaps.get(i);
+				W3F.MapEntry button = campaignData.getMaps().stream().filter(x -> x.getMapPath().equals(map.getMapPath())).findFirst().orElse(null);
+				boolean hasButton = button != null;
+				String fileName = map.getMapPath();
 				String mapPath = getSplitPath() + "/" + fileName;
 //			if (i != 0)
 //				campEditor = new JMpqEditor(campFile, MPQOpenOption.READ_ONLY);
@@ -279,19 +293,19 @@ public class CampaignSplitter {
 		// endregion
 		if (archonModeAddedSlots > 0)
 			System.out.println("Number of coop slots to be added: " + archonModeRealAddedSlots + " (" + (archonModeRealAddedSlots + 1) + " total slots).");
-		for (int i = 0; i < buttonCount; i++) {
+		for (int i = 0; i < totalMapCount; i++) {
 			File mapFile = mapFiles.get(i);
 			MapInjector mi = new MapInjector(this, mapFile, i);
 			mi.withDifficultySelector = withDifficultySelector;
 			mi.addedCoopPlayers = archonModeRealAddedSlots;
 			try {
 				mi.addCampaignData();
-				System.out.println(MessageFormat.format(MAP_COUNT_FORMAT, i + 1, buttonCount));
+				System.out.println(MessageFormat.format(MAP_COUNT_FORMAT, i + 1, totalMapCount));
 			} catch (NonReadableChannelException | NonWritableChannelException e) {
 				throw new Exception("Map \"" + mapFile.getName() + "\" is protected and cannot be read/edited.");
 			}
 			if (i == 0) {
-				InitializeProgressBar(STEPS_CAMP_DATA + stepsPerMap * buttonCount);
+				InitializeProgressBar(STEPS_CAMP_DATA + stepsPerMap * totalMapCount);
 				SetValueProgressBar(STEPS_CAMP_DATA + stepsPerMap);
 			}
 		}

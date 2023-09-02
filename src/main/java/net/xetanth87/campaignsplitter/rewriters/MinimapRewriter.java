@@ -1,4 +1,7 @@
-package net.xetanth87.campaignsplitter;
+package net.xetanth87.campaignsplitter.rewriters;
+
+import net.xetanth87.campaignsplitter.MapInjector;
+import net.xetanth87.campaignsplitter.util.XT87Utils;
 
 public class MinimapRewriter extends ScriptRewriter {
 	public final String oldPath;

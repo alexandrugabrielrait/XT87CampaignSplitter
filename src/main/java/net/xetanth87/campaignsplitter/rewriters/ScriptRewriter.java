@@ -1,14 +1,14 @@
-package net.xetanth87.campaignsplitter;
+package net.xetanth87.campaignsplitter.rewriters;
 
 import net.moonlightflower.wc3libs.txt.app.jass.Jass;
+import net.xetanth87.campaignsplitter.MapInjector;
+import net.xetanth87.campaignsplitter.util.XT87Utils;
 
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public abstract class ScriptRewriter {
 	public static final String JASS_DELIM = "\r\n";
@@ -26,7 +26,7 @@ public abstract class ScriptRewriter {
 		this.mi = mi;
 	}
 
-	protected static String DebugOnly(String text) {
+	public static String DebugOnly(String text) {
 		if (IS_DEBUG)
 			return text;
 		return "";
