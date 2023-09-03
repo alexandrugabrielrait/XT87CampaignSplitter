@@ -74,16 +74,16 @@ public class CoopRewriter extends ScriptRewriter {
 	// todo make sure count doesn't count the same variable twice
 	private static final String CACHE_COUNT_KEY = "count";
 
-	private static final String GH_HAS_ABILITY_KEY = "hasAbility";
-	private static final String GH_DIALOG_BUTTON_TEXT_KEY = "dbt";
+	private static final int GH_BOOL_HAS_ABILITY = 0;
 
-	private static final String GH_INT_PREFIX = ARCHON_PREFIX + "GH";
-	private static final String GH_HAS_ABILITY_INT = GH_INT_PREFIX + GH_HAS_ABILITY_KEY;
-	private static final String GH_DIALOG_BUTTON_TEXT_INT = GH_INT_PREFIX + GH_DIALOG_BUTTON_TEXT_KEY;
+	private static final int GH_STRING_DIALOG_BUTTON_TEXT = 0;
+
+	private static final int GH_REAL_PAUSED_HP = 0;
+	private static final int GH_REAL_PAUSED_MP = 1;
 
 	private static List<String> getCommonHashKeys() {
 		return Arrays.asList(CACHE_CAMPAIGN_MKEY, /*CACHE_MKEY_PREFIX,*/ CACHE_CAMPAIGNFILE_KEY, CACHE_INTEGER_KEY, CACHE_REAL_KEY, CACHE_BOOL_KEY,
-				CACHE_STRING_KEY, CACHE_UNIT_KEY, /*CACHE_FLUSH_KEY,*/ CACHE_COUNT_KEY, GH_DIALOG_BUTTON_TEXT_KEY);
+				CACHE_STRING_KEY, CACHE_UNIT_KEY, /*CACHE_FLUSH_KEY,*/ CACHE_COUNT_KEY);
 	}
 
 	private static Map<String, Integer> commonHashes = new HashMap<>() {
@@ -162,7 +162,7 @@ public class CoopRewriter extends ScriptRewriter {
 		return l;
 	}
 
-	public boolean triggersAdded, initGlobalsAdded, insideInitGlobals, insideConfig, insideCustomPlayerSlots;
+	public boolean triggersAdded, mainStartAdded, initGlobalsAdded, insideInitGlobals, insideConfig, insideCustomPlayerSlots;
 	public int endGlobalsState;
 	public W3I info;
 	public W3I.Player mainPlayer;
@@ -191,6 +191,7 @@ public class CoopRewriter extends ScriptRewriter {
 	@Override
 	public void onStartRead(String text, StringBuffer sb) {
 		triggersAdded = false;
+		mainStartAdded = false;
 		initGlobalsAdded = false;
 		insideInitGlobals = false;
 		insideConfig = false;
@@ -459,13 +460,8 @@ public class CoopRewriter extends ScriptRewriter {
 		}
 
 		if ("main".equals(insideFunction)) {
-			if (line.contains(END_FUNCTION)) {
-				append("    " + SETPLAYERCOLORBJ + toMainPlayerFunc() + "," + CONVERTPLAYERCOLOR + mainPlayer.getNum() + "),true)", sb);
-				for (W3I.Player player : secondaryPlayers) {
-					String playerFunc = toPlayerFunc(player.getNum());
-					append(SETPLAYERCOLOR + playerFunc + "," + CONVERTPLAYERCOLOR + player.getNum() + "))" + JASS_DELIM +
-							"call SetPlayerOnScoreScreen(" + playerFunc + ",false)", sb);
-				}
+			if (!mainStartAdded && !line.startsWith("local ") && !line.startsWith("function "))
+			{
 				int index = 0;
 				for (int playerNum : allPlayerNumbers) {
 					append("set " + PLAYER_ID_ARRAY + "[" + index + "]=" + playerNum + JASS_DELIM +
@@ -475,6 +471,15 @@ public class CoopRewriter extends ScriptRewriter {
 				for (String key : getCommonHashKeys())
 					append("set " + getCommonHashFunc(key) + "=StringHash(\"" + key + "\")", sb);
 				append("set bj_pauseAllUnitsFlag=false", sb);
+				mainStartAdded = true;
+			}
+			if (line.contains(END_FUNCTION)) {
+				append("    " + SETPLAYERCOLORBJ + toMainPlayerFunc() + "," + CONVERTPLAYERCOLOR + mainPlayer.getNum() + "),true)", sb);
+				for (W3I.Player player : secondaryPlayers) {
+					String playerFunc = toPlayerFunc(player.getNum());
+					append(SETPLAYERCOLOR + playerFunc + "," + CONVERTPLAYERCOLOR + player.getNum() + "))" + JASS_DELIM +
+							"call SetPlayerOnScoreScreen(" + playerFunc + ",false)", sb);
+				}
 				append("call " + ENFORCE_ARCHON + "()" + JASS_DELIM +
 						"if (GetLocalPlayer()!=" + toMainPlayerFunc() + ") then" + JASS_DELIM +
 						"call SetReservedLocalHeroButtons(0)" + JASS_DELIM +
@@ -708,9 +713,9 @@ public class CoopRewriter extends ScriptRewriter {
 					// endregion
 					// region custom functions
 					append("function " + ARCHON_PREFIX + "WatchSkill takes integer a returns boolean" + JASS_DELIM +
-							"    if not(LoadBoolean(" + GENERAL_HASHTABLE + ",a," + GH_HAS_ABILITY_INT + ")) then" + JASS_DELIM +
+							"    if not LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_HAS_ABILITY + ",a) then" + JASS_DELIM +
 							"        set " + ABILITY_ARRAY + "[" + ABILITY_ARRAY_SIZE + "]=a" + JASS_DELIM +
-							"        call SaveBoolean(" + GENERAL_HASHTABLE + ",a," + GH_HAS_ABILITY_INT + ",true)" + JASS_DELIM +
+							"        call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_HAS_ABILITY + ",a,true)" + JASS_DELIM +
 							"        set " + ABILITY_ARRAY_SIZE + "=" + ABILITY_ARRAY_SIZE + "+1" + JASS_DELIM +
 							"        return true" + JASS_DELIM +
 							"    else" + JASS_DELIM +
@@ -940,12 +945,12 @@ public class CoopRewriter extends ScriptRewriter {
 					// region button add functions
 					append("function " + ARCHON_PREFIX + "DialogAddButton takes dialog d,string s,integer h returns button" + JASS_DELIM +
 							"local button b=DialogAddButton(d,s,h)" + JASS_DELIM +
-							"call SaveStr(" + GENERAL_HASHTABLE + "," + GH_DIALOG_BUTTON_TEXT_INT + ",GetHandleId(b),s)" + JASS_DELIM +
+							"call SaveStr(" + GENERAL_HASHTABLE + "," + GH_STRING_DIALOG_BUTTON_TEXT + ",GetHandleId(b),s)" + JASS_DELIM +
 							"return b" + JASS_DELIM +
 							END_FUNCTION, sb);
 					append("function " + ARCHON_PREFIX + "DialogAddQuitButton takes dialog d,boolean t,string s,integer h returns button" + JASS_DELIM +
 							"local button b=DialogAddQuitButton(d,t,s,h)" + JASS_DELIM +
-							"call SaveStr(" + GENERAL_HASHTABLE + "," + GH_DIALOG_BUTTON_TEXT_INT + ",GetHandleId(b),s)" + JASS_DELIM +
+							"call SaveStr(" + GENERAL_HASHTABLE + "," + GH_STRING_DIALOG_BUTTON_TEXT + ",GetHandleId(b),s)" + JASS_DELIM +
 							"return b" + JASS_DELIM +
 							END_FUNCTION, sb);
 					for (Triple<String, String, String> o : Arrays.asList(
@@ -954,7 +959,7 @@ public class CoopRewriter extends ScriptRewriter {
 					))
 						append("function " + ARCHON_PREFIX + "DialogAddButton" + o.a + "BJ takes dialog d,string s" + o.b + " returns button" + JASS_DELIM +
 								"set bj_lastCreatedButton=DialogAddButton(d,s," + o.c + ")" + JASS_DELIM +
-								"call SaveStr(" + GENERAL_HASHTABLE + "," + GH_DIALOG_BUTTON_TEXT_INT + ",GetHandleId(bj_lastCreatedButton),s)" + JASS_DELIM +
+								"call SaveStr(" + GENERAL_HASHTABLE + "," + GH_STRING_DIALOG_BUTTON_TEXT + ",GetHandleId(bj_lastCreatedButton),s)" + JASS_DELIM +
 								"return bj_lastCreatedButton" + JASS_DELIM +
 								END_FUNCTION, sb);
 					// endregion
@@ -1028,6 +1033,33 @@ public class CoopRewriter extends ScriptRewriter {
 					append("function " + ARCHON_PREFIX + "CinematicModeBJ takes boolean b, force f returns nothing" + JASS_DELIM +
 							"call " + ARCHON_PREFIX + "CinematicModeExBJ(b,f,bj_CINEMODE_INTERFACEFADE)" + JASS_DELIM +
 							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "ForAllUnits takes code c returns nothing" + JASS_DELIM +
+							"local integer i=0" + JASS_DELIM +
+							"local group g=CreateGroup()" + JASS_DELIM +
+							"loop" + JASS_DELIM +
+							"        call GroupEnumUnitsOfPlayer(g,Player(i),null)" + JASS_DELIM +
+							"        call ForGroup(g,c)" + JASS_DELIM +
+							"        call GroupClear(g)" + JASS_DELIM +
+							"        set i=i+1" + JASS_DELIM +
+							"        exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
+							"endloop" + JASS_DELIM +
+							"call DestroyGroup(g)" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "SavePausedUnit takes nothing returns nothing" + JASS_DELIM +
+							"local unit u=GetEnumUnit()" + JASS_DELIM +
+							"local integer h=GetHandleId(u)" + JASS_DELIM +
+							"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_PAUSED_HP + ",h,GetUnitState(u,UNIT_STATE_LIFE))" + JASS_DELIM +
+							"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_PAUSED_MP + ",h,GetUnitState(u,UNIT_STATE_MANA))" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "RefreshPausedUnit takes nothing returns nothing" + JASS_DELIM +
+							"local real r" + JASS_DELIM +
+							"local unit u=GetEnumUnit()" + JASS_DELIM +
+							"local integer h=GetHandleId(u)" + JASS_DELIM +
+							"if HaveSavedReal(" + GENERAL_HASHTABLE + "," + GH_REAL_PAUSED_HP + ",h) then" + JASS_DELIM +
+							"call SetUnitState(u,UNIT_STATE_LIFE,LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_PAUSED_HP + ",h))" + JASS_DELIM +
+							"call SetUnitState(u,UNIT_STATE_MANA,LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_PAUSED_MP + ",h))" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							END_FUNCTION, sb);
 					append("function " + ARCHON_PREFIX + "PauseStartedTimer takes boolean b, timer t returns nothing" + JASS_DELIM +
 							"if TimerGetRemaining(t)>0 then" + JASS_DELIM +
 							"call PauseTimerBJ(b,t)" + JASS_DELIM +
@@ -1036,6 +1068,8 @@ public class CoopRewriter extends ScriptRewriter {
 					append("function " + ARCHON_PREFIX + "PauseGame takes boolean b returns nothing" + JASS_DELIM +
 							"if " + ARCHON_PREFIX + "GIP!=b then" + JASS_DELIM +
 							"if b then" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "SavePausedUnit)" + JASS_DELIM +
+							"call EnableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh)" + JASS_DELIM +
 							"set " + ARCHON_PREFIX + "UPA=bj_pauseAllUnitsFlag" + JASS_DELIM +
 							"set " + ARCHON_PREFIX + "RGS=GetGameSpeed()" + JASS_DELIM +
 							"call SuspendTimeOfDay(true)" + JASS_DELIM +
@@ -1043,6 +1077,8 @@ public class CoopRewriter extends ScriptRewriter {
 							"else" + JASS_DELIM +
 							"call SuspendTimeOfDay(" + ARCHON_PREFIX + "TDS)" + JASS_DELIM +
 							"call SetGameSpeed(" + ARCHON_PREFIX + "RGS)" + JASS_DELIM +
+							"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh)" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "RefreshPausedUnit)" + JASS_DELIM +
 							END_IF + JASS_DELIM +
 							"if not " + ARCHON_PREFIX + "UPA and b!=bj_pauseAllUnitsFlag then" + JASS_DELIM +
 							"call PauseAllUnitsBJ(b)" + JASS_DELIM +
@@ -1779,6 +1815,17 @@ public class CoopRewriter extends ScriptRewriter {
 						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu,function Trig_" + ARCHON_PREFIX + "ReplaceMenu_Actions)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
+				// region refresh paused units
+				append("function Trig_" + ARCHON_PREFIX + "PeriodicRefresh_Actions takes nothing returns nothing" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "RefreshPausedUnit)" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function InitTrig_" + ARCHON_PREFIX + "PeriodicRefresh takes nothing returns nothing" + JASS_DELIM +
+						"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh=CreateTrigger()" + JASS_DELIM +
+						"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh)" + JASS_DELIM +
+						"call TriggerRegisterTimerEventPeriodic(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh,0.03)" + JASS_DELIM +
+						"call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh,function Trig_" + ARCHON_PREFIX + "PeriodicRefresh_Actions)" + JASS_DELIM +
+						END_FUNCTION, sb);
+				// endregion
 				// region pause test
 				append("function Trig_" + ARCHON_PREFIX + "PauseTest_Actions takes nothing returns nothing" + JASS_DELIM +
 						"call " + ARCHON_PREFIX + "PauseGame(not bj_pauseAllUnitsFlag)" + JASS_DELIM +
@@ -1897,7 +1944,7 @@ public class CoopRewriter extends ScriptRewriter {
 				// region dialog triggers
 				append("function Trig_" + ARCHON_PREFIX + "DialogSync_Actions takes nothing returns nothing" + JASS_DELIM +
 								"local player p=GetTriggerPlayer()" + JASS_DELIM +
-								"local string s=LoadStr(" + GENERAL_HASHTABLE + "," + GH_DIALOG_BUTTON_TEXT_INT + ",GetHandleId(GetClickedButton()))"
+								"local string s=LoadStr(" + GENERAL_HASHTABLE + "," + GH_STRING_DIALOG_BUTTON_TEXT + ",GetHandleId(GetClickedButton()))"
 						, sb);
 				for (int playerNumber : allPlayerNumbers)
 					append("call DialogDisplay(" + toPlayerFunc(playerNumber) + ",GetClickedDialog(),false)", sb);
@@ -1943,6 +1990,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync" + JASS_DELIM +
 							"boolean " + ARCHON_PREFIX + "AlliesMenuAvail=false" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu" + JASS_DELIM +
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest" + JASS_DELIM +
 							"boolean " + ARCHON_PREFIX + "UPA=false" + JASS_DELIM + // units paused already
 							"boolean " + ARCHON_PREFIX + "GIP=false" + JASS_DELIM + // game is paused
@@ -1956,8 +2004,6 @@ public class CoopRewriter extends ScriptRewriter {
 				append("hashtable " + LAST_CREATED_COOP_CACHE + JASS_DELIM +
 						"integer array " + ABILITY_ARRAY + JASS_DELIM +
 						"integer " + ABILITY_ARRAY_SIZE + "=0" + JASS_DELIM +
-						"integer " + GH_HAS_ABILITY_INT + "=StringHash(\"" + GH_HAS_ABILITY_KEY + "\")" + JASS_DELIM +
-						"integer " + GH_DIALOG_BUTTON_TEXT_INT + "=StringHash(\"" + GH_DIALOG_BUTTON_TEXT_KEY + "\")" + JASS_DELIM +
 						"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill" + JASS_DELIM +
 						"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData" + JASS_DELIM +
 						"integer " + FILE_LIBRARY_PREFIX + "CT=0" + JASS_DELIM + // Counter
@@ -1976,7 +2022,7 @@ public class CoopRewriter extends ScriptRewriter {
 		} else if (line.contains("function InitCustomTriggers takes")) {
 			for (String resourceName : getAllResourceNames())
 				append("    call InitTrig_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
-			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync"/*, "ReplaceMenu"*/, "PauseTest"))//, "Deselect", "DeselectOnDeath"))
+			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync"/*, "ReplaceMenu"*/, "PeriodicRefresh", "PauseTest"))//, "Deselect", "DeselectOnDeath"))
 				append("    call InitTrig_" + ARCHON_PREFIX + triggerName + "()", sb);
 			if (WITH_CUSTOM_GAMECACHE) {
 				append("    call InitTrig_" + ARCHON_PREFIX + "SyncData()" + JASS_DELIM +
