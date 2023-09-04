@@ -75,6 +75,8 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final String CACHE_COUNT_KEY = "count";
 
 	private static final int GH_BOOL_HAS_ABILITY = 0;
+	private static final int GH_BOOL_IS_PAUSED = 1;
+	private static final int GH_BOOL_IS_PAUSED_PLAYER = 2;
 
 	private static final int GH_STRING_DIALOG_BUTTON_TEXT = 0;
 
@@ -328,7 +330,9 @@ public class CoopRewriter extends ScriptRewriter {
 				"PauseGameOn",
 				"PauseGameOff",
 				"SuspendTimeOfDay",
-				"UseTimeOfDayBJ"
+				"UseTimeOfDayBJ",
+				"PauseCompAI",
+				"PauseAllUnitsBJ"
 		))
 			for (String prefix : Arrays.asList("(", " ", ",", "="))
 				for (String suffix : Arrays.asList("(", " ")) {
@@ -460,8 +464,7 @@ public class CoopRewriter extends ScriptRewriter {
 		}
 
 		if ("main".equals(insideFunction)) {
-			if (!mainStartAdded && !line.startsWith("local ") && !line.startsWith("function "))
-			{
+			if (!mainStartAdded && !line.startsWith("local ") && !line.startsWith("function ")) {
 				int index = 0;
 				for (int playerNum : allPlayerNumbers) {
 					append("set " + PLAYER_ID_ARRAY + "[" + index + "]=" + playerNum + JASS_DELIM +
@@ -470,7 +473,7 @@ public class CoopRewriter extends ScriptRewriter {
 				}
 				for (String key : getCommonHashKeys())
 					append("set " + getCommonHashFunc(key) + "=StringHash(\"" + key + "\")", sb);
-				append("set bj_pauseAllUnitsFlag=false", sb);
+				//append("set bj_pauseAllUnitsFlag=false", sb);
 				mainStartAdded = true;
 			}
 			if (line.contains(END_FUNCTION)) {
@@ -1045,13 +1048,17 @@ public class CoopRewriter extends ScriptRewriter {
 							"endloop" + JASS_DELIM +
 							"call DestroyGroup(g)" + JASS_DELIM +
 							END_FUNCTION, sb);
-					append("function " + ARCHON_PREFIX + "SavePausedUnit takes nothing returns nothing" + JASS_DELIM +
-							"local unit u=GetEnumUnit()" + JASS_DELIM +
+					append("function " + ARCHON_PREFIX + "SavePausedUnit takes unit u returns nothing" + JASS_DELIM +
 							"local integer h=GetHandleId(u)" + JASS_DELIM +
 							"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_PAUSED_HP + ",h,GetUnitState(u,UNIT_STATE_LIFE))" + JASS_DELIM +
 							"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_PAUSED_MP + ",h,GetUnitState(u,UNIT_STATE_MANA))" + JASS_DELIM +
+							"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_IS_PAUSED + ",h,IsUnitPaused(u))" + JASS_DELIM +
+							"call PauseUnit(u,true)" + JASS_DELIM +
 							END_FUNCTION, sb);
-					append("function " + ARCHON_PREFIX + "RefreshPausedUnit takes nothing returns nothing" + JASS_DELIM +
+					append("function " + ARCHON_PREFIX + "EnumSavePausedUnit takes nothing returns nothing" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "SavePausedUnit(GetEnumUnit())" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "EnumRefreshPausedUnit takes nothing returns nothing" + JASS_DELIM +
 							"local real r" + JASS_DELIM +
 							"local unit u=GetEnumUnit()" + JASS_DELIM +
 							"local integer h=GetHandleId(u)" + JASS_DELIM +
@@ -1060,17 +1067,28 @@ public class CoopRewriter extends ScriptRewriter {
 							"call SetUnitState(u,UNIT_STATE_MANA,LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_PAUSED_MP + ",h))" + JASS_DELIM +
 							END_IF + JASS_DELIM +
 							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "EnumUnpauseUnit takes nothing returns nothing" + JASS_DELIM +
+							"local real r" + JASS_DELIM +
+							"local unit u=GetEnumUnit()" + JASS_DELIM +
+							"local integer h=GetHandleId(u)" + JASS_DELIM +
+							"if HaveSavedBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_IS_PAUSED + ",h) then" + JASS_DELIM +
+							"call PauseUnit(u,LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_IS_PAUSED + ",h))" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "EnumRefreshPausedUnit()" + JASS_DELIM +
+							END_FUNCTION, sb);
 					append("function " + ARCHON_PREFIX + "PauseStartedTimer takes boolean b, timer t returns nothing" + JASS_DELIM +
 							"if TimerGetRemaining(t)>0 then" + JASS_DELIM +
 							"call PauseTimerBJ(b,t)" + JASS_DELIM +
 							END_IF + JASS_DELIM +
 							END_FUNCTION, sb);
 					append("function " + ARCHON_PREFIX + "PauseGame takes boolean b returns nothing" + JASS_DELIM +
+							"local integer i=0" + JASS_DELIM +
+							"local player p" + JASS_DELIM +
 							"if " + ARCHON_PREFIX + "GIP!=b then" + JASS_DELIM +
 							"if b then" + JASS_DELIM +
-							"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "SavePausedUnit)" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "EnumSavePausedUnit)" + JASS_DELIM +
 							"call EnableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh)" + JASS_DELIM +
-							"set " + ARCHON_PREFIX + "UPA=bj_pauseAllUnitsFlag" + JASS_DELIM +
+							"call EnableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU)" + JASS_DELIM +
 							"set " + ARCHON_PREFIX + "RGS=GetGameSpeed()" + JASS_DELIM +
 							"call SuspendTimeOfDay(true)" + JASS_DELIM +
 							"call SetGameSpeed(MAP_SPEED_SLOWEST)" + JASS_DELIM +
@@ -1078,11 +1096,21 @@ public class CoopRewriter extends ScriptRewriter {
 							"call SuspendTimeOfDay(" + ARCHON_PREFIX + "TDS)" + JASS_DELIM +
 							"call SetGameSpeed(" + ARCHON_PREFIX + "RGS)" + JASS_DELIM +
 							"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh)" + JASS_DELIM +
-							"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "RefreshPausedUnit)" + JASS_DELIM +
+							"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU)" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "EnumUnpauseUnit)" + JASS_DELIM +
 							END_IF + JASS_DELIM +
-							"if not " + ARCHON_PREFIX + "UPA and b!=bj_pauseAllUnitsFlag then" + JASS_DELIM +
-							"call PauseAllUnitsBJ(b)" + JASS_DELIM +
-							END_IF, sb);
+							"loop" + JASS_DELIM +
+							"set p=Player(i)" + JASS_DELIM +
+							"if GetPlayerController(p)==MAP_CONTROL_COMPUTER then" + JASS_DELIM +
+							"if b then" + JASS_DELIM +
+							"call PauseCompAI(p,true)" + JASS_DELIM +
+							"else" + JASS_DELIM +
+							"call PauseCompAI(p,LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_IS_PAUSED_PLAYER + ",i))" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							"set i=i+1" + JASS_DELIM +
+							"exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
+							"endloop", sb);
 					for (String timerName : timerNames)
 						append("call " + ARCHON_PREFIX + "PauseStartedTimer(b," + timerName + ")", sb);
 					append("set " + ARCHON_PREFIX + "GIP=b" + JASS_DELIM +
@@ -1100,6 +1128,21 @@ public class CoopRewriter extends ScriptRewriter {
 							END_FUNCTION, sb);
 					append("function " + ARCHON_PREFIX + "UseTimeOfDayBJ takes boolean b returns nothing" + JASS_DELIM +
 							"call " + ARCHON_PREFIX + "SuspendTimeOfDay(not b)" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "PauseCompAI takes player p, boolean b returns nothing" + JASS_DELIM +
+							"call PauseCompAI(p,b)" + JASS_DELIM +
+							"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_IS_PAUSED + ",GetPlayerId(p),b)" + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "PauseAllUnitsBJ takes boolean b returns nothing" + JASS_DELIM +
+							"local integer i=0" + JASS_DELIM +
+							"call PauseAllUnitsBJ(b)" + JASS_DELIM +
+							"loop" + JASS_DELIM +
+							"if GetPlayerController(Player(i))==MAP_CONTROL_COMPUTER then" + JASS_DELIM +
+							"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_IS_PAUSED + ",i,b)" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							"set i=i+1" + JASS_DELIM +
+							"exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
+							"endloop" + JASS_DELIM +
 							END_FUNCTION, sb);
 					// endregion
 					// region GetFlushIndex function
@@ -1817,7 +1860,7 @@ public class CoopRewriter extends ScriptRewriter {
 				// endregion
 				// region refresh paused units
 				append("function Trig_" + ARCHON_PREFIX + "PeriodicRefresh_Actions takes nothing returns nothing" + JASS_DELIM +
-						"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "RefreshPausedUnit)" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "EnumRefreshPausedUnit)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function InitTrig_" + ARCHON_PREFIX + "PeriodicRefresh takes nothing returns nothing" + JASS_DELIM +
 						"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh=CreateTrigger()" + JASS_DELIM +
@@ -1826,9 +1869,20 @@ public class CoopRewriter extends ScriptRewriter {
 						"call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh,function Trig_" + ARCHON_PREFIX + "PeriodicRefresh_Actions)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
+				// region pause spawned units
+				append("function Trig_" + ARCHON_PREFIX + "PSU_Actions takes nothing returns nothing" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "SavePausedUnit(GetEnteringUnit())" + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function InitTrig_" + ARCHON_PREFIX + "PSU takes nothing returns nothing" + JASS_DELIM +
+						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU=CreateTrigger()" + JASS_DELIM +
+						"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU)" + JASS_DELIM +
+						"    call TriggerRegisterEnterRectSimple(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU,GetPlayableMapRect())" + JASS_DELIM +
+						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU,function Trig_" + ARCHON_PREFIX + "PSU_Actions)" + JASS_DELIM +
+						END_FUNCTION, sb);
+				// endregion
 				// region pause test
 				append("function Trig_" + ARCHON_PREFIX + "PauseTest_Actions takes nothing returns nothing" + JASS_DELIM +
-						"call " + ARCHON_PREFIX + "PauseGame(not bj_pauseAllUnitsFlag)" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "PauseGame(not " + ARCHON_PREFIX + "GIP)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function InitTrig_" + ARCHON_PREFIX + "PauseTest takes nothing returns nothing" + JASS_DELIM +
 						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest=CreateTrigger()" + JASS_DELIM +
@@ -1991,8 +2045,9 @@ public class CoopRewriter extends ScriptRewriter {
 							"boolean " + ARCHON_PREFIX + "AlliesMenuAvail=false" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh" + JASS_DELIM +
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU" + JASS_DELIM + // pause spawned unit
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest" + JASS_DELIM +
-							"boolean " + ARCHON_PREFIX + "UPA=false" + JASS_DELIM + // units paused already
+							//"boolean " + ARCHON_PREFIX + "UPA=false" + JASS_DELIM + // units paused already
 							"boolean " + ARCHON_PREFIX + "GIP=false" + JASS_DELIM + // game is paused
 							"boolean " + ARCHON_PREFIX + "TDS=false" + JASS_DELIM + // time of day suspended
 							"gamespeed " + ARCHON_PREFIX + "RGS=MAP_SPEED_NORMAL" // real game speed
@@ -2022,7 +2077,7 @@ public class CoopRewriter extends ScriptRewriter {
 		} else if (line.contains("function InitCustomTriggers takes")) {
 			for (String resourceName : getAllResourceNames())
 				append("    call InitTrig_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
-			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync"/*, "ReplaceMenu"*/, "PeriodicRefresh", "PauseTest"))//, "Deselect", "DeselectOnDeath"))
+			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync"/*, "ReplaceMenu"*/, "PeriodicRefresh", "PSU", "PauseTest"))//, "Deselect", "DeselectOnDeath"))
 				append("    call InitTrig_" + ARCHON_PREFIX + triggerName + "()", sb);
 			if (WITH_CUSTOM_GAMECACHE) {
 				append("    call InitTrig_" + ARCHON_PREFIX + "SyncData()" + JASS_DELIM +
