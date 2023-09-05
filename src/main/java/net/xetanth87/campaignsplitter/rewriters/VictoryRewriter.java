@@ -4,7 +4,10 @@ import net.xetanth87.campaignsplitter.MapInjector;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
+
+import static net.xetanth87.campaignsplitter.util.XT87Utils.STRING_PREFIX;
 
 public class VictoryRewriter extends ScriptRewriter {
 	public int campaignKeyOffset;
@@ -31,7 +34,7 @@ public class VictoryRewriter extends ScriptRewriter {
 				if (line.equals(END_FUNCTION)) {
 					insideInitGlobals = false;
 					sb.append(JASS_DELIM +
-							"    set udg_XT87CSNextLevel=\"\"");
+							"    set XT87VN=\"\"");
 				}
 			}
 		if (line.contains(VICTORY_CALL)) {
@@ -40,10 +43,9 @@ public class VictoryRewriter extends ScriptRewriter {
 			//append(//VICTORY_CALL + words[0] + ", true," + words[2] +  ")"
 			//		VICTORY_CALL + words.get(0) + ", true,true)", sb);
 			if (addNextLevelMessage)
-				append(VICTORY_CALL + words.get(0) + ", true,true)" + JASS_DELIM +
-						"    if udg_XT87CSNextLevel!=\"\" then" + JASS_DELIM +
-						"        call DisplayTimedTextToPlayer(" + words.get(0) + ",0,0,0,GetLocalizedString(\"CONTINUE_PLAYING\")+\":\\n|cffffcc00\"+udg_XT87CSNextLevel+\"|r\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\")" + JASS_DELIM +
-						"    else" + JASS_DELIM +
+				append(VICTORY_CALL + words.get(0) + ",true,true)" + JASS_DELIM +
+						"    if XT87VN!=\"\" then" + JASS_DELIM +
+						"        call DisplayTimedTextToPlayer(" + words.get(0) + ",0,0,0,GetLocalizedString(\"CONTINUE_PLAYING\")+\":\\n|cffffcc00\"+XT87VN+\"|r\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\")" + JASS_DELIM +
 						"    endif", sb);
 			else
 				// force scorescreens
@@ -54,13 +56,13 @@ public class VictoryRewriter extends ScriptRewriter {
 		if (addNextLevelMessage)
 			if (line.equals("globals")) {
 				sb.append(JASS_DELIM +
-						"string udg_XT87CSNextLevel");
+						"string XT87VN"); // Victory Next level path
 			} else if (line.contains("function InitGlobals takes")) {
 				insideInitGlobals = true;
 			} else if (line.contains(SET_LEVEL_CALL)) {
-				String mapPath = line.substring(line.indexOf("\"") + 1, line.lastIndexOf("\"")).toLowerCase();
+				String mapPath = line.substring(line.indexOf("\"") + 1, line.lastIndexOf("\"")).toLowerCase(Locale.ROOT);
 				sb.append(JASS_DELIM +
-						"    set udg_XT87CSNextLevel=\"" + mi.cs.buttonNameMap.get(mapPath) + "\"");
+						"    set XT87VN=GetLocalizedString(\"" + STRING_PREFIX + (campaignKeyOffset + mi.cs.chapterNameKeysMap.get(mapPath)) + "\")");
 			}
 	}
 }

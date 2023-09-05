@@ -6,7 +6,6 @@ import net.moonlightflower.wc3libs.bin.Wc3BinInputStream;
 import net.moonlightflower.wc3libs.bin.Wc3BinOutputStream;
 import net.moonlightflower.wc3libs.bin.app.IMP;
 import net.moonlightflower.wc3libs.bin.app.MMP;
-import net.moonlightflower.wc3libs.bin.app.W3F;
 import net.moonlightflower.wc3libs.bin.app.W3I;
 import net.moonlightflower.wc3libs.bin.app.objMod.W3A;
 import net.moonlightflower.wc3libs.bin.app.objMod.W3B;
@@ -16,7 +15,6 @@ import net.moonlightflower.wc3libs.bin.app.objMod.W3Q;
 import net.moonlightflower.wc3libs.bin.app.objMod.W3T;
 import net.moonlightflower.wc3libs.bin.app.objMod.W3U;
 import net.moonlightflower.wc3libs.dataTypes.app.Controller;
-import net.moonlightflower.wc3libs.misc.FieldId;
 import net.moonlightflower.wc3libs.txt.TXT;
 import net.moonlightflower.wc3libs.txt.TXTSectionId;
 import net.moonlightflower.wc3libs.txt.WTS;
@@ -61,7 +59,7 @@ import static net.xetanth87.campaignsplitter.util.XT87Utils.stringIndexToInt;
 public class MapInjector {
 	public CampaignSplitter cs;
 	public final File mapFile;
-	public final int buttonIndex;
+	public final int mapIndex;
 	public boolean withDifficultySelector = false;
 	public int addedCoopPlayers = 0;
 	public JMpqEditor mapEditor;
@@ -70,14 +68,14 @@ public class MapInjector {
 	public String scriptPath;
 	public boolean isLua;
 
-	public MapInjector(CampaignSplitter cs, File mapFile, int buttonIndex) throws IOException {
+	public MapInjector(CampaignSplitter cs, File mapFile, int mapIndex) throws IOException {
 		if (!mapFile.getName().endsWith(".w3m") && !mapFile.getName().endsWith(".w3x"))
 			throw new IllegalArgumentException("Argument must be a map file!");
 		this.mapFile = mapFile;
 		if (!mapFile.exists())
 			throw new FileNotFoundException("Map file not found!");
 		this.cs = cs;
-		this.buttonIndex = buttonIndex;
+		this.mapIndex = mapIndex;
 	}
 
 	public void insertDataFile(Object data, String fileName) throws IOException {
@@ -266,12 +264,11 @@ public class MapInjector {
 					strings.addEntry(offsets.campaignKeyOffset + i, cs.campStrings.getEntry(i));
 			}
 
-			if (buttonIndex >= 0) {
+			if (mapIndex >= 0) {
 				Map<String, String> mapStrings = new HashMap<>();
-				W3F.MapEntry mapEntry = cs.campaignData.getMaps().get(buttonIndex);
 				info.write(tempFile);
 
-				int buttonStringIndex = stringIndexToInt(mapEntry.getMapTitle()) + offsets.campaignKeyOffset;
+				int buttonStringIndex = cs.chapterNameKeysList.get(mapIndex) + offsets.campaignKeyOffset;
 				mapStrings.put(W3I.ofMapFile(mapFile).getMapName(), STRING_PREFIX + buttonStringIndex);
 
 				int campaignAuthorIndex = stringIndexToInt(cs.campaignData.getCampaignAuthor()) + offsets.campaignKeyOffset;

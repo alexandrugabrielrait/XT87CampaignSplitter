@@ -2,6 +2,7 @@ package net.xetanth87.campaignsplitter;
 
 import net.moonlightflower.wc3libs.bin.app.IMP;
 import net.moonlightflower.wc3libs.bin.app.W3F;
+import net.moonlightflower.wc3libs.bin.app.W3I;
 import net.moonlightflower.wc3libs.bin.app.objMod.W3A;
 import net.moonlightflower.wc3libs.bin.app.objMod.W3B;
 import net.moonlightflower.wc3libs.bin.app.objMod.W3D;
@@ -26,15 +27,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
+import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static net.xetanth87.campaignsplitter.util.XT87Utils.DOWNLOAD_FOLDER;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.STRING_PREFIX;
-import static net.xetanth87.campaignsplitter.util.XT87Utils.buttonText;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.mapTitlePrefix;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.getWithoutExtension;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.stringIndexToInt;
 
@@ -52,7 +54,8 @@ public class CampaignSplitter {
 	public W3F campaignData;
 	protected boolean initializedProgressBar = false;
 	public WTS campStrings = null;
-	public Map<String, String> buttonNameMap = new HashMap<>();
+	public List<Integer> chapterNameKeysList = new ArrayList<>();
+	public Map<String, Integer> chapterNameKeysMap = new HashMap<>();
 	private int stepsPerMap = 0;
 
 	public static String getVersion() {
@@ -256,24 +259,6 @@ public class CampaignSplitter {
 				W3F.ListedMapEntry map = orderedMaps.get(i);
 				W3F.MapEntry button = campaignData.getMaps().stream().filter(x -> x.getMapPath().equals(map.getMapPath())).findFirst().orElse(null);
 				boolean hasButton = button != null;
-				String title = hasButton ? button.getChapterTitle() : "Extra";
-				if (hasButton) {
-					if (title == null || !title.contains(STRING_PREFIX))
-						throw new Exception("Invalid chapter title for map " + button.getMapPath() + ": \"" + title + "\" (Broken campaign)");
-					int chapterTitleIndex = stringIndexToInt(title);
-					title = button.getMapTitle();
-					if (title == null || !title.contains(STRING_PREFIX))
-						throw new Exception("Invalid map title for map " + button.getMapPath() + ": \"" + title + "\" (Broken campaign)");
-					int mapTitleIndex = stringIndexToInt(title);
-					String buttonTitle = buttonText(i, buttonCount) + campStrings.getKeyedEntries().get(chapterTitleIndex) + ": " + campStrings.getKeyedEntries().get(mapTitleIndex);
-				campStrings.addEntry(mapTitleIndex, buttonTitle);
-				buttonNameMap.put(button.getMapPath().toLowerCase(), buttonTitle);
-				}
-			}
-			for (int i = 0; i < totalMapCount; i++) {
-				W3F.ListedMapEntry map = orderedMaps.get(i);
-				W3F.MapEntry button = campaignData.getMaps().stream().filter(x -> x.getMapPath().equals(map.getMapPath())).findFirst().orElse(null);
-				boolean hasButton = button != null;
 				String fileName = map.getMapPath();
 				String mapPath = getSplitPath() + "/" + fileName;
 //			if (i != 0)
@@ -285,8 +270,50 @@ public class CampaignSplitter {
 				campEditor.extractFile(fileName, mapFile);
 				mapFiles.add(mapFile);
 				System.out.println("Extracted map \"" + mapFile.getName() + "\".");
-				Set<Integer> usedPlayerNumbers = XT87Utils.getUsedPlayerNumbers(new MapInjector(this, mapFile, i));
-				archonModeRealAddedSlots = Math.min(archonModeRealAddedSlots, XT87Utils.MAX_PLAYER_COUNT - usedPlayerNumbers.size());
+				if (archonModeAddedSlots > 0) {
+					Set<Integer> usedPlayerNumbers = XT87Utils.getUsedPlayerNumbers(new MapInjector(this, mapFile, i));
+					archonModeRealAddedSlots = Math.min(archonModeRealAddedSlots, XT87Utils.MAX_PLAYER_COUNT - usedPlayerNumbers.size());
+				}
+				int mapTitleIndex;
+				String fullTitle;
+				W3I mapInfo = null;
+				WTS mapStrings = null;
+				if (!hasButton) {
+					mapInfo = W3I.ofMapFile(mapFile);
+					mapStrings = WTS.ofMapFile(mapFile);
+				}
+				String chapterTitle = null;
+				String mapTitle;
+				String titleKey = hasButton ? button.getChapterTitle() : mapInfo.getLoadingScreen().getTitle();
+				if (titleKey == null || !titleKey.contains(STRING_PREFIX)) {
+					if (hasButton)
+						throw new Exception("Invalid chapter title for map " + map.getMapPath() + ": \"" + titleKey + "\" (Broken campaign)");
+				} else {
+					int index = stringIndexToInt(titleKey);
+					chapterTitle = hasButton ? campStrings.getKeyedEntries().get(index) : mapStrings.getEntry(index);
+				}
+
+				if (hasButton)
+					titleKey = button.getMapTitle();
+				else {
+					titleKey = mapInfo.getLoadingScreen().getSubtitle();
+					if (titleKey == null || !titleKey.contains(STRING_PREFIX))
+						titleKey = mapInfo.getMapName();
+				}
+				if (titleKey == null || !titleKey.contains(STRING_PREFIX))
+					throw new Exception("Invalid map title for map " + map.getMapPath() + ": \"" + titleKey + "\" (Broken campaign)");
+				else {
+					int index = stringIndexToInt(titleKey);
+					mapTitle = hasButton ? campStrings.getKeyedEntries().get(index) : mapStrings.getEntry(index);
+					mapTitleIndex = hasButton ? index : campStrings.getKeyedEntries().keySet().stream()
+							.reduce(Integer.MIN_VALUE, BinaryOperator.maxBy(Integer::compareTo)) + 1;
+				}
+
+				chapterTitle = chapterTitle == null ? "" : chapterTitle + ": ";
+				fullTitle = mapTitlePrefix(i, totalMapCount) + (hasButton ? "." : "?") + " " + chapterTitle + mapTitle;
+				campStrings.addEntry(mapTitleIndex, fullTitle);
+				chapterNameKeysList.add(mapTitleIndex);
+				chapterNameKeysMap.put(map.getMapPath().toLowerCase(Locale.ROOT), mapTitleIndex);
 			}
 			campEditor.close();
 		}

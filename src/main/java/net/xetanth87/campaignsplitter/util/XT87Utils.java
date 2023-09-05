@@ -199,8 +199,8 @@ public class XT87Utils {
 		return Integer.parseInt(s.replaceFirst(STRING_PREFIX, ""));
 	}
 
-	public static String buttonText(int buttonIndex, int buttonCount) {
-		return alphabetNumber(buttonIndex, ((buttonCount - 1) / 26) + 1) + ". ";
+	public static String mapTitlePrefix(int buttonIndex, int buttonCount) {
+		return alphabetNumber(buttonIndex, ((buttonCount - 1) / 26) + 1);
 	}
 
 	public static String getWithoutExtension(String path) {
