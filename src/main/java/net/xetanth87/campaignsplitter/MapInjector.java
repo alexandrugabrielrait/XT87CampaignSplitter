@@ -57,6 +57,8 @@ import static net.xetanth87.campaignsplitter.util.XT87Utils.offsetCampaignDataSt
 import static net.xetanth87.campaignsplitter.util.XT87Utils.stringIndexToInt;
 
 public class MapInjector {
+	private static final int MIN_EDITOR_VERSION = 6072;
+
 	public CampaignSplitter cs;
 	public final File mapFile;
 	public final int mapIndex;
@@ -466,6 +468,9 @@ public class MapInjector {
 
 		List<W3I.Player> secondaryPlayers = null;
 		if (addedCoopPlayers > 0) {
+			// to enable 24 players in the lobby
+			if (info.getEditorVersion() < MIN_EDITOR_VERSION)
+				info.setEditorVersion(MIN_EDITOR_VERSION);
 			W3I.Player finalMainPlayer = mainPlayer;
 			W3I.Force force = info.getForces().stream().filter(f -> f.getPlayerNums().contains(finalMainPlayer.getNum())).findFirst().get();
 			List<Integer> unusedPlayerNumbers = new ArrayList<>();
@@ -576,9 +581,8 @@ public class MapInjector {
 				cs.IncrementValueProgressBar(1);
 			}
 
-			if (cs.withCampaignPreview) {
+			if (cs.withCampaignPreview)
 				changePreview();
-			}
 
 			if (cs.withNextLevel)
 				System.out.println("Adding next level message to map \"" + mapFile.getName() + "\".");
