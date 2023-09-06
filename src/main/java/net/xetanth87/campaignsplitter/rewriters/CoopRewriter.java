@@ -51,6 +51,8 @@ public class CoopRewriter extends ScriptRewriter {
 	// coop cache
 	public static final boolean WITH_CUSTOM_GAMECACHE = true;
 	public static final boolean WITH_FULL_ENCODING = false;
+	public static final boolean COMPARE_CHECKSUMS = true;
+
 	public static final String CACHE_CACHE_PREFIX = "c";
 	public static final String CACHE_MISSION_PREFIX = "m";
 	public static final String CACHE_INTEGER_PREFIX = "i";
@@ -121,7 +123,6 @@ public class CoopRewriter extends ScriptRewriter {
 	public static final String CACHE_HEALTH_MAX_SUFFIX = "hp";
 	public static final String CACHE_MANA_MAX_SUFFIX = "mp";
 	public static final String CACHE_ATTACK_DAMAGE_BASE_SUFFIX = "dB";
-	public static final String CACHE_ATTACK_RATE_SUFFIX = "dR";
 	public static final String CACHE_ARMOR_SUFFIX = "ar";
 
 	public static final String CACHE_ABILITY_COUNT_SUFFIX = "C";
@@ -869,9 +870,11 @@ public class CoopRewriter extends ScriptRewriter {
 							"set i=i+1" + JASS_DELIM +
 							"endloop" + JASS_DELIM +
 							// compare checksums
-							"    if StringHash(SubString(content,0,j)+\"|\"+p+\"|\"+fK)!=" + ARCHON_PREFIX + "S62I(SubString(content,j+1,len)) then" + JASS_DELIM +
-							"        set content=\"\"" + JASS_DELIM +
-							END_IF + JASS_DELIM +
+							(COMPARE_CHECKSUMS ?
+									("    if StringHash(SubString(content,0,j)+\"|\"+p+\"|\"+fK)!=" + ARCHON_PREFIX + "S62I(SubString(content,j+1,len)) then" + JASS_DELIM +
+											"        set content=\"\"" + JASS_DELIM +
+											END_IF + JASS_DELIM) :
+									"") +
 							DebugOnly("call BJDebugMsg(\">\"+content+\"<\")" + JASS_DELIM) +
 							"        call BlzSendSyncData(\"XTContents\",content)" + JASS_DELIM +
 							"    endif" + JASS_DELIM +
@@ -1413,20 +1416,22 @@ public class CoopRewriter extends ScriptRewriter {
 							"        call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ITEM_ID_SUFFIX + "\"+I2S(i)),GetItemTypeId(ti[i]))" + JASS_DELIM +
 							"        call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ITEM_CHARGE_SUFFIX + "\"+I2S(i)),GetItemCharges(ti[i]))" + JASS_DELIM +
 							"        set c=0", sb);
-					int i = 1;
-					for (String s : Arrays.asList(
-							"BlzGetItemBooleanField(ti[i],ITEM_BF_DROPPED_WHEN_CARRIER_DIES)", // 1
-							"IsItemInvulnerable(ti[i])", // 2
-							"IsItemPawnable(ti[i])", // 4
-							"BlzGetItemBooleanField(ti[i],ITEM_BF_CAN_BE_DROPPED)", // 8
-							"BlzGetItemBooleanField(ti[i],ITEM_BF_PERISHABLE)", // 16
-							"BlzGetItemBooleanField(ti[i],ITEM_BF_ACTIVELY_USED)", // 32
-							"IsItemPowerup(ti[i])" // 64
-					)) {
-						append("if " + s + " then" + JASS_DELIM +
-								"set c=c+" + i + JASS_DELIM +
-								END_IF, sb);
-						i = i * 2;
+					{
+						int i = 1;
+						for (String s : Arrays.asList(
+								"BlzGetItemBooleanField(ti[i],ITEM_BF_DROPPED_WHEN_CARRIER_DIES)", // 1
+								"IsItemInvulnerable(ti[i])", // 2
+								"IsItemPawnable(ti[i])", // 4
+								"BlzGetItemBooleanField(ti[i],ITEM_BF_CAN_BE_DROPPED)", // 8
+								"BlzGetItemBooleanField(ti[i],ITEM_BF_PERISHABLE)", // 16
+								"BlzGetItemBooleanField(ti[i],ITEM_BF_ACTIVELY_USED)", // 32
+								"IsItemPowerup(ti[i])" // 64
+						)) {
+							append("if " + s + " then" + JASS_DELIM +
+									"set c=c+" + i + JASS_DELIM +
+									END_IF, sb);
+							i = i * 2;
+						}
 					}
 					append("        call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ITEM_BITS_SUFFIX + "\"+I2S(i)),c)" + JASS_DELIM +
 							"        set i=i+1" + JASS_DELIM +
@@ -1610,8 +1615,10 @@ public class CoopRewriter extends ScriptRewriter {
 							"        call BlzSetUnitMaxHP(u,v[" + getCacheFieldIndex(CACHE_HEALTH_MAX_SUFFIX) + "])" + JASS_DELIM +
 							"        call SetUnitState(u,UNIT_STATE_LIFE,v[" + getCacheFieldIndex(CACHE_HEALTH_MAX_SUFFIX) + "])" + JASS_DELIM +
 							"        call BlzSetUnitMaxMana(u,v[" + getCacheFieldIndex(CACHE_MANA_MAX_SUFFIX) + "])" + JASS_DELIM +
-							"        call SetUnitState(u,UNIT_STATE_MANA,v[" + getCacheFieldIndex(CACHE_MANA_MAX_SUFFIX) + "])" + JASS_DELIM +
-							"        call BlzSetUnitArmor(u,vr[" + getCacheFieldIndex(CACHE_ARMOR_SUFFIX) + "]+BlzGetUnitArmor(u))" + JASS_DELIM +
+							"        call SetUnitState(u,UNIT_STATE_MANA,v[" + getCacheFieldIndex(CACHE_MANA_MAX_SUFFIX) + "])", sb);
+					for (int i = 0; i < 2; i++)
+						append("        call BlzSetUnitBaseDamage(u,v[" + getCacheFieldIndex(CACHE_ATTACK_DAMAGE_BASE_SUFFIX + i) + "]+BlzGetUnitBaseDamage(u," + i + ")," + i + ")", sb);
+					append("        call BlzSetUnitArmor(u,vr[" + getCacheFieldIndex(CACHE_ARMOR_SUFFIX) + "]+BlzGetUnitArmor(u))" + JASS_DELIM +
 							"        call ModifyHeroSkillPoints(u,bj_MODIFYMETHOD_SET,v[" + getCacheFieldIndex(CACHE_UNSPEND_POINTS_SUFFIX) + "])" + JASS_DELIM +
 							"        set i=0" + JASS_DELIM +
 							DebugOnly("call BJDebugMsg(\"AUX i \"+I2S(i)+\" c \"+I2S(c))" + JASS_DELIM) +
@@ -1694,13 +1701,15 @@ public class CoopRewriter extends ScriptRewriter {
 								//"!BlzSetItemBooleanField(%s,ITEM_BF_ACTIVELY_USED,%s)", // 32
 								//"!BlzSetItemBooleanField(%s,ITEM_BF_USE_AUTOMATICALLY_WHEN_ACQUIRED,%s)" // 64
 						);
-						i = l.size();
-						for (String s : l) {
-							if (!s.startsWith("!"))
-								append("call " + String.format(s, "ti", moduloFunc("v[" + getCacheFieldIndex(CACHE_ITEM_BITS_SUFFIX) + "]", "2") + "==1"), sb);
-							i--;
-							if (i > 0)
-								append("set v[" + getCacheFieldIndex(CACHE_ITEM_BITS_SUFFIX) + "]=v[" + getCacheFieldIndex(CACHE_ITEM_BITS_SUFFIX) + "]/2", sb);
+						{
+							int i = l.size();
+							for (String s : l) {
+								if (!s.startsWith("!"))
+									append("call " + String.format(s, "ti", moduloFunc("v[" + getCacheFieldIndex(CACHE_ITEM_BITS_SUFFIX) + "]", "2") + "==1"), sb);
+								i--;
+								if (i > 0)
+									append("set v[" + getCacheFieldIndex(CACHE_ITEM_BITS_SUFFIX) + "]=v[" + getCacheFieldIndex(CACHE_ITEM_BITS_SUFFIX) + "]/2", sb);
+							}
 						}
 					}
 					append(END_IF + JASS_DELIM + // endif item exists
