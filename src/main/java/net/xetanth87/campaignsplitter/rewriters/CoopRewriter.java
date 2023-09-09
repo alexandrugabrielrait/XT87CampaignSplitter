@@ -476,18 +476,17 @@ public class CoopRewriter extends ScriptRewriter {
 				}
 				for (String key : getCommonHashKeys())
 					append("set " + getCommonHashFunc(key) + "=StringHash(\"" + key + "\")", sb);
-				//append("set bj_pauseAllUnitsFlag=false", sb);
+				append("    " + SETPLAYERCOLORBJ + toMainPlayerFunc() + "," + CONVERTPLAYERCOLOR + mainPlayer.getNum() + "),true)", sb);
 				mainStartAdded = true;
 			}
 			if (line.contains(END_FUNCTION)) {
-				append("    " + SETPLAYERCOLORBJ + toMainPlayerFunc() + "," + CONVERTPLAYERCOLOR + mainPlayer.getNum() + "),true)", sb);
 				for (W3I.Player player : secondaryPlayers) {
 					String playerFunc = toPlayerFunc(player.getNum());
 					append(SETPLAYERCOLOR + playerFunc + "," + CONVERTPLAYERCOLOR + player.getNum() + "))" + JASS_DELIM +
 							"call SetPlayerOnScoreScreen(" + playerFunc + ",false)", sb);
 				}
 				append("call " + ENFORCE_ARCHON + "()" + JASS_DELIM +
-						"if (GetLocalPlayer()!=" + toMainPlayerFunc() + ") then" + JASS_DELIM +
+						"if GetLocalPlayer()!=" + toMainPlayerFunc() + " then" + JASS_DELIM +
 						"call SetReservedLocalHeroButtons(0)" + JASS_DELIM +
 						END_IF, sb);
 			}
@@ -2020,6 +2019,38 @@ public class CoopRewriter extends ScriptRewriter {
 				append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "Select, function Trig_" + ARCHON_PREFIX + "Select_Actions)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
+				// region show food on main player's buildings for secondary players
+				append("function Trig_" + ARCHON_PREFIX + "BFP_Actions takes nothing returns nothing" + JASS_DELIM +
+						"if " + ARCHON_PREFIX + "LBF>0 then" + JASS_DELIM +
+						"    call BlzFrameSetVisible(BlzGetFrameByName(\"SimpleInfoPanelIconAlly\",7), false)" + JASS_DELIM +
+						"    call BlzFrameSetVisible(BlzGetFrameByName(\"SimpleInfoPanelIconFood\",4), true)" + JASS_DELIM +
+						"    call BlzFrameSetText(BlzGetFrameByName(\"InfoPanelIconValue\",4),I2S(" + ARCHON_PREFIX + "LBF))" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function InitTrig_" + ARCHON_PREFIX + "BFP takes nothing returns nothing" + JASS_DELIM +
+						"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP=CreateTrigger()" + JASS_DELIM +
+						"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP)" + JASS_DELIM +
+						"call TriggerRegisterTimerEventPeriodic(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP,0.0)" + JASS_DELIM +
+						"call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP,function Trig_" + ARCHON_PREFIX + "BFP_Actions)" + JASS_DELIM +
+						END_FUNCTION, sb);
+				append("function Trig_" + ARCHON_PREFIX + "BF_Actions takes nothing returns nothing" + JASS_DELIM +
+						"local unit u=GetTriggerUnit()" + JASS_DELIM +
+						"local integer f=GetUnitFoodMade(u)" + JASS_DELIM +
+						"if f>0 and IsUnitType(u,UNIT_TYPE_STRUCTURE) and GetOwningPlayer(u)==" + toMainPlayerFunc() + " then" + JASS_DELIM +
+						"set " + ARCHON_PREFIX + "LBF=f" + JASS_DELIM +
+						"call Trig_" + ARCHON_PREFIX + "BFP_Actions()" + JASS_DELIM +
+						"call EnableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP)" + JASS_DELIM +
+						"else" + JASS_DELIM +
+						"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP)" + JASS_DELIM +
+						"set " + ARCHON_PREFIX + "LBF=0" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						END_FUNCTION + JASS_DELIM +
+						"function InitTrig_" + ARCHON_PREFIX + "BF takes nothing returns nothing" + JASS_DELIM +
+						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "BF=CreateTrigger()" + JASS_DELIM +
+						"    call TriggerRegisterPlayerSelectionEventBJ(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BF,GetLocalPlayer(),true)", sb);
+				append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BF, function Trig_" + ARCHON_PREFIX + "BF_Actions)" + JASS_DELIM +
+						END_FUNCTION, sb);
+				// endregion
 				// region get main player
 				for (String s : Arrays.asList("GetLocalPlayer", "GetTriggerPlayer"))
 					append("function " + ARCHON_PREFIX + s + " takes nothing returns player" + JASS_DELIM +
@@ -2098,6 +2129,7 @@ public class CoopRewriter extends ScriptRewriter {
 			append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare" + JASS_DELIM +
 							"force " + FORCE_NAME + JASS_DELIM +
 							"location " + TEMP_POINT_NAME + JASS_DELIM +
+							"integer " + ARCHON_PREFIX + "LBF=0" + JASS_DELIM + // Last Selected Building Food
 							"integer array " + PLAYER_ID_ARRAY + JASS_DELIM +
 							"integer array " + PLAYER_INDEX_ARRAY + JASS_DELIM +
 							"integer array " + HASH_ARRAY + JASS_DELIM +
@@ -2105,6 +2137,8 @@ public class CoopRewriter extends ScriptRewriter {
 							"hashtable " + GENERAL_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
 							"hashtable " + SELECTION_HASHTABLE + "=InitHashtable()" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select" + JASS_DELIM +
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "BF" + JASS_DELIM + // Building Food selection
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP" + JASS_DELIM + // Building Food periodic
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync" + JASS_DELIM +
 							"boolean " + ARCHON_PREFIX + "AlliesMenuAvail=false" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu" + JASS_DELIM +
@@ -2130,8 +2164,8 @@ public class CoopRewriter extends ScriptRewriter {
 						"integer array " + FILE_LIBRARY_PREFIX + "LS" + JASS_DELIM + // List
 						"integer array " + FILE_LIBRARY_PREFIX + "AL" + JASS_DELIM + // AbilityList
 						"boolean " + FILE_LIBRARY_PREFIX + "ReadEnabled=false" + JASS_DELIM +
-						"string array " + FILE_LIBRARY_PREFIX + "FN" + JASS_DELIM +
-						"string array " + FILE_LIBRARY_PREFIX + "BF" + JASS_DELIM +
+						"string array " + FILE_LIBRARY_PREFIX + "FN" + JASS_DELIM + // Filename
+						"string array " + FILE_LIBRARY_PREFIX + "BF" + JASS_DELIM + // Buffer
 						"string array XT87ReadLines" + JASS_DELIM +
 						"boolean XT87ReadLinesAreRead=false" + JASS_DELIM +
 						"boolean XT87ReadLinesLock=false" + JASS_DELIM +
@@ -2144,6 +2178,10 @@ public class CoopRewriter extends ScriptRewriter {
 				append("    call InitTrig_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
 			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync"/*, "ReplaceMenu"*/, "PeriodicRefresh", "PSU", "PauseTest"))//, "Deselect", "DeselectOnDeath"))
 				append("    call InitTrig_" + ARCHON_PREFIX + triggerName + "()", sb);
+			append("if GetLocalPlayer()!=" + toMainPlayerFunc() + " then", sb);
+			for (String triggerName : Arrays.asList("BF", "BFP"))
+				append("    call InitTrig_" + ARCHON_PREFIX + triggerName + "()", sb);
+			append(END_IF, sb);
 			if (WITH_CUSTOM_GAMECACHE) {
 				append("    call InitTrig_" + ARCHON_PREFIX + "SyncData()" + JASS_DELIM +
 						"    call InitTrig_" + ARCHON_PREFIX + "WatchLearnedSkill()" + JASS_DELIM +
