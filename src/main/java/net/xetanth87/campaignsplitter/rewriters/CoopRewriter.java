@@ -51,7 +51,7 @@ public class CoopRewriter extends ScriptRewriter {
 	// coop cache
 	public static final boolean WITH_CUSTOM_GAMECACHE = true;
 	public static final boolean WITH_FULL_ENCODING = false;
-	public static final boolean COMPARE_CHECKSUMS = true;
+	public static final boolean COMPARE_CHECKSUMS = false;
 
 	public static final String CACHE_CACHE_PREFIX = "c";
 	public static final String CACHE_MISSION_PREFIX = "m";
@@ -145,9 +145,9 @@ public class CoopRewriter extends ScriptRewriter {
 			"call TriggerSleepAction(0.01)" + JASS_DELIM +
 			"endloop";
 	private static final String FLUSH_KEY_CODE =
-			"I2S(" + ARCHON_PREFIX + "GetFlushIndex(q,m2,\"" + CACHE_FLUSH_PREFIX + "\"+k2))" +
-					"+\"|\"+I2S(" + ARCHON_PREFIX + "GetFlushIndex(q,m2,\"" + CACHE_FLUSH_PREFIX + CACHE_MISSION_PREFIX + "\"))" +
-					"+\"|\"+I2S(" + ARCHON_PREFIX + "GetFlushIndex(q,\"" + CACHE_CAMPAIGN_MKEY + "\",\"" + CACHE_FLUSH_PREFIX + CACHE_CACHE_PREFIX + "\"))";
+			"I2S(" + ARCHON_PREFIX + "DoFlushIndex(q,m2,\"" + CACHE_FLUSH_PREFIX + "\"+k2,0))" +
+					"+\"|\"+I2S(" + ARCHON_PREFIX + "DoFlushIndex(q,m2,\"" + CACHE_FLUSH_PREFIX + CACHE_MISSION_PREFIX + "\",0))" +
+					"+\"|\"+I2S(" + ARCHON_PREFIX + "DoFlushIndex(q,\"" + CACHE_CAMPAIGN_MKEY + "\",\"" + CACHE_FLUSH_PREFIX + CACHE_CACHE_PREFIX + "\",0))";
 
 	private static List<String> getBaseResourceNames() {
 		// Gold, Lumber
@@ -314,6 +314,8 @@ public class CoopRewriter extends ScriptRewriter {
 				"GetTriggerPlayer",
 				"GetForceOfPlayer",
 				//"CreateSound",
+				"DialogDisplay",
+				"DialogDisplayBJ",
 				"DialogAddButton",
 				"DialogAddQuitButton",
 				"DialogAddButtonBJ",
@@ -1148,24 +1150,72 @@ public class CoopRewriter extends ScriptRewriter {
 							"endloop" + JASS_DELIM +
 							END_FUNCTION, sb);
 					// endregion
-					// region GetFlushIndex function
+					// region dialog display
+					append("function " + ARCHON_PREFIX + "DialogDisplay takes player p, dialog d, boolean b returns nothing" + JASS_DELIM +
+							"local integer i=1" + JASS_DELIM +
+							"call DialogDisplay(p,d,b)" + JASS_DELIM +
+							"if p==" + toMainPlayerFunc() + " then" + JASS_DELIM +
+							loopOverPlayers("i", "call DialogDisplay(Player(" + PLAYER_ID_ARRAY + "[i]),d,b)") + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							"if " + ARCHON_PREFIX + "DIP!=b then" + JASS_DELIM +
+							"set " + ARCHON_PREFIX + "DIP=b" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "PauseGame(b)" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							END_FUNCTION, sb);
+					append("function " + ARCHON_PREFIX + "DialogDisplayBJ takes boolean b, dialog d, player p returns nothing" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "DialogDisplay(p,d,b)" + JASS_DELIM +
+							END_FUNCTION, sb);
+					// endregion
+					// region DoFlushIndex function
 					// uses m2 and flush prefixed k2
-					append("function " + ARCHON_PREFIX + "GetFlushIndex takes hashtable q,string m,string k returns integer" + JASS_DELIM +
+					append("function " + ARCHON_PREFIX + "DoFlushIndex takes hashtable q,string m,string k,integer c returns integer" + JASS_DELIM +
 							"    local string s" + JASS_DELIM +
-							"    local integer i=0" + JASS_DELIM +
+							"    local integer i=c" + JASS_DELIM +
 							"local integer mh=StringHash(m)" + JASS_DELIM +
 							"local integer kh=StringHash(k)" + JASS_DELIM +
 							"    local string cacheName=" + getCacheNameFunc("q") + JASS_DELIM +
 							"if HaveSavedInteger(q,mh,kh) then" + JASS_DELIM +
-							"    return LoadInteger(q,mh,kh)" + JASS_DELIM +
+							"    set i=LoadInteger(q,mh,kh)" + JASS_DELIM +
+							"    if c!=0 then" + JASS_DELIM +
+							"set i=i+c" + JASS_DELIM +
+							"call SaveInteger(q,mh,kh,i)" + JASS_DELIM +
+							END_IF + JASS_DELIM +
+							"return i" + JASS_DELIM +
 							END_IF + JASS_DELIM +
 							"set s=" + ARCHON_PREFIX + "ReadString(cacheName,m+\"\\\\\"+k,null)" + JASS_DELIM +
 							"if s!=null then" + JASS_DELIM +
-							"   set i=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(s)" + JASS_DELIM +
+							"   set i=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(s)+c" + JASS_DELIM +
 							END_IF + JASS_DELIM +
 							"call SaveInteger(q,mh,kh,i)" + JASS_DELIM +
+							"if i!=0 then" + JASS_DELIM +
+							//"    call " + ARCHON_PREFIX + "StoreReference(q,\"" + CACHE_INTEGER_KEY + "\",m2,k2)" + JASS_DELIM +
+							END_IF + JASS_DELIM +
 							"return i" + JASS_DELIM +
 							END_FUNCTION, sb);
+					// endregion
+					// region StoreFlushIndex function
+					// uses m2 and flush prefixed k2
+//					append("function " + ARCHON_PREFIX + "StoreFlushIndex takes hashtable q,string m,string k returns nothing" + JASS_DELIM +
+//							"    local string s" + JASS_DELIM +
+//							"    local integer i=0" + JASS_DELIM +
+//							"local integer mh=StringHash(m)" + JASS_DELIM +
+//							"local integer kh=StringHash(k)" + JASS_DELIM +
+//							"    local string cacheName=" + getCacheNameFunc("q") + JASS_DELIM +
+//							"if HaveSavedInteger(q,mh,kh) then" + JASS_DELIM +
+//							"    set i=LoadInteger(q,mh,kh)" + JASS_DELIM +
+//							"    if c!=0 then" + JASS_DELIM +
+//							"set i=i+c" + JASS_DELIM +
+//							"call SaveInteger(q,mh,kh,i)" + JASS_DELIM +
+//							END_IF + JASS_DELIM +
+//							"return i" + JASS_DELIM +
+//							END_IF + JASS_DELIM +
+//							"set s=" + ARCHON_PREFIX + "ReadString(cacheName,m+\"\\\\\"+k,null)" + JASS_DELIM +
+//							"if s!=null then" + JASS_DELIM +
+//							"   set i=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(s)+c" + JASS_DELIM +
+//							END_IF + JASS_DELIM +
+//							"call SaveInteger(q,mh,kh,i)" + JASS_DELIM +
+//							"return i" + JASS_DELIM +
+//							END_FUNCTION, sb);
 					// endregion
 					// region GameCache functions
 					// region game cache basics natives
@@ -1521,6 +1571,7 @@ public class CoopRewriter extends ScriptRewriter {
 								"    local integer kh=StringHash(k2)" + JASS_DELIM +
 								"if HaveSaved" + o.a + "(q,mh,kh) then" + JASS_DELIM +
 								// todo add entry to hashtable that tells it to overwrite file upon saving
+								//"call SaveInteger(q,mh,kh," + o.c + ")" + JASS_DELIM +
 								"call RemoveSaved" + o.a + "(q,mh,kh)" + JASS_DELIM +
 								END_IF + JASS_DELIM +
 								END_FUNCTION, sb);
@@ -2013,6 +2064,10 @@ public class CoopRewriter extends ScriptRewriter {
 					append("call DialogDisplay(" + toPlayerFunc(playerNumber) + ",GetClickedDialog(),false)", sb);
 				append("call TriggerSleepAction(0.01)" + JASS_DELIM +
 						"call DisplayTimedTextFromPlayer(p,0,0,10,\"%s => \"+GetLocalizedString(s))" + JASS_DELIM +
+						"if " + ARCHON_PREFIX + "DIP then" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "PauseGame(false)" + JASS_DELIM +
+						"set " + ARCHON_PREFIX + "DIP=false" + JASS_DELIM +
+						END_IF + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function InitTrig_" + ARCHON_PREFIX + "DialogSync takes nothing returns nothing" + JASS_DELIM +
 						"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync=CreateTrigger()", sb);
@@ -2059,6 +2114,7 @@ public class CoopRewriter extends ScriptRewriter {
 							//"boolean " + ARCHON_PREFIX + "UPA=false" + JASS_DELIM + // units paused already
 							"boolean " + ARCHON_PREFIX + "GIP=false" + JASS_DELIM + // game is paused
 							"boolean " + ARCHON_PREFIX + "TDS=false" + JASS_DELIM + // time of day suspended
+							"boolean " + ARCHON_PREFIX + "DIP=false" + JASS_DELIM + // dialog is pausing
 							"gamespeed " + ARCHON_PREFIX + "RGS=MAP_SPEED_NORMAL" // real game speed
 //							+ JASS_DELIM +
 //					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Deselect" + JASS_DELIM +

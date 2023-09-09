@@ -14,6 +14,7 @@ import net.moonlightflower.wc3libs.txt.WTS;
 import net.moonlightflower.wc3libs.txt.app.MiscTXT;
 import net.moonlightflower.wc3libs.txt.app.SkinTXT;
 import net.xetanth87.campaignsplitter.util.XT87Utils;
+import org.antlr.v4.runtime.misc.Pair;
 import systems.crigges.jmpq3.JMpqEditor;
 import systems.crigges.jmpq3.MPQOpenOption;
 
@@ -192,8 +193,16 @@ public class CampaignSplitter {
 			System.out.println("Finished extracting campaign imported files.");
 		}
 
-		if (true) {
-			System.out.println("Extracting auxiliary asset files.");
+		List<Pair<ImportsMerger.AssetListType, String>> listTypes = new ArrayList<>();
+		if (archonModeAddedSlots > 0)
+			listTypes.add(new Pair<>(ImportsMerger.AssetListType.ARCHON, "Archon Mode"));
+		if (withLegacyAssetsSD)
+			listTypes.add(new Pair<>(ImportsMerger.AssetListType.SD, "SD Legacy"));
+		if (withLegacyAssetsHD)
+			listTypes.add(new Pair<>(ImportsMerger.AssetListType.HD, "HD Legacy"));
+
+		for (Pair<ImportsMerger.AssetListType, String> pair : listTypes) {
+			System.out.println("Extracting %s asset files.".formatted(pair.b));
 			boolean noCampaignImports = importsListFile == null;
 			if (noCampaignImports) {
 				importsListFile = new File(getTempPath() + "/" + IMP.CAMPAIGN_PATH);
@@ -203,27 +212,8 @@ public class CampaignSplitter {
 			if (imports == null)
 				imports = new IMP();
 
-			if (ImportsMerger.AddLegacyAssets(this, imports)) {
-				System.out.println("Finished extracting auxiliary asset files.");
-				imports.write(importsListFile);
-			} else if (noCampaignImports) {
-				importsListFile.delete();
-			}
-		}
-
-		if (withLegacyAssetsSD || withLegacyAssetsHD) {
-			System.out.println("Extracting legacy asset files.");
-			boolean noCampaignImports = importsListFile == null;
-			if (noCampaignImports) {
-				importsListFile = new File(getTempPath() + "/" + IMP.CAMPAIGN_PATH);
-				importsListFile.createNewFile();
-			}
-
-			if (imports == null)
-				imports = new IMP();
-
-			if (LegacyMerger.AddLegacyAssets(this, imports)) {
-				System.out.println("Finished extracting legacy asset files.");
+			if (ImportsMerger.AddAssets(pair.a, this, imports)) {
+				System.out.println("Finished extracting %s asset files.".formatted(pair.b));
 				imports.write(importsListFile);
 			} else if (noCampaignImports) {
 				importsListFile.delete();

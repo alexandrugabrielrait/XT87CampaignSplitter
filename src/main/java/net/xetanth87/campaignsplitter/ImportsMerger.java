@@ -8,59 +8,109 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ImportsMerger {
-	private static List<String> assetList;
-	private static final String PORTRAIT_SUFIX = "_portrait";
+	private static final String PORTRAIT_SUFFIX = "_portrait";
+	private static final String HD_PREFIX = "_hd.w3mod\\";
 
-	static {
-		assetList = Arrays.asList(
+	public static List<String> newArchonAssetList() {
+		return Stream.of(
 				XT87Utils.PATH_PREFIX + "\\" + CoopRewriter.SELECTION_INDICATOR_PATH + ".mdx"
+		).sorted().collect(Collectors.toList());
+	}
+
+	private static List<String> newLegacyAssetList(boolean isHd) {
+		Stream<String> stream = Stream.of(
+				"replaceabletextures\\commandbuttons\\btnsteamtank.blp",
+				"replaceabletextures\\commandbuttonsdisabled\\disbtnsteamtank.blp",
+				"replaceabletextures\\commandbuttons\\btncatapult.blp",
+				"replaceabletextures\\commandbuttonsdisabled\\disbtncatapult.blp",
+				"replaceabletextures\\commandbuttons\\btnballista.blp",
+				"replaceabletextures\\commandbuttonsdisabled\\disbtnballista.blp",
+				"replaceabletextures\\commandbuttons\\btnchaosspaceorc.blp",
+				"replaceabletextures\\commandbuttonsdisabled\\disbtnchaosspaceorc.blp",
+				"units\\human\\warwagon\\warwagon.mdx",
+				"units\\human\\warwagon\\warwagon_portrait.mdx",
+				"units\\human\\gyrocopter\\gyrocopter.mdx",
+				"units\\human\\gyrocopter\\gyrocopter_portrait.mdx",
+				"units\\orc\\catapult\\catapult.mdx",
+				"units\\orc\\catapult\\catapult_portrait.mdx",
+				"units\\nightelf\\ballista\\ballista.mdx",
+				"units\\nightelf\\ballista\\ballista_portrait.mdx",
+				"units\\critters\\chaosspaceorc\\chaosspaceorc.mdx"
 		);
-		assetList.sort(Comparator.comparing(o -> new File(o).getName()));
+		if (isHd)
+			stream = stream.map(x -> HD_PREFIX + (x.endsWith(".blp") ? x.substring(0, x.length() - 3) + "dds" : x));
+		return stream.sorted().collect(Collectors.toList());
 	}
 
-	public static List<String> newAssetList() {
-		return new ArrayList<>(assetList);
+	public enum AssetListType {
+		ARCHON("archon", true),
+		SD("sd", true),
+		HD("hd", true);
+
+		public final String prefix;
+		public final boolean justName;
+
+		AssetListType(String prefix, boolean justName) {
+			this.prefix = prefix;
+			this.justName = justName;
+		}
+
+		List<String> newAssetList() {
+			return switch (this) {
+				case ARCHON -> newArchonAssetList();
+				case SD -> newLegacyAssetList(false);
+				case HD -> newLegacyAssetList(true);
+			};
+		}
 	}
 
-	public static boolean AddLegacyAssets(CampaignSplitter cs, IMP imports) {
-		List<String> originalImportList = new ArrayList<>();
-		for (IMP.Obj o : imports.getObjs())
-			originalImportList.add(o.getPath());
-		return AddLegacyAssets(cs, imports, originalImportList);
-	}
-
-	public static boolean AddLegacyAssets(CampaignSplitter cs, IMP imports, List<String> originalImportList) {
+	private static boolean AddAssets(AssetListType listType, CampaignSplitter cs, IMP imports, List<String> originalImportList) {
+		String prefix = "/imports/";
+		if (listType.prefix != null)
+			prefix += listType.prefix + "/";
 		try {
-			List<String> checkList = newAssetList();
+			List<String> checkList = listType.newAssetList();
 			for (String path : originalImportList) {
 				if (path.endsWith(".mdl") || path.endsWith(".mdx")) {
 					String name = path.substring(0, path.length() - 3);
 					checkList.remove(name + ".mdx");
-					checkList.remove(name + PORTRAIT_SUFIX + ".mdx");
+					checkList.remove(name + PORTRAIT_SUFFIX + ".mdx");
 				} else
 					checkList.remove(path);
 			}
-			for (String assetPath : checkList) {
+			for (String importPath : checkList) {
 				IMP.Obj o = new IMP.Obj();
-				o.setPath(assetPath);
+				o.setPath(importPath);
 				imports.addObj(o);
 				File importedFile = new File(cs.getImportsPath() + "/" + o.getPath());
 				importedFile.getParentFile().mkdirs();
 				importedFile.createNewFile();
-				InputStream stream = ImportsMerger.class.getResourceAsStream("/imports/" + assetPath.replace("\\", "/"));
-				java.nio.file.Files.copy(stream, importedFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-				stream.close();
+				String assetPath = importPath.replace("\\", "/");
+				if (listType.justName)
+					assetPath = new File(assetPath).getName();
+				InputStream stream = ImportsMerger.class.getResourceAsStream(prefix + assetPath);
+				if (stream != null) {
+					java.nio.file.Files.copy(stream, importedFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+					stream.close();
+				}
 			}
 			return true;
 		} catch (Exception e) {
 			System.err.println(e.getMessage());
 			return false;
 		}
+	}
+
+	public static boolean AddAssets(AssetListType listType, CampaignSplitter cs, IMP imports) {
+		List<String> originalImportList = new ArrayList<>();
+		for (IMP.Obj o : imports.getObjs())
+			originalImportList.add(o.getPath());
+		return AddAssets(listType, cs, imports, originalImportList);
 	}
 
 	public static String getNewPath(String oldPath) {

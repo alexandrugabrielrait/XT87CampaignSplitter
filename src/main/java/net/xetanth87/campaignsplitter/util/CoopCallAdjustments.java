@@ -67,8 +67,8 @@ public class CoopCallAdjustments {
 		addCallParameters("SetPlayerController", 0);
 		addCallParameters("ForceAddPlayer", 1);
 		addCallParameters("ForceRemovePlayer", 1);
-		addCallParameters("DialogDisplay", 0);
-		addCallParameters("DialogDisplayBJ", 2);
+//		addCallParameters("DialogDisplay", 0);
+//		addCallParameters("DialogDisplayBJ", 2);
 //		addCallParameters("TriggerRegisterPlayerAllianceChange", Arrays.asList(0, 1));
 //		addCallParameters("TriggerRegisterPlayerStateEvent", 0);
 		addCallParameters("TriggerRegisterPlayerChatEvent", 1);

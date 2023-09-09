@@ -94,11 +94,11 @@ public class XT87Utils {
 
 	public static String zeroedNumber(int number, int charCount)
 	{
-		String buttonIndexText = number + "";
+		StringBuilder buttonIndexText = new StringBuilder(number + "");
 		int addedZeroes = Math.max(charCount - buttonIndexText.length(), 0);
 		for (int i = 0; i < addedZeroes; i ++)
-			buttonIndexText = "0" + buttonIndexText;
-		return buttonIndexText;
+			buttonIndexText.insert(0, "0");
+		return buttonIndexText.toString();
 	}
 
 	public static String alphabetNumber(int number, int charCount) {
@@ -110,7 +110,7 @@ public class XT87Utils {
 
 		while (charCount > 0) {
 			int remainder = number % 26;
-			char letter = (char) ('a' + remainder);
+			char letter = (char) ('A' + remainder);
 			result.insert(0, letter);
 
 			number /= 26;
