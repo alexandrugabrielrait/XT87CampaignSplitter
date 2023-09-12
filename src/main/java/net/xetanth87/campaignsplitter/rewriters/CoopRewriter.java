@@ -1882,7 +1882,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"set " + ARCHON_PREFIX + "AlliesMenuAvail=true" + JASS_DELIM +
 						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceAcceptButton\",0),false)" + JASS_DELIM +
 						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceBackdrop\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceCancelButton\",0),false)" + JASS_DELIM +
+						//"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceCancelButton\",0),false)" + JASS_DELIM +
 						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceDialogScrollBar\",0),false)" + JASS_DELIM +
 						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceTitle\",0),false)" + JASS_DELIM +
 						END_IF + JASS_DELIM +
@@ -2176,7 +2176,7 @@ public class CoopRewriter extends ScriptRewriter {
 		} else if (line.contains("function InitCustomTriggers takes")) {
 			for (String resourceName : getAllResourceNames())
 				append("    call InitTrig_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
-			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync"/*, "ReplaceMenu"*/, "PeriodicRefresh", "PSU", "PauseTest"))//, "Deselect", "DeselectOnDeath"))
+			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync", "ReplaceMenu", "PeriodicRefresh", "PSU", "PauseTest"))//, "Deselect", "DeselectOnDeath"))
 				append("    call InitTrig_" + ARCHON_PREFIX + triggerName + "()", sb);
 			append("if GetLocalPlayer()!=" + toMainPlayerFunc() + " then", sb);
 			for (String triggerName : Arrays.asList("BF", "BFP"))
