@@ -146,8 +146,8 @@ public class CoopRewriter extends ScriptRewriter {
 	}
 
 	// common code
-	private static final String READ_LOCK_CODE = "loop" + JASS_DELIM +
-			"exitwhen XT87ReadLinesWaiting==0" + JASS_DELIM +
+	private static final String PAUSE_LOCK_CODE = "loop" + JASS_DELIM +
+			"exitwhen not " + ARCHON_PREFIX + "GIP" + JASS_DELIM +
 			"call TriggerSleepAction(0.01)" + JASS_DELIM +
 			"endloop";
 	private static final String FLUSH_KEY_CODE =
@@ -172,6 +172,7 @@ public class CoopRewriter extends ScriptRewriter {
 	}
 
 	public boolean triggersAdded, mainStartAdded, initGlobalsAdded, insideInitGlobals, insideConfig, insideCustomPlayerSlots;
+	private boolean pauseLockAdded;
 	public int endGlobalsState;
 	public W3I info;
 	public W3I.Player mainPlayer;
@@ -546,10 +547,10 @@ public class CoopRewriter extends ScriptRewriter {
 					for (String suffix : Arrays.asList("(", " "))
 						line = line.replace(prefix + function + suffix, prefix + ARCHON_PREFIX + "SyncStoredUnused" + suffix);
 			// endregion
-			String call = getCallFromLine(line);
+			String call = getTrimmedCallFromLine(line);
 			if (call != null) {
 				String[] params = getParamsFromLine(line);
-				if (call.equals("call SelectHeroSkill(")) {
+				if (call.equals("SelectHeroSkill")) {
 					assert params != null;
 					append("    call " + ARCHON_PREFIX + "WatchSkill(" + params[1] + ")", sb);
 				}
@@ -635,34 +636,35 @@ public class CoopRewriter extends ScriptRewriter {
 		boolean appendLine = true;
 
 		{
-			String call = getCallFromLine(line);
+			String call = getTrimmedCallFromLine(line);
 			String[] params;
-			String trimmedCall = null;
 			if (call != null) {
-				params = getParamsFromLine(line, call);
-				trimmedCall = getTrimmedCallFromLine(call);
-				if (trimmedCall != null) {
+				params = getParamsFromLine(line);
+				call = getTrimmedCallFromLine(line);
+				if (call != null) {
 					for (String playerNumberCall : Arrays.asList("SetPlayers", "SetTeams"))
-						if (trimmedCall.equals(playerNumberCall)) {
-							line = "call " + trimmedCall + "(" + info.getPlayers().size() + ")";
+						if (call.equals(playerNumberCall)) {
+							line = "call " + call + "(" + info.getPlayers().size() + ")";
 							break;
 						}
+					if (!pauseLockAdded && call.equals("TriggerSleepAction"))
+						append(PAUSE_LOCK_CODE, sb);
 				}
 				if (params != null) {
-					CoopCallAdjustments.AdjustmentDetails ad = CoopCallAdjustments.callParameters.get(trimmedCall);
+					CoopCallAdjustments.AdjustmentDetails ad = CoopCallAdjustments.callParameters.get(call);
 					if (ad != null) {
 						appendLine = false;
 
 						if (ad.pointIndex != null) {
 							append("set " + TEMP_POINT_NAME + "=" + params[ad.pointIndex], sb);
 							params[ad.pointIndex] = TEMP_POINT_NAME;
-							line = toCallString(trimmedCall, params);
+							line = toCallString(call, params);
 						}
 
 						if (!ad.isLocal)
 							append(line, sb);
 
-						appendCallWithReplacement(trimmedCall, params, ad, sb);
+						appendCallWithReplacement(call, params, ad, sb);
 					}
 				}
 			}
@@ -900,11 +902,11 @@ public class CoopRewriter extends ScriptRewriter {
 							"local integer i=0" + JASS_DELIM +
 							"local group g=CreateGroup()" + JASS_DELIM +
 							"loop" + JASS_DELIM +
+							"        exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
 							"        call GroupEnumUnitsOfPlayer(g,Player(i),null)" + JASS_DELIM +
 							"        call ForGroup(g,c)" + JASS_DELIM +
 							"        call GroupClear(g)" + JASS_DELIM +
 							"        set i=i+1" + JASS_DELIM +
-							"        exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
 							"endloop" + JASS_DELIM +
 							"call DestroyGroup(g)" + JASS_DELIM +
 							END_FUNCTION, sb);
@@ -960,6 +962,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "EnumUnpauseUnit)" + JASS_DELIM +
 							END_IF + JASS_DELIM +
 							"loop" + JASS_DELIM +
+							"exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
 							"set p=Player(i)" + JASS_DELIM +
 							"if GetPlayerController(p)==MAP_CONTROL_COMPUTER then" + JASS_DELIM +
 							"if b then" + JASS_DELIM +
@@ -969,13 +972,12 @@ public class CoopRewriter extends ScriptRewriter {
 							END_IF + JASS_DELIM +
 							END_IF + JASS_DELIM +
 							"set i=i+1" + JASS_DELIM +
-							"exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
 							"endloop" + JASS_DELIM +
 							"set i=0" + JASS_DELIM +
 							"loop" + JASS_DELIM +
+							"exitwhen i==" + ARCHON_PREFIX + "ATL" + JASS_DELIM +
 							"call " + ARCHON_PREFIX + "PauseStartedTimer(b," + ARCHON_PREFIX + "ATA[i])" + JASS_DELIM +
 							"set i=i+1" + JASS_DELIM +
-							"exitwhen i==" + ARCHON_PREFIX + "ATL" + JASS_DELIM +
 							"endloop" + JASS_DELIM +
 							"set " + ARCHON_PREFIX + "GIP=b" + JASS_DELIM +
 							END_IF + JASS_DELIM +
@@ -1001,11 +1003,11 @@ public class CoopRewriter extends ScriptRewriter {
 							"local integer i=0" + JASS_DELIM +
 							"call PauseAllUnitsBJ(b)" + JASS_DELIM +
 							"loop" + JASS_DELIM +
+							"exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
 							"if GetPlayerController(Player(i))==MAP_CONTROL_COMPUTER then" + JASS_DELIM +
 							"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_IS_PAUSED_PLAYER + ",i,b)" + JASS_DELIM +
 							END_IF + JASS_DELIM +
 							"set i=i+1" + JASS_DELIM +
-							"exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
 							"endloop" + JASS_DELIM +
 							END_FUNCTION, sb);
 					// endregion
@@ -1268,9 +1270,9 @@ public class CoopRewriter extends ScriptRewriter {
 							"    local integer i=0" + JASS_DELIM +
 							"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData=CreateTrigger()" + JASS_DELIM +
 							"    loop" + JASS_DELIM +
+							"        exitwhen i>=bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
 							"        call BlzTriggerRegisterPlayerSyncEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,Player(i),\"XTContents\",false)" + JASS_DELIM +
 							"        set i=i+1" + JASS_DELIM +
-							"        exitwhen i==bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
 							"    endloop" + JASS_DELIM +
 							"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,function Trig_" + ARCHON_PREFIX + "SyncData_Actions)" + JASS_DELIM +
 							END_FUNCTION, sb);
@@ -1455,17 +1457,18 @@ public class CoopRewriter extends ScriptRewriter {
 							"            set c=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_ABILITY_COUNT_SUFFIX + "\"))" + JASS_DELIM +
 							"            set uD=uD+\"\\n\"+" + getConversionFunc(ConversionFunctionType.INT_TO_STRING) + "(c)" + JASS_DELIM +
 							"            set j=0" + JASS_DELIM +
-							"            loop", sb);
+							"            loop" + JASS_DELIM +
+							"            exitwhen j>=c", sb);
 					for (String suffix : Arrays.asList(CACHE_ABILITY_ID_SUFFIX, CACHE_ABILITY_LVL_SUFFIX))
 						append("set uD=uD+\"\\n\"+" + getConversionFunc(ConversionFunctionType.INT_TO_STRING) + "(LoadInteger(q,mh,StringHash(k2+\"" + suffix + "\"+I2S(j))))", sb);
 					append("            set j=j+1" + JASS_DELIM +
-							"            exitwhen j>=c" + JASS_DELIM +
 							"            endloop" + JASS_DELIM +
 							END_IF + JASS_DELIM + // endif hero
 							"set c=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_INVENTORY_SIZE_SUFFIX + "\"))" + JASS_DELIM +
 							"set uD=uD+\"\\n\"+" + getConversionFunc(ConversionFunctionType.INT_TO_STRING) + "(c)" + JASS_DELIM +
 							"        set j=0" + JASS_DELIM +
 							"        loop" + JASS_DELIM +
+							"        exitwhen j>=c" + JASS_DELIM +
 							"        set it=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_ITEM_ID_SUFFIX + "\"+I2S(j)))" + JASS_DELIM +
 							"        set uD=uD+\"\\n\"+" + getConversionFunc(ConversionFunctionType.INT_TO_STRING) + "(it)" + JASS_DELIM +
 							"        if it!=0 then", sb);
@@ -1473,7 +1476,6 @@ public class CoopRewriter extends ScriptRewriter {
 						append("set uD=uD+\"\\n\"+" + getConversionFunc(ConversionFunctionType.INT_TO_STRING) + "(LoadInteger(q,mh,StringHash(k2+\"" + suffix + "\"+I2S(j))))", sb);
 					append("        endif" + JASS_DELIM +
 							"        set j=j+1" + JASS_DELIM +
-							"        exitwhen j>=c" + JASS_DELIM +
 							"        endloop" + JASS_DELIM +
 							"        call " + ARCHON_PREFIX + "WriteString(cacheName,m2+\"\\\\\"+k2,uD," + FLUSH_KEY_CODE + ")" + JASS_DELIM +
 							"    endloop" + JASS_DELIM +
@@ -1595,6 +1597,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"        set c=0" + JASS_DELIM +
 							"        set i=0" + JASS_DELIM +
 							"        loop" + JASS_DELIM +
+							"            exitwhen i>" + ABILITY_ARRAY_SIZE + JASS_DELIM +
 							"            set a=" + ABILITY_ARRAY + "[i]" + JASS_DELIM +
 							"            set l=GetUnitAbilityLevel(u,a)" + JASS_DELIM +
 							"            if l>0 then" + JASS_DELIM +
@@ -1602,7 +1605,6 @@ public class CoopRewriter extends ScriptRewriter {
 							"               call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ABILITY_LVL_SUFFIX + "\"+I2S(c)),l)" + JASS_DELIM +
 							"               set c=c+1" + JASS_DELIM +
 							"            " + END_IF + JASS_DELIM +
-							"            exitwhen i>" + ABILITY_ARRAY_SIZE + JASS_DELIM +
 							"            set i=i+1" + JASS_DELIM +
 							"        endloop" + JASS_DELIM +
 							"        call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ABILITY_COUNT_SUFFIX + "\"),c)" + JASS_DELIM +
@@ -1966,14 +1968,14 @@ public class CoopRewriter extends ScriptRewriter {
 								new Triple<>("TriggerExecuteBJ", "trigger t,boolean b returns boolean", "(t,b)")
 						))
 							append("function " + ARCHON_PREFIX + o.a + " takes " + o.b + JASS_DELIM +
-									READ_LOCK_CODE + JASS_DELIM +
+									PAUSE_LOCK_CODE + JASS_DELIM +
 									"return " + o.a + o.c + JASS_DELIM +
 									END_FUNCTION, sb);
 						for (Triple<String, String, String> o : Collections.singletonList(
 								new Triple<>("TriggerEvaluate", "trigger t returns boolean", "(t)")
 						))
 							append("function " + ARCHON_PREFIX + o.a + " takes " + o.b + JASS_DELIM +
-									READ_LOCK_CODE + JASS_DELIM +
+									PAUSE_LOCK_CODE + JASS_DELIM +
 									"return " + o.a + o.c + JASS_DELIM +
 									END_FUNCTION, sb);
 					}
@@ -2045,10 +2047,10 @@ public class CoopRewriter extends ScriptRewriter {
 						"if " + ARCHON_PREFIX + "AlliesMenuAvail then" + JASS_DELIM +
 						"if b then" + JASS_DELIM +
 						"loop" + JASS_DELIM +
+						"exitwhen i>=bj_MAX_PLAYERS" + JASS_DELIM +
 						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceSlot\",i),false)" + JASS_DELIM +
 						"call BlzFrameSetVisible(BlzGetFrameByName(\"AlliedVictoryCheckBox\",i),false)" + JASS_DELIM +
 						"set i=i+1" + JASS_DELIM +
-						"exitwhen i>=bj_MAX_PLAYERS" + JASS_DELIM +
 						"endloop" + JASS_DELIM +
 						"call BlzFrameSetVisible(BlzGetFrameByName(\"ResourceTradingTitle\",0),false)" + JASS_DELIM +
 						"call BlzFrameSetVisible(BlzGetFrameByName(\"PlayersHeader\",0),false)" + JASS_DELIM +
@@ -2133,8 +2135,8 @@ public class CoopRewriter extends ScriptRewriter {
 						"call TriggerSleepAction(0.01)" + JASS_DELIM +
 						"set c=LoadInteger(" + SELECTION_HASHTABLE + ",p,0)" + JASS_DELIM +
 						"loop" + JASS_DELIM +
-						"set i=i+1" + JASS_DELIM +
 						"exitwhen i>c" + JASS_DELIM +
+						"set i=i+1" + JASS_DELIM +
 						"call DestroyEffect(LoadEffectHandle(" + SELECTION_HASHTABLE + ",p,i))" + JASS_DELIM +
 						"endloop" + JASS_DELIM +
 						"call SaveInteger(" + SELECTION_HASHTABLE + ",p,0,0)" + JASS_DELIM +
@@ -2249,14 +2251,18 @@ public class CoopRewriter extends ScriptRewriter {
 			if (appendLine)
 				append(line, sb);
 
-			if (trimmedCall != null)
+			pauseLockAdded = false;
+
+			if (call != null)
 				if (!Arrays.asList("main", "RunInitializationTriggers").contains(insideFunction))
 					for (String function : Arrays.asList("TriggerExecute", "TriggerExecuteWait", "ConditionalTriggerExecute"))
-						if (trimmedCall.equals(function)) {
-							append(READ_LOCK_CODE, sb);
+						if (call.equals(function)) {
+							append(PAUSE_LOCK_CODE, sb);
+							pauseLockAdded = true;
 							break;
 						}
-			if ("CustomDefeatBJ".equals(trimmedCall))
+
+			if ("CustomDefeatBJ".equals(call))
 				append("call " + ARCHON_PREFIX + "PauseGameOn()", sb);
 		}
 
