@@ -10,12 +10,14 @@ import org.antlr.v4.runtime.misc.Triple;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.stream.Collectors;
+
+import static net.xetanth87.campaignsplitter.util.XT87Utils.putWithCount;
 
 public class CoopRewriter extends ScriptRewriter {
 	private static final String SETPLAYERCOLOR = "call SetPlayerColor(";
@@ -77,7 +79,6 @@ public class CoopRewriter extends ScriptRewriter {
 	// todo make sure count doesn't count the same variable twice
 	private static final String CACHE_COUNT_KEY = "count";
 
-	private static final int GH_INT_TIMER_CALLBACK = 0;
 
 	private static final int GH_BOOL_HAS_ABILITY = 0;
 	private static final int GH_BOOL_IS_PAUSED = 1;
@@ -86,6 +87,7 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final int GH_BOOL_TIMER_PERIODIC = 4;
 
 	private static final int GH_STRING_DIALOG_BUTTON_TEXT = 0;
+	private static final int GH_INT_TIMER_CALLBACK = 1;
 
 	private static final int GH_REAL_PAUSED_HP = 0;
 	private static final int GH_REAL_PAUSED_MP = 1;
@@ -179,11 +181,10 @@ public class CoopRewriter extends ScriptRewriter {
 	public List<W3I.Player> secondaryPlayers;
 	public List<Integer> allPlayerNumbers;
 	public List<String> dialogNames;
-	public List<String> timerNames;
 	public Map<String, Integer> cacheFieldMap;
-	public Map<String, Integer> callbackMap;
+	public List<Map.Entry<String, Integer>> callbacks;
 
-	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers) {
+	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers, List<Map.Entry<String, Integer>> callbacks) {
 		super(mi);
 		this.info = info;
 		this.mainPlayer = mainPlayer;
@@ -192,7 +193,7 @@ public class CoopRewriter extends ScriptRewriter {
 		allPlayerNumbers.add(mainPlayer.getNum());
 		secondaryPlayers.forEach(x -> allPlayerNumbers.add(x.getNum()));
 		dialogNames = new ArrayList<>();
-		timerNames = new ArrayList<>();
+		this.callbacks = callbacks;
 	}
 
 	public static String getNewPath(String oldPath) {
@@ -210,17 +211,10 @@ public class CoopRewriter extends ScriptRewriter {
 		insideFunction = null;
 		endGlobalsState = 0;
 		cacheFieldMap = new HashMap<>();
-		callbackMap = new HashMap<>();
-	}
-
-	private static void putWithCount(Map<String, Integer> map, String key) {
-		if (!map.containsKey(key))
-			map.put(key, map.size());
 	}
 
 	private int getCacheFieldIndex(String key) {
-		putWithCount(cacheFieldMap, key);
-		return cacheFieldMap.get(key);
+		return putWithCount(cacheFieldMap, key);
 	}
 
 	public static String toPlayerFunc(int i) {
@@ -266,7 +260,7 @@ public class CoopRewriter extends ScriptRewriter {
 			boolean runtimeResolve = referencedPlayerId == null;
 
 			if (runtimeResolve)
-				append("    if((" + referencedPlayer + ")==" + toMainPlayerFunc() + ")then", sb);
+				append("    if (" + referencedPlayer + ")==" + toMainPlayerFunc() + " then", sb);
 			else if (referencedPlayerId != mainPlayer.getNum())
 				continue;
 
@@ -323,15 +317,19 @@ public class CoopRewriter extends ScriptRewriter {
 		append("function " + ARCHON_PREFIX + "CBF takes nothing returns nothing" + JASS_DELIM + // Callback function
 				"local timer t=GetExpiredTimer()" + JASS_DELIM +
 				"local integer h=GetHandleId(t)" + JASS_DELIM +
-				"local integer c" + JASS_DELIM +
+				"local string c=LoadStr(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h)" + JASS_DELIM +
 				"local real r" + JASS_DELIM +
-				"if HaveSavedInteger(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h) then" + JASS_DELIM +
-				"set c=LoadInteger(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h)", sb);
-		for (Map.Entry<String, Integer> callback : callbackMap.entrySet().stream().sorted(Map.Entry.comparingByValue()).collect(Collectors.toList()))
-			append("if c==" + callback.getValue() + " then" + JASS_DELIM +
-					"call " + callback.getKey() + "()" + JASS_DELIM +
-					"return" + JASS_DELIM +
-					END_IF, sb);
+				"if c!=null then" + JASS_DELIM +
+				"call ExecuteFunc(c)", sb);
+//		if (callbacks.size() > 0) {
+//			boolean first = true;
+//			for (Map.Entry<String, Integer> callback : callbacks) {
+//				append((first ? "" : "else") + "if c==" + callback.getValue() + " then" + JASS_DELIM +
+//						"call " + ARCHON_PREFIX + "cd" + callback.getValue() + "()", sb);
+//				first = false;
+//			}
+//			append(END_IF, sb);
+//		}
 		append(END_IF + JASS_DELIM +
 				"if LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PERIODIC + ",h) then" + JASS_DELIM +
 				"set r=LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_TIMEOUT + ",h)" + JASS_DELIM +
@@ -346,16 +344,16 @@ public class CoopRewriter extends ScriptRewriter {
 				"set " + ARCHON_PREFIX + "ATA[i]=CreateTimer()" + JASS_DELIM +
 				"return " + ARCHON_PREFIX + "ATA[i]" + JASS_DELIM +
 				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "TimerStart takes timer t,real r,boolean b,code c returns nothing" + JASS_DELIM +
+		append("function " + ARCHON_PREFIX + "TimerStart takes timer t,real r,boolean b,string c returns nothing" + JASS_DELIM +
 				"local integer h=GetHandleId(t)" + JASS_DELIM +
 				"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_TIMEOUT + ",h,r)" + JASS_DELIM +
 				"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h,r)" + JASS_DELIM +
 				"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h,false)" + JASS_DELIM +
 				"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PERIODIC + ",h,b)" + JASS_DELIM +
 				"if c!=null then" + JASS_DELIM +
-				"call SaveInteger(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h,1)" + JASS_DELIM +
+				"call SaveStr(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h,c)" + JASS_DELIM +
 				"else" + JASS_DELIM +
-				"call RemoveSavedInteger(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h)" + JASS_DELIM +
+				"call RemoveSavedString(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h)" + JASS_DELIM +
 				END_IF + JASS_DELIM +
 				"call TimerStart(t,r,false,function " + ARCHON_PREFIX + "CBF)" + JASS_DELIM +
 				END_FUNCTION, sb);
@@ -584,10 +582,6 @@ public class CoopRewriter extends ScriptRewriter {
 				if (!local)
 					dialogNames.add(declaredObject);
 			}
-//			else if (trimmedLine.startsWith(TIMER_DECLARATION)) {
-//				if (!local)
-//					timerNames.add(declaredObject);
-//			}
 		}
 
 		if ("main".equals(insideFunction)) {
@@ -2302,9 +2296,6 @@ public class CoopRewriter extends ScriptRewriter {
 							"boolean " + ARCHON_PREFIX + "DIP=false" + JASS_DELIM + // dialog is pausing
 							"boolean " + ARCHON_PREFIX + "CIP=false" + JASS_DELIM + // cache is pausing
 							"gamespeed " + ARCHON_PREFIX + "RGS=MAP_SPEED_NORMAL" // real game speed
-//							+ JASS_DELIM +
-//					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Deselect" + JASS_DELIM +
-//					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DeselectOnDeath"
 					, sb);
 			if (WITH_CUSTOM_GAMECACHE)
 				append("hashtable " + LAST_CREATED_COOP_CACHE + JASS_DELIM +
@@ -2339,7 +2330,9 @@ public class CoopRewriter extends ScriptRewriter {
 			if (WITH_CUSTOM_GAMECACHE) {
 				append("    call InitTrig_" + ARCHON_PREFIX + "SyncData()" + JASS_DELIM +
 						"    call InitTrig_" + ARCHON_PREFIX + "WatchLearnedSkill()" + JASS_DELIM +
-						"    call ExecuteFunc(\"" + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "__FileInit__onInit\")", sb);
+						//"    call ExecuteFunc(\"" + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "__FileInit__onInit\")"
+						"    call " + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "__FileInit__onInit()"
+						, sb);
 			}
 		} else if (line.contains("SetForceAllianceStateBJ("))
 			append("call " + ENFORCE_ARCHON + "()", sb);

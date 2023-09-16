@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.Stack;
@@ -231,6 +232,12 @@ public class XT87Utils {
 		result.setStartPos(player.getStartPos());
 		result.setStartPosFixed(player.getStartPosFixed());
 		return result;
+	}
+
+	public static int putWithCount(Map<String, Integer> map, String key) {
+		if (!map.containsKey(key))
+			map.put(key, map.size());
+		return map.get(key);
 	}
 
 	public static String getLocalizedString(String label, Locale locale)

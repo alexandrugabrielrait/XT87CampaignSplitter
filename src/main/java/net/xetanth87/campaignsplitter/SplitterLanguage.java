@@ -9,7 +9,7 @@ import java.util.Objects;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.getLocalizedString;
 
 public enum SplitterLanguage {
-	DEFAULT("default", Locale.getDefault()),
+	DEFAULT("default", null),
 	ENGLISH("en", Locale.ENGLISH),
 	SPANISH("es", new Locale("es")),
 	GERMAN("de", Locale.GERMAN),
@@ -40,6 +40,13 @@ public enum SplitterLanguage {
 	}
 
 	public Locale getLocale() {
+		if (locale == null) {
+			Locale locale = Locale.getDefault();
+			String lang = locale.getLanguage();
+			if (lang == null || Arrays.stream(SplitterLanguage.values()).noneMatch(x -> x.locale != null && lang.equals(x.locale.getLanguage())))
+				return SplitterLanguage.ENGLISH.locale;
+			return locale;
+		}
 		return locale;
 	}
 
@@ -54,10 +61,9 @@ public enum SplitterLanguage {
 				.findFirst().orElse(DEFAULT);
 	}
 
-	public String getDisplayName()
-	{
+	public String getDisplayName() {
 		if (this == SplitterLanguage.DEFAULT)
 			return getLocalizedString("language_default");
-		return getLocalizedString("language_name", locale);
+		return getLocalizedString("language_name", getLocale());
 	}
 }

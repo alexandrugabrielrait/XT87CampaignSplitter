@@ -20,6 +20,7 @@ import net.moonlightflower.wc3libs.txt.TXTSectionId;
 import net.moonlightflower.wc3libs.txt.WTS;
 import net.moonlightflower.wc3libs.txt.app.MiscTXT;
 import net.moonlightflower.wc3libs.txt.app.SkinTXT;
+import net.xetanth87.campaignsplitter.rewriters.CallbackRewriter;
 import net.xetanth87.campaignsplitter.rewriters.CoopRewriter;
 import net.xetanth87.campaignsplitter.rewriters.DifficultySelectorRewriter;
 import net.xetanth87.campaignsplitter.rewriters.FakeUserPlayerRewriter;
@@ -564,9 +565,7 @@ public class MapInjector {
 				new FakeUserPlayerRewriter(this, mapInfo.fakeUserPlayersSet).modifyScript();
 
 			if (withDifficultySelector || addedCoopPlayers > 0)
-			{
 				new TimerRewriter(this).modifyScript();
-			}
 
 			if (withDifficultySelector) {
 				System.out.println("Adding Difficulty Selector to map \"" + mapFile.getName() + "\".");
@@ -588,7 +587,9 @@ public class MapInjector {
 
 			if (addedCoopPlayers > 0) {
 				System.out.println("Adding coop support to map \"" + mapFile.getName() + "\".");
-				new CoopRewriter(this, mapInfo.info, mapInfo.mainPlayer, mapInfo.secondaryPlayers).modifyScript();
+				//List<Map.Entry<String, Integer>> callbacks = new CallbackRewriter(this).findCallbacksAndModifyScript();
+				new CallbackRewriter(this).modifyScript();
+				new CoopRewriter(this, mapInfo.info, mapInfo.mainPlayer, mapInfo.secondaryPlayers, null).modifyScript();
 				System.out.println("Finished adding coop support to map \"" + mapFile.getName() + "\".");
 				cs.IncrementValueProgressBar(1);
 			}

@@ -8,6 +8,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public abstract class ScriptRewriter {
@@ -209,5 +210,19 @@ public abstract class ScriptRewriter {
 		} catch (Exception e) {
 			return null;
 		}
+	}
+
+	public static String toJassCall(String call, String[] params)
+	{
+		StringBuilder paramText = null;
+		for (String param : params) {
+			if (paramText == null)
+				paramText = new StringBuilder(param);
+			else
+				paramText.append(",").append(param);
+		}
+		if (paramText == null)
+			paramText = new StringBuilder();
+		return call + "(" + paramText + ")";
 	}
 }
