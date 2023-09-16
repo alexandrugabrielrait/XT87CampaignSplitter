@@ -14,8 +14,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Scanner;
-import java.util.stream.Collectors;
 
 import static net.xetanth87.campaignsplitter.util.XT87Utils.putWithCount;
 
@@ -44,7 +42,6 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final String HASH_ARRAY = ARCHON_PREFIX + "HA";
 
 	private static final String DIALOG_DECLARATION = "dialog ";
-	private static final String TIMER_DECLARATION = "timer ";
 
 	private static final int FILE_LIBRARY_ABILITY_COUNT = 10;
 	private static final int FILE_LIBRARY_PRELOAD_LIMIT = 200;
@@ -67,7 +64,7 @@ public class CoopRewriter extends ScriptRewriter {
 	public static final String CACHE_FLUSH_PREFIX = "f";
 
 	public static final String CACHE_CAMPAIGN_MKEY = CACHE_CACHE_PREFIX + "ache";
-	public static final String CACHE_MKEY_PREFIX = CACHE_MISSION_PREFIX;
+	//public static final String CACHE_MKEY_PREFIX = CACHE_MISSION_PREFIX;
 
 	private static final String CACHE_CAMPAIGNFILE_KEY = CACHE_OTHER_PREFIX + CACHE_CACHE_PREFIX;
 	private static final String CACHE_INTEGER_KEY = CACHE_OTHER_PREFIX + CACHE_INTEGER_PREFIX;
@@ -182,9 +179,8 @@ public class CoopRewriter extends ScriptRewriter {
 	public List<Integer> allPlayerNumbers;
 	public List<String> dialogNames;
 	public Map<String, Integer> cacheFieldMap;
-	public List<Map.Entry<String, Integer>> callbacks;
 
-	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers, List<Map.Entry<String, Integer>> callbacks) {
+	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers) {
 		super(mi);
 		this.info = info;
 		this.mainPlayer = mainPlayer;
@@ -193,7 +189,6 @@ public class CoopRewriter extends ScriptRewriter {
 		allPlayerNumbers.add(mainPlayer.getNum());
 		secondaryPlayers.forEach(x -> allPlayerNumbers.add(x.getNum()));
 		dialogNames = new ArrayList<>();
-		this.callbacks = callbacks;
 	}
 
 	public static String getNewPath(String oldPath) {
@@ -320,17 +315,8 @@ public class CoopRewriter extends ScriptRewriter {
 				"local string c=LoadStr(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h)" + JASS_DELIM +
 				"local real r" + JASS_DELIM +
 				"if c!=null then" + JASS_DELIM +
-				"call ExecuteFunc(c)", sb);
-//		if (callbacks.size() > 0) {
-//			boolean first = true;
-//			for (Map.Entry<String, Integer> callback : callbacks) {
-//				append((first ? "" : "else") + "if c==" + callback.getValue() + " then" + JASS_DELIM +
-//						"call " + ARCHON_PREFIX + "cd" + callback.getValue() + "()", sb);
-//				first = false;
-//			}
-//			append(END_IF, sb);
-//		}
-		append(END_IF + JASS_DELIM +
+				"call ExecuteFunc(c)" + JASS_DELIM +
+				END_IF + JASS_DELIM +
 				"if LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PERIODIC + ",h) then" + JASS_DELIM +
 				"set r=LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_TIMEOUT + ",h)" + JASS_DELIM +
 				"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h,r)" + JASS_DELIM +
@@ -811,7 +797,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"            return " + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(f),\"\")" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							//Implemented from module FileIO__FileInit:
-							"        function " + FILE_LIBRARY_PREFIX + "" + FILE_IO_PREFIX + "__FileInit__onInit takes nothing returns nothing" + JASS_DELIM +
+							"        function " + FILE_LIBRARY_PREFIX + "" + FILE_IO_PREFIX + "Init takes nothing returns nothing" + JASS_DELIM +
 							// We can't use a single ability with multiple levels because
 							// tooltips return the first level's value if the value hasn't
 							// been set. This way we don't need to edit any object editor data.
@@ -825,7 +811,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"            set " + FILE_LIBRARY_PREFIX + "AL[7]='Adis'" + JASS_DELIM +
 							"            set " + FILE_LIBRARY_PREFIX + "AL[8]='Afbt'" + JASS_DELIM +
 							"            set " + FILE_LIBRARY_PREFIX + "AL[9]='Afbk'" + JASS_DELIM +
-							"            set " + FILE_LIBRARY_PREFIX + "ReadEnabled=(" + FILE_LIBRARY_PREFIX + "readEx((" + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(\"FileTester.pld\"),\"" + FILE_IO_PREFIX + "\")),true))==\"" + FILE_IO_PREFIX + "\" // INLINED!!" + JASS_DELIM +
+							"            set " + FILE_LIBRARY_PREFIX + "ReadEnabled=(" + FILE_LIBRARY_PREFIX + "readEx((" + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(\"FileTester.pld\"),\"" + FILE_IO_PREFIX + "\")),true))==\"" + FILE_IO_PREFIX + "\"" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"    function " + FILE_IO_PREFIX + "Write takes string f,string s returns nothing" + JASS_DELIM +
 							"        call " + FILE_LIBRARY_PREFIX + "close(" + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(f),s))" + JASS_DELIM +
@@ -2290,7 +2276,6 @@ public class CoopRewriter extends ScriptRewriter {
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU" + JASS_DELIM + // pause spawned unit
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest" + JASS_DELIM +
-							//"boolean " + ARCHON_PREFIX + "UPA=false" + JASS_DELIM + // units paused already
 							"boolean " + ARCHON_PREFIX + "GIP=false" + JASS_DELIM + // game is paused
 							"boolean " + ARCHON_PREFIX + "TDS=false" + JASS_DELIM + // time of day suspended
 							"boolean " + ARCHON_PREFIX + "DIP=false" + JASS_DELIM + // dialog is pausing
@@ -2329,9 +2314,8 @@ public class CoopRewriter extends ScriptRewriter {
 			//append(END_IF, sb);
 			if (WITH_CUSTOM_GAMECACHE) {
 				append("    call InitTrig_" + ARCHON_PREFIX + "SyncData()" + JASS_DELIM +
-						"    call InitTrig_" + ARCHON_PREFIX + "WatchLearnedSkill()" + JASS_DELIM +
-						//"    call ExecuteFunc(\"" + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "__FileInit__onInit\")"
-						"    call " + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "__FileInit__onInit()"
+								"    call InitTrig_" + ARCHON_PREFIX + "WatchLearnedSkill()" + JASS_DELIM +
+								"    call " + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "Init()"
 						, sb);
 			}
 		} else if (line.contains("SetForceAllianceStateBJ("))
