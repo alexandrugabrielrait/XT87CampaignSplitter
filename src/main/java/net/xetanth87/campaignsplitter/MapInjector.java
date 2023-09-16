@@ -466,7 +466,7 @@ public class MapInjector {
 				}
 			}
 
-		info.setMapDescription(cs.getFeatureDescription());
+		info.setMapDescription(cs.getFeatureDescription() + "\n\n" + mapFile.getName());
 
 		List<W3I.Player> secondaryPlayers = null;
 		if (addedCoopPlayers > 0) {
