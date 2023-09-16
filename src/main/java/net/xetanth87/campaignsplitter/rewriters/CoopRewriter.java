@@ -395,6 +395,11 @@ public class CoopRewriter extends ScriptRewriter {
 				"call " + ARCHON_PREFIX + "ResumeTimer(t)" + JASS_DELIM +
 				END_IF + JASS_DELIM +
 				END_FUNCTION, sb);
+		append("function " + ARCHON_PREFIX + "SetReservedLocalHeroButtons takes integer i returns nothing" + JASS_DELIM +
+				"if GetLocalPlayer()==" + toMainPlayerFunc() + " then" + JASS_DELIM +
+				"call SetReservedLocalHeroButtons(i)" + JASS_DELIM +
+				END_IF + JASS_DELIM +
+				END_FUNCTION, sb);
 	}
 
 	@Override
@@ -441,7 +446,8 @@ public class CoopRewriter extends ScriptRewriter {
 				"TimerGetTimeout",
 				"PauseTimer",
 				"ResumeTimer",
-				"PauseTimerBJ"
+				"PauseTimerBJ",
+				"SetReservedLocalHeroButtons"
 		))
 			for (String prefix : Arrays.asList("(", " ", ",", "="))
 				for (String suffix : Arrays.asList("(", " ")) {
