@@ -12,7 +12,9 @@ import java.util.Scanner;
 
 public abstract class ScriptRewriter {
 	public static final String JASS_DELIM = "\r\n";
-	public static final String FUNCTION = "function";
+	public static final String LOCAL_DECLARATION = "local ";
+	public static final String FUNCTION_DECLARATION = "function ";
+	public static final String CALL_DECLARATION = "call ";
 	public static final String END_FUNCTION = "endfunction";
 	public static final String END_IF = "endif";
 	public static final String INIT_CALL = "call ConditionalTriggerExecute(";
@@ -45,6 +47,15 @@ public abstract class ScriptRewriter {
 	public abstract void onStartRead(String text, StringBuffer sb);
 
 	public abstract void onReadLine(String line, StringBuffer sb);
+
+	public void onEnterGlobals(StringBuffer sb) {
+	}
+
+	public void onExitGlobals(StringBuffer sb) {
+	}
+
+	public void onMainAfterLocals(StringBuffer sb) {
+	}
 
 	public void append(String block, StringBuffer sb) {
 		for (String line : block.split(JASS_DELIM)) {
@@ -99,18 +110,32 @@ public abstract class ScriptRewriter {
 		StringBuffer sb = new StringBuffer();
 		onStartRead(text, sb);
 		first = true;
+		boolean inGlobals = false;
+		boolean inMain = false;
 		while (sc.hasNextLine()) {
 			String line = sc.nextLine();
-			{
-				String trimmedLine = line.trim();
-				if (trimmedLine.startsWith(FUNCTION)) {
-					insideFunction = trimmedLine.substring(FUNCTION.length()).trim();
-					insideFunction = insideFunction.substring(0, insideFunction.indexOf(' '));
-				}
+			line = line.trim();
+			if (inGlobals) {
+				onEnterGlobals(sb);
+				inGlobals = false;
+			}
+			else if (line.equals("globals"))
+				inGlobals = true;
+
+			if (line.startsWith(FUNCTION_DECLARATION)) {
+				insideFunction = line.substring(FUNCTION_DECLARATION.length()).trim();
+				insideFunction = insideFunction.substring(0, insideFunction.indexOf(' '));
+				if ("main".equals(insideFunction))
+					inMain = true;
+			} else if (inMain && !line.startsWith(LOCAL_DECLARATION)) {
+				onMainAfterLocals(sb);
+				inMain = false;
 			}
 			onReadLine(line, sb);
-			if (line.trim().equals(END_FUNCTION))
+			if (line.equals(END_FUNCTION))
 				insideFunction = null;
+			else if (line.equals("endglobals"))
+				onExitGlobals(sb);
 		}
 
 		mi.scriptBuffer = sb;
@@ -171,7 +196,7 @@ public abstract class ScriptRewriter {
 
 	public static String getCallFromLine(String line) {
 		try {
-			return line.substring(line.indexOf("call "), line.indexOf("(") + 1);
+			return line.substring(line.indexOf(CALL_DECLARATION), line.indexOf("(") + 1);
 		} catch (Exception e) {
 			return null;
 		}
@@ -179,7 +204,7 @@ public abstract class ScriptRewriter {
 
 	public static String getTrimmedCallFromLine(String line) {
 		try {
-			String newLine = getCallFromLine(line).substring("call ".length());
+			String newLine = getCallFromLine(line).substring(CALL_DECLARATION.length());
 			return newLine.substring(0, newLine.length() - 1).trim();
 		} catch (Exception e) {
 			return null;

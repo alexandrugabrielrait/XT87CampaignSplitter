@@ -25,6 +25,7 @@ import net.xetanth87.campaignsplitter.rewriters.DifficultySelectorRewriter;
 import net.xetanth87.campaignsplitter.rewriters.FakeUserPlayerRewriter;
 import net.xetanth87.campaignsplitter.rewriters.MinimapRewriter;
 import net.xetanth87.campaignsplitter.rewriters.ScriptRewriter;
+import net.xetanth87.campaignsplitter.rewriters.TimerRewriter;
 import net.xetanth87.campaignsplitter.rewriters.VictoryRewriter;
 import net.xetanth87.campaignsplitter.util.XT87Utils;
 import systems.crigges.jmpq3.JMpqEditor;
@@ -488,18 +489,6 @@ public class MapInjector {
 				force.addPlayerNums(i);
 				secondaryPlayers.add(secondaryPlayer);
 				info.getPlayers().add(secondaryPlayer);
-//				for (W3I.TechMod techMod : info.getTechMods()) {
-//					int players = techMod.getPlayers();
-//					if ((players >> mainPlayer.getNum() & 1) == 1) {
-//						techMod.setPlayers(players | (1 << i));
-//					}
-//				}
-//				for (W3I.UpgradeMod upgradeMod : info.getUpgradeMods()) {
-//					int players = upgradeMod.getPlayers();
-//					if ((players >> mainPlayer.getNum() & 1) == 1) {
-//						upgradeMod.setPlayers(players | (1 << i));
-//					}
-//				}
 			}
 		}
 		return new MapInfo(info, mainPlayer, secondaryPlayers, fakeUserPlayersSet);
@@ -573,6 +562,11 @@ public class MapInjector {
 
 			if (mapInfo.fakeUserPlayersSet != null && !mapInfo.fakeUserPlayersSet.isEmpty())
 				new FakeUserPlayerRewriter(this, mapInfo.fakeUserPlayersSet).modifyScript();
+
+			if (withDifficultySelector || addedCoopPlayers > 0)
+			{
+				new TimerRewriter(this).modifyScript();
+			}
 
 			if (withDifficultySelector) {
 				System.out.println("Adding Difficulty Selector to map \"" + mapFile.getName() + "\".");

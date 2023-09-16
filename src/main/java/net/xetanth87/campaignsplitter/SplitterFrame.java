@@ -32,7 +32,8 @@ public class SplitterFrame extends JFrame {
 	private final JTextField filePathField = new JTextField(30);
 	private final JButton openButton = new JButton(getLocalizedString("button_open"));
 	private final JButton splitButton = new JButton(getLocalizedString("button_split"));
-	private boolean running = false, restart = false;
+	private boolean running = false;
+	private final boolean restart = false;
 	private Thread splitterThread = null;
 	private final JProgressBar bar;
 	private final JTextArea taskOutput;
@@ -60,8 +61,8 @@ public class SplitterFrame extends JFrame {
 
 		public String toString() {
 			if (value == 0)
-				return "Singleplayer";
-			return (value + 1) + " players";
+				return getLocalizedString("archon_mode_dropdown_singleplayer");
+			return getLocalizedString("archon_mode_dropdown_multiplayer").formatted(value + 1);
 		}
 	}
 
@@ -243,17 +244,17 @@ public class SplitterFrame extends JFrame {
 			});
 
 			JPanel panel2 = new JPanel();
-			panel2.add(new JLabel("Select Language:"));
+			panel2.add(new JLabel(getLocalizedString("pref_language_dropdown")));
 			panel2.add(languageDropdown);
 
-			int result = JOptionPane.showConfirmDialog(null, panel2, "Preferences",
+			int result = JOptionPane.showConfirmDialog(null, panel2, getLocalizedString("menu_item_preferences"),
 					JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
 			if (result == JOptionPane.OK_OPTION) {
 				SplitterLanguage selectedLanguage = ((LanguageVariant) Objects.requireNonNull(languageDropdown.getSelectedItem())).language;
 				SplitterLanguage.selectedLanguage = selectedLanguage;
-				JOptionPane.showMessageDialog(null, String.format(getLocalizedString("language_selected_message"), selectedLanguage.getDisplayName()),
-						"Preferences Saved", JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(null, getLocalizedString("pref_language_selected_message").formatted(selectedLanguage.getDisplayName()),
+						getLocalizedString("pref_saved_title"), JOptionPane.INFORMATION_MESSAGE);
 				SplitterLanguage.saveLanguage(selectedLanguage);
 				dispose();
 				startFrame();
@@ -297,14 +298,9 @@ public class SplitterFrame extends JFrame {
 		menuItem.setAccelerator(KeyStroke.getKeyStroke('H', KeyEvent.CTRL_DOWN_MASK));
 		menuItem.addActionListener(new ActionListenerInPopup(e ->
 				JOptionPane.showMessageDialog(null,
-						"Click \"" + openButton.getText() + "\" to select a Warcraft III Custom Campaign file (\"*.w3n\").\n" +
-								"Click \"" + splitButton.getText() + "\" to split the campaign (the campaign file will not be altered).\n" +
-								"A folder with the same name as the campaign will be created in the same location.\n" +
-								"This folder will contain all extracted maps, merged with campaign data.\n" +
-								"\n" +
-								"For Archon Mode, all players need to select the exact same options, use the same version of the tool and of the campaign!\n" +
-								"The lobby host needs to have the \"" + toDownloadFolderLabel.getText() + "\" option unchecked.\n" +
-								"All other players need to have the \"" + toDownloadFolderLabel.getText() + "\" option checked.",
+						getLocalizedString("help_text_splitter").formatted(openButton.getText(), splitButton.getText()) +
+								"\n\n" +
+								getLocalizedString("help_text_archon_mode").formatted(toDownloadFolderLabel.getText(), toDownloadFolderLabel.getText()),
 						APP_TITLE + " - " + getLocalizedString("menu_item_help"), JOptionPane.QUESTION_MESSAGE))
 		);
 		menu.add(menuItem);
@@ -407,7 +403,7 @@ public class SplitterFrame extends JFrame {
 			if (splitterThread != null)
 				splitterThread.interrupt();
 			XT87Utils.deleteNewFiles();
-			JOptionPane.showMessageDialog(null, "The splitting has stopped!", APP_TITLE + " - " + getLocalizedString("button_stop"), JOptionPane.WARNING_MESSAGE);
+			JOptionPane.showMessageDialog(null, getLocalizedString("message_campaign_split_stop"), APP_TITLE + " - " + getLocalizedString("button_stop"), JOptionPane.WARNING_MESSAGE);
 		} else {
 			taskOutput.setText("");
 			setButtonStates(true);
@@ -526,7 +522,7 @@ public class SplitterFrame extends JFrame {
 				cs.toDownloadFolder = toDownloadFolderCheck.isSelected() && cs.archonModeAddedSlots > 0;
 				cs.splitCampaign();
 				String timeSpan = formatDuration(Duration.between(startTime, Instant.now()));
-				JOptionPane.showMessageDialog(null, "Campaign \"" + file.getName() + "\" has been split successfully! (" + timeSpan + ")", APP_TITLE + " - " + getLocalizedString("title_success"), JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(null, getLocalizedString("message_campaign_split_success").formatted(file.getName()) + " (" + timeSpan + ")", APP_TITLE + " - " + getLocalizedString("title_success"), JOptionPane.INFORMATION_MESSAGE);
 			} catch (InterruptedException ignored) {
 			} catch (Throwable ex) {
 				try {
@@ -539,17 +535,17 @@ public class SplitterFrame extends JFrame {
 				} catch (IOException e) {
 					StringWriter sw = new StringWriter();
 					e.printStackTrace(new PrintWriter(sw));
-					System.out.println("A problem was encountered:\n" + sw.toString().replaceAll("[\n\r](\0)*$", ""));
+					System.out.println(getLocalizedString("message_generic_error") + "\n" + sw.toString().replaceAll("[\n\r](\0)*$", ""));
 				}
 				if (!isInterrupted()) {
 					StringWriter sw = new StringWriter();
 					ex.printStackTrace(new PrintWriter(sw));
-					System.out.println("A problem was encountered:\n" + sw.toString().replaceAll("[\n\r](\0)*$", ""));
+					System.out.println(getLocalizedString("message_generic_error") + "\n" + sw.toString().replaceAll("[\n\r](\0)*$", ""));
 					String timeSpan = formatDuration(Duration.between(startTime, Instant.now()));
 					String message = ex.getMessage();
 					if (message == null)
 						message = ex.toString();
-					JOptionPane.showMessageDialog(null, "A problem was encountered when splitting \"" + file.getName() + "\"(" + timeSpan + "):\n" + message, APP_TITLE + " - " + getLocalizedString("title_error"), JOptionPane.ERROR_MESSAGE);
+					JOptionPane.showMessageDialog(null, getLocalizedString("message_campaign_split_error").formatted(file.getName()) + " (" + timeSpan + "):\n" + message, APP_TITLE + " - " + getLocalizedString("title_error"), JOptionPane.ERROR_MESSAGE);
 				}
 			} finally {
 				setButtonStates(false);
@@ -585,6 +581,7 @@ public class SplitterFrame extends JFrame {
 
 	public static void main(String[] args) {
 		try {
+			ToolTipManager.sharedInstance().setDismissDelay(Integer.MAX_VALUE);
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch (Exception ex) {
 			ex.printStackTrace();

@@ -17,8 +17,8 @@ public enum SplitterLanguage {
 	//ITALIAN("it", Locale.ITALIAN),
 	//PORTUGUESE("pt", new Locale("pt")),
 	//POLISH("pl", new Locale("pl")),
-	RUSSIAN("ru", new Locale("ru")),
 	ROMANIAN("ro", new Locale("ro")),
+	RUSSIAN("ru", new Locale("ru")),
 	//UKRAINIAN("ua", new Locale("ua")),
 	CHINESE("zh", Locale.CHINESE);
 	//KOREAN("ko", Locale.KOREAN);
@@ -58,6 +58,6 @@ public enum SplitterLanguage {
 	{
 		if (this == SplitterLanguage.DEFAULT)
 			return getLocalizedString("language_default");
-		return XT87Utils.getLocalizedString("language_name", locale);
+		return getLocalizedString("language_name", locale);
 	}
 }
