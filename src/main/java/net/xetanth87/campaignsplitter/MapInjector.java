@@ -333,8 +333,7 @@ public class MapInjector {
 						section.setLine(MiscTXT.State.RESOURCES_SUPPLY_UPKEEP_COSTS_LUMBER.getFieldId(), tax);
 						section.setLine(MiscTXT.State.RESOURCES_SUPPLY_UPKEEP_LEVELS.getFieldId(), usage);
 					}
-					if (cs.archonModeAddedSlots > 0)
-					{
+					if (cs.archonModeAddedSlots > 0) {
 						section.setLine(MiscTXT.State.TRADING_INC_SMALL.getFieldId(), "0");
 						section.setLine(MiscTXT.State.TRADING_INC_LARGE.getFieldId(), "0");
 					}
@@ -466,7 +465,13 @@ public class MapInjector {
 				}
 			}
 
-		info.setMapDescription(cs.getFeatureDescription() + "\n\n" + mapFile.getName());
+		String mapDescription = cs.getFeatureDescription() + "\n" + mapFile.getName();
+		try {
+			String loadingScreenDescription = WTS.ofMapFile(mapFile).getEntry(stringIndexToInt(info.getLoadingScreen().getText()));
+			mapDescription += "\n\n" + loadingScreenDescription;
+		} catch (Throwable ignored) {
+		}
+		info.setMapDescription(mapDescription);
 
 		List<W3I.Player> secondaryPlayers = null;
 		if (addedCoopPlayers > 0) {

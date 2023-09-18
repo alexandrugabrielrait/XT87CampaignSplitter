@@ -1012,28 +1012,28 @@ public class CoopRewriter extends ScriptRewriter {
 							END_FUNCTION, sb);
 					// endregion
 					// region refresh paused units
-					append("function Trig_" + ARCHON_PREFIX + "PeriodicRefresh_Actions takes nothing returns nothing" + JASS_DELIM +
+					append("function t_" + ARCHON_PREFIX + "PeriodicRefresh_Ac takes nothing returns nothing" + JASS_DELIM +
 							"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "EnumRefreshPausedUnit)" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
-							"function InitTrig_" + ARCHON_PREFIX + "PeriodicRefresh takes nothing returns nothing" + JASS_DELIM +
+							"function it_" + ARCHON_PREFIX + "PeriodicRefresh takes nothing returns nothing" + JASS_DELIM +
 							"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh=CreateTrigger()" + JASS_DELIM +
 							"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh)" + JASS_DELIM +
 							"call TriggerRegisterTimerEventPeriodic(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh,0.03)" + JASS_DELIM +
-							"call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh,function Trig_" + ARCHON_PREFIX + "PeriodicRefresh_Actions)" + JASS_DELIM +
+							"call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh,function t_" + ARCHON_PREFIX + "PeriodicRefresh_Ac)" + JASS_DELIM +
 							END_FUNCTION, sb);
 					// endregion
 					// region pause spawned units
-					append("function Trig_" + ARCHON_PREFIX + "PSU_Actions takes nothing returns nothing" + JASS_DELIM +
+					append("function t_" + ARCHON_PREFIX + "PSU_Ac takes nothing returns nothing" + JASS_DELIM +
 							"local unit u=GetEnteringUnit()" + JASS_DELIM +
 							"if not HaveSavedBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_IS_PAUSED + ",GetHandleId(u)) then" + JASS_DELIM +
 							"call " + ARCHON_PREFIX + "SavePausedUnit(u)" + JASS_DELIM +
 							END_IF + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
-							"function InitTrig_" + ARCHON_PREFIX + "PSU takes nothing returns nothing" + JASS_DELIM +
+							"function it_" + ARCHON_PREFIX + "PSU takes nothing returns nothing" + JASS_DELIM +
 							"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU=CreateTrigger()" + JASS_DELIM +
 							"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU)" + JASS_DELIM +
 							"    call TriggerRegisterEnterRectSimple(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU,GetPlayableMapRect())" + JASS_DELIM +
-							"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU,function Trig_" + ARCHON_PREFIX + "PSU_Actions)" + JASS_DELIM +
+							"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU,function t_" + ARCHON_PREFIX + "PSU_Ac)" + JASS_DELIM +
 							END_FUNCTION, sb);
 					// endregion
 					// region custom functions
@@ -1047,7 +1047,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"        return false" + JASS_DELIM +
 							END_IF + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
-							"function Trig_" + ARCHON_PREFIX + "WatchLearnedSkill_Actions takes nothing returns nothing" + JASS_DELIM +
+							"function t_" + ARCHON_PREFIX + "WatchLearnedSkill_Ac takes nothing returns nothing" + JASS_DELIM +
 							"    local integer i=0" + JASS_DELIM +
 							"    local integer a=GetLearnedSkill()" + JASS_DELIM +
 							"    if " + ARCHON_PREFIX + "WatchSkill(a)==true then" + JASS_DELIM +
@@ -1059,10 +1059,10 @@ public class CoopRewriter extends ScriptRewriter {
 							"        endloop" + JASS_DELIM +
 							"    " + END_IF + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
-							"function InitTrig_" + ARCHON_PREFIX + "WatchLearnedSkill takes nothing returns nothing" + JASS_DELIM +
+							"function it_" + ARCHON_PREFIX + "WatchLearnedSkill takes nothing returns nothing" + JASS_DELIM +
 							"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill=CreateTrigger()" + JASS_DELIM +
 							"    call TriggerRegisterAnyUnitEventBJ(" + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill,EVENT_PLAYER_HERO_SKILL)" + JASS_DELIM +
-							"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill,function Trig_" + ARCHON_PREFIX + "WatchLearnedSkill_Actions)" + JASS_DELIM +
+							"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill,function t_" + ARCHON_PREFIX + "WatchLearnedSkill_Ac)" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
 							"function " + ARCHON_PREFIX + "S2B takes string s returns boolean" + JASS_DELIM +
 							"    if s==\"t\" then" + JASS_DELIM +
@@ -1240,7 +1240,7 @@ public class CoopRewriter extends ScriptRewriter {
 							DebugOnly("call BJDebugMsg(\"2)\"+XT87ReadLines[2])" + JASS_DELIM) +
 							"    return " + ARCHON_PREFIX + "S62I(XT87ReadLines[0])" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
-							"function Trig_" + ARCHON_PREFIX + "SyncData_Actions takes nothing returns nothing" + JASS_DELIM +
+							"function t_" + ARCHON_PREFIX + "SyncData_Ac takes nothing returns nothing" + JASS_DELIM +
 							"    local string contents=BlzGetTriggerSyncData()" + JASS_DELIM +
 							"    local integer len=StringLength(contents)" + JASS_DELIM +
 							"    local string char" + JASS_DELIM +
@@ -1266,7 +1266,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"    endif" + JASS_DELIM +
 							"set XT87ReadLinesAreRead=true" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
-							"function InitTrig_" + ARCHON_PREFIX + "SyncData takes nothing returns nothing" + JASS_DELIM +
+							"function it_" + ARCHON_PREFIX + "SyncData takes nothing returns nothing" + JASS_DELIM +
 							"    local integer i=0" + JASS_DELIM +
 							"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData=CreateTrigger()" + JASS_DELIM +
 							"    loop" + JASS_DELIM +
@@ -1274,7 +1274,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"        call BlzTriggerRegisterPlayerSyncEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,Player(i),\"XTContents\",false)" + JASS_DELIM +
 							"        set i=i+1" + JASS_DELIM +
 							"    endloop" + JASS_DELIM +
-							"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,function Trig_" + ARCHON_PREFIX + "SyncData_Actions)" + JASS_DELIM +
+							"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,function t_" + ARCHON_PREFIX + "SyncData_Ac)" + JASS_DELIM +
 							END_FUNCTION, sb);
 					// endregion
 					// region button add functions
@@ -1987,7 +1987,7 @@ public class CoopRewriter extends ScriptRewriter {
 				for (int i = 0; i < resourceTypes.size(); i++) {
 					String resourceType = resourceTypes.get(i);
 					String resourceName = resourceNames.get(i);
-					append("function Trig_" + ARCHON_PREFIX + resourceName + "Sync_Actions takes nothing returns nothing" + JASS_DELIM +
+					append("function t_" + ARCHON_PREFIX + resourceName + "Sync_Ac takes nothing returns nothing" + JASS_DELIM +
 							"    local integer v=GetPlayerState(GetTriggerPlayer()," + resourceType + ")" + JASS_DELIM +
 							XT87Utils.DISABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")", sb);
 					for (int playerNumber : allPlayerNumbers) {
@@ -1998,11 +1998,11 @@ public class CoopRewriter extends ScriptRewriter {
 					}
 					append(XT87Utils.ENABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
-							"function InitTrig_" + ARCHON_PREFIX + resourceName + "Sync takes nothing returns nothing" + JASS_DELIM +
+							"function it_" + ARCHON_PREFIX + resourceName + "Sync takes nothing returns nothing" + JASS_DELIM +
 							"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync=CreateTrigger()", sb);
 					for (int playerNumber : allPlayerNumbers)
 						append("    call TriggerRegisterPlayerStateEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync," + toPlayerFunc(playerNumber) + "," + resourceType + ",GREATER_THAN_OR_EQUAL,0)", sb);
-					append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync,function Trig_" + ARCHON_PREFIX + resourceName + "Sync_Actions)" + JASS_DELIM +
+					append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync,function t_" + ARCHON_PREFIX + resourceName + "Sync_Ac)" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM, sb);
 				}
 				// endregion
@@ -2012,7 +2012,7 @@ public class CoopRewriter extends ScriptRewriter {
 				for (int i = 0; i < resourceTypes.size(); i++) {
 					String resourceType = resourceTypes.get(i);
 					String resourceName = resourceNames.get(i);
-					append("function Trig_" + ARCHON_PREFIX + resourceName + "Sync_Actions takes nothing returns nothing" + JASS_DELIM +
+					append("function t_" + ARCHON_PREFIX + resourceName + "Sync_Ac takes nothing returns nothing" + JASS_DELIM +
 							"    local integer v=GetPlayerState(" + toMainPlayerFunc() + "," + resourceType + ")" + JASS_DELIM +
 							XT87Utils.DISABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")", sb);
 					for (int playerNumber : allPlayerNumbers) {
@@ -2023,70 +2023,37 @@ public class CoopRewriter extends ScriptRewriter {
 					}
 					append(XT87Utils.ENABLE_TRIGGER + XT87Utils.THIS_TRIGGER + ")" + JASS_DELIM +
 							END_FUNCTION + JASS_DELIM +
-							"function InitTrig_" + ARCHON_PREFIX + resourceName + "Sync takes nothing returns nothing" + JASS_DELIM +
+							"function it_" + ARCHON_PREFIX + resourceName + "Sync takes nothing returns nothing" + JASS_DELIM +
 							"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync=CreateTrigger()", sb);
 					append("call TriggerRegisterPlayerStateEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync," + toMainPlayerFunc() + "," + resourceType + ",GREATER_THAN_OR_EQUAL,0)", sb);
 					append("call TriggerRegisterTimerEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync,0,false)", sb);
-					append("call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync,function Trig_" + ARCHON_PREFIX + resourceName + "Sync_Actions)" + JASS_DELIM +
+					append("call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + resourceName + "Sync,function t_" + ARCHON_PREFIX + resourceName + "Sync_Ac)" + JASS_DELIM +
 							END_FUNCTION, sb);
 				}
 				// endregion
-				// region replace multiplayer chat menu
-				append("function Trig_" + ARCHON_PREFIX + "ReplaceMenu_Actions takes nothing returns nothing" + JASS_DELIM +
-						"local integer i=0" + JASS_DELIM +
-						"local boolean b=BlzFrameIsVisible(BlzGetFrameByName(\"AllianceDialog\",0))" + JASS_DELIM +
-						DebugOnly("call BJDebugMsg(\"a\")" + JASS_DELIM) +
-						"if not " + ARCHON_PREFIX + "AlliesMenuAvail and b then" + JASS_DELIM +
-						"set " + ARCHON_PREFIX + "AlliesMenuAvail=true" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceAcceptButton\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceBackdrop\",0),false)" + JASS_DELIM +
-						//"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceCancelButton\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceDialogScrollBar\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceTitle\",0),false)" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"if " + ARCHON_PREFIX + "AlliesMenuAvail then" + JASS_DELIM +
-						"if b then" + JASS_DELIM +
-						"loop" + JASS_DELIM +
-						"exitwhen i>=bj_MAX_PLAYERS" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceSlot\",i),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"AlliedVictoryCheckBox\",i),false)" + JASS_DELIM +
-						"set i=i+1" + JASS_DELIM +
-						"endloop" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"ResourceTradingTitle\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"PlayersHeader\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllyHeader\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"VisionHeader\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"UnitsHeader\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"GoldHeader\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"LumberHeader\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"AlliedVictoryLabel\",0),false)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogArea\",0),true)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogAreaScrollBar\",0),true)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogAreaBackdrop\",0),true)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogOkButton\",0),true)" + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogTitle\",0),true)" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"call BlzFrameSetVisible(BlzGetFrameByName(\"LogDialog\",0),b)" + JASS_DELIM +
-						END_IF + JASS_DELIM +
+				// region pause test
+				append("function t_" + ARCHON_PREFIX + "PauseTest_Ac takes nothing returns nothing" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "PauseGame(not " + ARCHON_PREFIX + "GIP)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function InitTrig_" + ARCHON_PREFIX + "ReplaceMenu takes nothing returns nothing" + JASS_DELIM +
-						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu=CreateTrigger()" + JASS_DELIM +
-						"    call TriggerRegisterTimerEventPeriodic(" + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu,0.05)" + JASS_DELIM +
-						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu,function Trig_" + ARCHON_PREFIX + "ReplaceMenu_Actions)" + JASS_DELIM +
+						"function it_" + ARCHON_PREFIX + "PauseTest takes nothing returns nothing" + JASS_DELIM +
+						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest=CreateTrigger()" + JASS_DELIM +
+						"    call TriggerRegisterPlayerChatEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest," + toMainPlayerFunc() + ",\"-p\",true)" + JASS_DELIM +
+						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest,function t_" + ARCHON_PREFIX + "PauseTest_Ac)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
 				// region pause test
-				append("function Trig_" + ARCHON_PREFIX + "PauseTest_Actions takes nothing returns nothing" + JASS_DELIM +
-						"call " + ARCHON_PREFIX + "PauseGame(not " + ARCHON_PREFIX + "GIP)" + JASS_DELIM +
+				append("function t_" + ARCHON_PREFIX + "PLG_Ac takes nothing returns nothing" + JASS_DELIM +
+						"call RemovePlayerPreserveUnitsBJ(GetTriggerPlayer(),PLAYER_GAME_RESULT_DEFEAT,true)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function InitTrig_" + ARCHON_PREFIX + "PauseTest takes nothing returns nothing" + JASS_DELIM +
-						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest=CreateTrigger()" + JASS_DELIM +
-						"    call TriggerRegisterPlayerChatEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest," + toMainPlayerFunc() + ",\"-p\",true)" + JASS_DELIM +
-						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest,function Trig_" + ARCHON_PREFIX + "PauseTest_Actions)" + JASS_DELIM +
+						"function it_" + ARCHON_PREFIX + "PLG takes nothing returns nothing" + JASS_DELIM +
+						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PLG=CreateTrigger()", sb);
+				for (int playerNumber : allPlayerNumbers)
+					append("call TriggerRegisterPlayerEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PLG," + toPlayerFunc(playerNumber) + ",EVENT_PLAYER_LEAVE)", sb);
+				append("call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PLG,function t_" + ARCHON_PREFIX + "PLG_Ac)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
 				// region give units to main player
-				append("function Trig_" + ARCHON_PREFIX + "UnitShare_Conditions takes nothing returns boolean", sb);
+				append("function t_" + ARCHON_PREFIX + "UnitShare_Conditions takes nothing returns boolean", sb);
 				for (int playerNumber : allPlayerNumbers) {
 					if (playerNumber == mainPlayer.getNum())
 						continue;
@@ -2096,14 +2063,14 @@ public class CoopRewriter extends ScriptRewriter {
 				}
 				append("    return false" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function Trig_" + ARCHON_PREFIX + "UnitShare_Actions takes nothing returns nothing" + JASS_DELIM +
+						"function t_" + ARCHON_PREFIX + "UnitShare_Ac takes nothing returns nothing" + JASS_DELIM +
 						"    call SetUnitOwner(GetEnteringUnit()," + toMainPlayerFunc() + ",true)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function InitTrig_" + ARCHON_PREFIX + "UnitShare takes nothing returns nothing" + JASS_DELIM +
+						"function it_" + ARCHON_PREFIX + "UnitShare takes nothing returns nothing" + JASS_DELIM +
 						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare=CreateTrigger()" + JASS_DELIM +
 						"    call TriggerRegisterEnterRectSimple(" + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare,GetPlayableMapRect())" + JASS_DELIM +
-						"    call TriggerAddCondition(" + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare,Condition(function Trig_" + ARCHON_PREFIX + "UnitShare_Conditions))" + JASS_DELIM +
-						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare,function Trig_" + ARCHON_PREFIX + "UnitShare_Actions)" + JASS_DELIM +
+						"    call TriggerAddCondition(" + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare,Condition(function t_" + ARCHON_PREFIX + "UnitShare_Conditions))" + JASS_DELIM +
+						"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare,function t_" + ARCHON_PREFIX + "UnitShare_Ac)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
 				// region selection effects
@@ -2120,7 +2087,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"call SaveEffectHandle(" + SELECTION_HASHTABLE + ",p,c,f)" + JASS_DELIM +
 						"call SaveInteger(" + SELECTION_HASHTABLE + ",p,0,c)" + JASS_DELIM +
 						END_FUNCTION, sb);
-				append("function Trig_" + ARCHON_PREFIX + "Select_Actions takes nothing returns nothing" + JASS_DELIM +
+				append("function t_" + ARCHON_PREFIX + "Select_Ac takes nothing returns nothing" + JASS_DELIM +
 						"local integer i=0" + JASS_DELIM +
 						"local integer p=GetPlayerId(GetTriggerPlayer())" + JASS_DELIM +
 						// selection count
@@ -2147,47 +2114,131 @@ public class CoopRewriter extends ScriptRewriter {
 						"call DestroyGroup(g)" + JASS_DELIM +
 						"call SaveBoolean(" + SELECTION_HASHTABLE + ",p,0,false)" + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function InitTrig_" + ARCHON_PREFIX + "Select takes nothing returns nothing" + JASS_DELIM +
+						"function it_" + ARCHON_PREFIX + "Select takes nothing returns nothing" + JASS_DELIM +
 						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select=CreateTrigger()", sb);
 				for (int playerNumber : allPlayerNumbers)
 					for (String selectBool : Arrays.asList("false", "true"))
 						append("    call TriggerRegisterPlayerSelectionEventBJ(" + TRIGGER_PREFIX + ARCHON_PREFIX + "Select," + toPlayerFunc(playerNumber) + "," + selectBool + ")", sb);
-				append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "Select, function Trig_" + ARCHON_PREFIX + "Select_Actions)" + JASS_DELIM +
+				append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "Select, function t_" + ARCHON_PREFIX + "Select_Ac)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
-				// region show food on main player's buildings for secondary players
-				append("function Trig_" + ARCHON_PREFIX + "BFP_Actions takes nothing returns nothing" + JASS_DELIM +
-						"if " + ARCHON_PREFIX + "LBF>0 then" + JASS_DELIM +
-						"    call BlzFrameSetVisible(BlzGetFrameByName(\"SimpleInfoPanelIconAlly\",7), false)" + JASS_DELIM +
-						"    call BlzFrameSetVisible(BlzGetFrameByName(\"SimpleInfoPanelIconFood\",4), true)" + JASS_DELIM +
-						"    call BlzFrameSetText(BlzGetFrameByName(\"InfoPanelIconValue\",4),I2S(" + ARCHON_PREFIX + "LBF))" + JASS_DELIM +
+				// region replace allies menu in multiplayer
+				append("function " + ARCHON_PREFIX + "RAM takes nothing returns nothing" + JASS_DELIM +
+						"local integer i" + JASS_DELIM +
+//						"local integer j" + JASS_DELIM +
+						"local boolean b=BlzFrameIsVisible(BlzGetFrameByName(\"AllianceDialog\",0))" + JASS_DELIM +
+						"local framehandle array a" + JASS_DELIM +
+						"set a[0]=BlzGetFrameByName(\"AllianceAcceptButton\",0)" + JASS_DELIM +
+						"set a[1]=BlzGetFrameByName(\"AllianceBackdrop\",0)" + JASS_DELIM +
+						//"BlzGetFrameByName(\"AllianceCancelButton\",0)" + JASS_DELIM +
+						"set a[2]=BlzGetFrameByName(\"AllianceDialogScrollBar\",0)" + JASS_DELIM +
+						"set a[3]=BlzGetFrameByName(\"AllianceTitle\",0)" + JASS_DELIM +
+						"set a[4]=BlzGetFrameByName(\"AllianceSlot\",0)" + JASS_DELIM +
+						"set a[5]=BlzGetFrameByName(\"AlliedVictoryCheckBox\",0)" + JASS_DELIM +
+						"set a[6]=BlzGetFrameByName(\"ResourceTradingTitle\",0)" + JASS_DELIM +
+						"set a[7]=BlzGetFrameByName(\"PlayersHeader\",0)" + JASS_DELIM +
+						"set a[8]=BlzGetFrameByName(\"AllyHeader\",0)" + JASS_DELIM +
+						"set a[9]=BlzGetFrameByName(\"VisionHeader\",0)" + JASS_DELIM +
+						"set a[10]=BlzGetFrameByName(\"UnitsHeader\",0)" + JASS_DELIM +
+						"set a[11]=BlzGetFrameByName(\"GoldHeader\",0)" + JASS_DELIM +
+						"set a[12]=BlzGetFrameByName(\"LumberHeader\",0)" + JASS_DELIM +
+						"set a[13]=BlzGetFrameByName(\"AlliedVictoryLabel\",0)" + JASS_DELIM +
+						"set a[14]=BlzGetFrameByName(\"LogArea\",0)" + JASS_DELIM +
+						"set a[15]=BlzGetFrameByName(\"LogAreaScrollBar\",0)" + JASS_DELIM +
+						"set a[16]=BlzGetFrameByName(\"LogAreaBackdrop\",0)" + JASS_DELIM +
+						"set a[17]=BlzGetFrameByName(\"LogOkButton\",0)" + JASS_DELIM +
+						"set a[18]=BlzGetFrameByName(\"LogTitle\",0)" + JASS_DELIM +
+						"set a[19]=BlzGetFrameByName(\"LogDialog\",0)" + JASS_DELIM +
+						"set i=0" + JASS_DELIM +
+//						"set j=20" + JASS_DELIM +
+						"loop" + JASS_DELIM +
+						"exitwhen i>=bj_MAX_PLAYERS" + JASS_DELIM +
+//						"set a[j]=BlzGetFrameByName(\"AllianceSlot\",i)" + JASS_DELIM +
+//						"set a[j+1]=BlzGetFrameByName(\"AlliedVictoryCheckBox\",i)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceSlot\",i),false)" + JASS_DELIM +
+						"call BlzFrameSetVisible(BlzGetFrameByName(\"AlliedVictoryCheckBox\",i),false)" + JASS_DELIM +
+						"set i=i+1" + JASS_DELIM +
+//						"set j=j+2" + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						DebugOnly("call BJDebugMsg(\"a\")" + JASS_DELIM) +
+						"if not " + ARCHON_PREFIX + "AlliesMenuAvail and b then" + JASS_DELIM +
+						"set " + ARCHON_PREFIX + "AlliesMenuAvail=true" + JASS_DELIM +
+						"set i=0" + JASS_DELIM +
+						"loop" + JASS_DELIM +
+						"exitwhen i>3" + JASS_DELIM +
+						"call BlzFrameSetVisible(a[i],false)" + JASS_DELIM +
+						"set i=i+1" + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"if " + ARCHON_PREFIX + "AlliesMenuAvail then" + JASS_DELIM +
+						"if b then" + JASS_DELIM +
+//						"set i=0" + JASS_DELIM +
+//						"set j=20" + JASS_DELIM +
+//						"loop" + JASS_DELIM +
+//						"exitwhen i>=bj_MAX_PLAYERS" + JASS_DELIM +
+//						"call BlzFrameSetVisible(a[j],false)" + JASS_DELIM +
+//						"call BlzFrameSetVisible(a[j+1],false)" + JASS_DELIM +
+//						"set i=i+1" + JASS_DELIM +
+//						"set j=j+2" + JASS_DELIM +
+//						"endloop" + JASS_DELIM +
+						"set i=6" + JASS_DELIM +
+						"loop" + JASS_DELIM +
+						"exitwhen i>13" + JASS_DELIM +
+						"call BlzFrameSetVisible(a[i],false)" + JASS_DELIM +
+						"set i=i+1" + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						"loop" + JASS_DELIM +
+						"exitwhen i>18" + JASS_DELIM +
+						"call BlzFrameSetVisible(a[i],true)" + JASS_DELIM +
+						"set i=i+1" + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"call BlzFrameSetVisible(a[19],b)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						END_FUNCTION, sb);
+				// endregion
+				// region show food on allied buildings
+				append("function t_" + ARCHON_PREFIX + "BFP_Ac takes nothing returns nothing" + JASS_DELIM +
+						//"local integer f=" + ARCHON_PREFIX + "LBF[GetPlayerId(GetLocalPlayer())]" + JASS_DELIM +
+						"local integer f=" + ARCHON_PREFIX + "LBF" + JASS_DELIM +
+						"local framehandle array a" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "RAM()" + JASS_DELIM +
+						"set a[0]=BlzGetFrameByName(\"SimpleInfoPanelIconAlly\",7)" + JASS_DELIM +
+						"set a[1]=BlzGetFrameByName(\"SimpleInfoPanelIconFood\",4)" + JASS_DELIM +
+						"set a[2]=BlzGetFrameByName(\"InfoPanelIconValue\",4)" + JASS_DELIM +
+						"if f>0 then" + JASS_DELIM +
+						"    call BlzFrameSetVisible(a[0],false)" + JASS_DELIM +
+						"    call BlzFrameSetVisible(a[1],true)" + JASS_DELIM +
+						"    call BlzFrameSetText(a[2],I2S(f))" + JASS_DELIM +
 						END_IF + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function InitTrig_" + ARCHON_PREFIX + "BFP takes nothing returns nothing" + JASS_DELIM +
+						"function it_" + ARCHON_PREFIX + "BFP takes nothing returns nothing" + JASS_DELIM +
 						"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP=CreateTrigger()" + JASS_DELIM +
-						//"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP)" + JASS_DELIM +
 						"call TriggerRegisterTimerEventPeriodic(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP,0.0)" + JASS_DELIM +
-						"call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP,function Trig_" + ARCHON_PREFIX + "BFP_Actions)" + JASS_DELIM +
+						"call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP,function t_" + ARCHON_PREFIX + "BFP_Ac)" + JASS_DELIM +
 						END_FUNCTION, sb);
-				append("function Trig_" + ARCHON_PREFIX + "BF_Actions takes nothing returns nothing" + JASS_DELIM +
+				append("function t_" + ARCHON_PREFIX + "BF_Ac takes nothing returns nothing" + JASS_DELIM +
 						"local unit u=GetTriggerUnit()" + JASS_DELIM +
 						"local integer f=GetUnitFoodMade(u)" + JASS_DELIM +
-						"if GetTriggerPlayer()==GetLocalPlayer() then" + JASS_DELIM +
-						"if f>0 and IsUnitType(u,UNIT_TYPE_STRUCTURE) and GetOwningPlayer(u)==" + toMainPlayerFunc() + " then" + JASS_DELIM +
+						"local integer i" + JASS_DELIM +
+						"local player p=GetTriggerPlayer()" + JASS_DELIM +
+						"if p==GetLocalPlayer() then" + JASS_DELIM +
+						"set i=GetPlayerId(GetLocalPlayer())" + JASS_DELIM +
+						"if f>0 and IsUnitType(u,UNIT_TYPE_STRUCTURE) and not IsUnitOwnedByPlayer(u,p) and IsUnitAlly(u,p) then" + JASS_DELIM +
 						"set " + ARCHON_PREFIX + "LBF=f" + JASS_DELIM +
-						"call Trig_" + ARCHON_PREFIX + "BFP_Actions()" + JASS_DELIM +
-						//"call EnableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP)" + JASS_DELIM +
+						"call t_" + ARCHON_PREFIX + "BFP_Ac()" + JASS_DELIM +
 						"else" + JASS_DELIM +
-						//"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP)" + JASS_DELIM +
 						"set " + ARCHON_PREFIX + "LBF=0" + JASS_DELIM +
 						END_IF + JASS_DELIM +
 						END_IF + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function InitTrig_" + ARCHON_PREFIX + "BF takes nothing returns nothing" + JASS_DELIM +
-						"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "BF=CreateTrigger()", sb);
-				for (W3I.Player player : secondaryPlayers)
-					append("    call TriggerRegisterPlayerSelectionEventBJ(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BF," + toPlayerFunc(player.getNum()) + ",true)", sb);
-				append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BF, function Trig_" + ARCHON_PREFIX + "BF_Actions)" + JASS_DELIM +
+						"function it_" + ARCHON_PREFIX + "BF takes nothing returns nothing" + JASS_DELIM +
+						"local integer i=0" + JASS_DELIM +
+						"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "BF=CreateTrigger()" + JASS_DELIM +
+						// todo change loop to GetLocalPlayer()
+						loopOverPlayers("i",
+								"call TriggerRegisterPlayerSelectionEventBJ(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BF,Player(" + PLAYER_ID_ARRAY + "[i]),true)") + JASS_DELIM +
+						"call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "BF, function t_" + ARCHON_PREFIX + "BF_Ac)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
 				// region get main player
@@ -2210,6 +2261,7 @@ public class CoopRewriter extends ScriptRewriter {
 						END_IF + JASS_DELIM +
 						"    return f" + JASS_DELIM +
 						END_FUNCTION, sb);
+				// endregion
 				// region enforce sharing
 				append("function " + ENFORCE_ARCHON + " takes nothing returns nothing", sb);
 				for (W3I.Player player : secondaryPlayers) {
@@ -2226,7 +2278,7 @@ public class CoopRewriter extends ScriptRewriter {
 				append(END_FUNCTION, sb);
 				// endregion
 				// region dialog triggers
-				append("function Trig_" + ARCHON_PREFIX + "DialogSync_Actions takes nothing returns nothing" + JASS_DELIM +
+				append("function t_" + ARCHON_PREFIX + "DialogSync_Ac takes nothing returns nothing" + JASS_DELIM +
 								"local player p=GetTriggerPlayer()" + JASS_DELIM +
 								"local string s=LoadStr(" + GENERAL_HASHTABLE + "," + GH_STRING_DIALOG_BUTTON_TEXT + ",GetHandleId(GetClickedButton()))"
 						, sb);
@@ -2239,11 +2291,11 @@ public class CoopRewriter extends ScriptRewriter {
 						"set " + ARCHON_PREFIX + "DIP=false" + JASS_DELIM +
 						END_IF + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
-						"function InitTrig_" + ARCHON_PREFIX + "DialogSync takes nothing returns nothing" + JASS_DELIM +
+						"function it_" + ARCHON_PREFIX + "DialogSync takes nothing returns nothing" + JASS_DELIM +
 						"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync=CreateTrigger()", sb);
 				for (String dialogName : dialogNames)
 					append("    call TriggerRegisterDialogEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync," + dialogName + ")", sb);
-				append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync,function Trig_" + ARCHON_PREFIX + "DialogSync_Actions)" + JASS_DELIM +
+				append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync,function t_" + ARCHON_PREFIX + "DialogSync_Ac)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
 			}
@@ -2272,6 +2324,7 @@ public class CoopRewriter extends ScriptRewriter {
 			append("trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare" + JASS_DELIM +
 							"force " + FORCE_NAME + JASS_DELIM +
 							"location " + TEMP_POINT_NAME + JASS_DELIM +
+							//"integer array " + ARCHON_PREFIX + "LBF" + JASS_DELIM + // Last Selected Building Food
 							"integer " + ARCHON_PREFIX + "LBF=0" + JASS_DELIM + // Last Selected Building Food
 							"integer array " + PLAYER_ID_ARRAY + JASS_DELIM +
 							"integer array " + PLAYER_INDEX_ARRAY + JASS_DELIM +
@@ -2284,10 +2337,10 @@ public class CoopRewriter extends ScriptRewriter {
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP" + JASS_DELIM + // Building Food periodic
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync" + JASS_DELIM +
 							"boolean " + ARCHON_PREFIX + "AlliesMenuAvail=false" + JASS_DELIM +
-							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "ReplaceMenu" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU" + JASS_DELIM + // pause spawned unit
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest" + JASS_DELIM +
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PLG" + JASS_DELIM + // player left game
 							"boolean " + ARCHON_PREFIX + "GIP=false" + JASS_DELIM + // game is paused
 							"boolean " + ARCHON_PREFIX + "TDS=false" + JASS_DELIM + // time of day suspended
 							"boolean " + ARCHON_PREFIX + "DIP=false" + JASS_DELIM + // dialog is pausing
@@ -2315,18 +2368,14 @@ public class CoopRewriter extends ScriptRewriter {
 				endGlobalsState = 1;
 		} else if (line.contains("function InitCustomTriggers takes")) {
 			for (String resourceName : getAllResourceNames())
-				append("    call InitTrig_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
-			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync"
-					//, "ReplaceMenu"
-					, "PeriodicRefresh", "PSU", "PauseTest")) //, "Deselect", "DeselectOnDeath"))
-				append("    call InitTrig_" + ARCHON_PREFIX + triggerName + "()", sb);
-			//append("if GetLocalPlayer()!=" + toMainPlayerFunc() + " then", sb);
-//			for (String triggerName : Arrays.asList("BF", "BFP"))
-//				append("    call InitTrig_" + ARCHON_PREFIX + triggerName + "()", sb);
-			//append(END_IF, sb);
+				append("    call it_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
+			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync", "PeriodicRefresh", "PSU", "PauseTest", "PLG")) //, "Deselect", "DeselectOnDeath"))
+				append("    call it_" + ARCHON_PREFIX + triggerName + "()", sb);
+			for (String triggerName : Arrays.asList("BF", "BFP"))
+				append("    call it_" + ARCHON_PREFIX + triggerName + "()", sb);
 			if (WITH_CUSTOM_GAMECACHE) {
-				append("    call InitTrig_" + ARCHON_PREFIX + "SyncData()" + JASS_DELIM +
-								"    call InitTrig_" + ARCHON_PREFIX + "WatchLearnedSkill()" + JASS_DELIM +
+				append("    call it_" + ARCHON_PREFIX + "SyncData()" + JASS_DELIM +
+								"    call it_" + ARCHON_PREFIX + "WatchLearnedSkill()" + JASS_DELIM +
 								"    call " + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "Init()"
 						, sb);
 			}
