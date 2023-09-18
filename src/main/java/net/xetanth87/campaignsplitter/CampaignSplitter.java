@@ -122,7 +122,7 @@ public class CampaignSplitter {
 	}
 
 	public String getFeatureDescription() {
-		String featureDescription = "Xetanth87's Campaign Splitter v" + getVersion();// getClass().getPackage().getImplementationVersion();
+		String featureDescription = "|cffffcc00Xetanth87's Campaign Splitter v" + getVersion() + "|r";// getClass().getPackage().getImplementationVersion();
 		if (archonModeAddedSlots > 0)
 			featureDescription += "\n- Archon Mode (" + (archonModeRealAddedSlots + 1) + " slots)";
 		if (withDifficultySelector)

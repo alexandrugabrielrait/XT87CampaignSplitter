@@ -465,11 +465,13 @@ public class MapInjector {
 				}
 			}
 
-		String mapDescription = cs.getFeatureDescription() + "\n" + mapFile.getName();
-		try {
-			String loadingScreenDescription = WTS.ofMapFile(mapFile).getEntry(stringIndexToInt(info.getLoadingScreen().getText()));
-			mapDescription += "\n\n" + loadingScreenDescription;
-		} catch (Throwable ignored) {
+		String mapDescription = cs.getFeatureDescription() + "\n|cffecce87" + mapFile.getName() + "|r";
+		// in Archon Mode, we don't have enough time to read the loading screen text, so we add it here if it exists
+		if (addedCoopPlayers > 0) {
+			try {
+				mapDescription = WTS.ofMapFile(mapFile).getEntry(stringIndexToInt(info.getLoadingScreen().getText())) + "\n\n" + mapDescription;
+			} catch (Throwable ignored) {
+			}
 		}
 		info.setMapDescription(mapDescription);
 
