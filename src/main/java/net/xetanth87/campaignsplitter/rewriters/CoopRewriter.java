@@ -2122,12 +2122,13 @@ public class CoopRewriter extends ScriptRewriter {
 				append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "Select, function t_" + ARCHON_PREFIX + "Select_Ac)" + JASS_DELIM +
 						END_FUNCTION, sb);
 				// endregion
-				// region replace allies menu in multiplayer
-				append("function " + ARCHON_PREFIX + "RAM takes nothing returns nothing" + JASS_DELIM +
-						"local integer i" + JASS_DELIM +
-//						"local integer j" + JASS_DELIM +
-						"local boolean b=BlzFrameIsVisible(BlzGetFrameByName(\"AllianceDialog\",0))" + JASS_DELIM +
+				// region show food on allied buildings
+				append("function t_" + ARCHON_PREFIX + "BFP_Ac takes nothing returns nothing" + JASS_DELIM +
+						//"local integer f=" + ARCHON_PREFIX + "LBF[GetPlayerId(GetLocalPlayer())]" + JASS_DELIM +
 						"local framehandle array a" + JASS_DELIM +
+						"local integer f=" + ARCHON_PREFIX + "LBF" + JASS_DELIM +
+						"local boolean b=BlzFrameIsVisible(BlzGetFrameByName(\"AllianceDialog\",0))" + JASS_DELIM +
+						"local integer i=0" + JASS_DELIM +
 						"set a[0]=BlzGetFrameByName(\"AllianceAcceptButton\",0)" + JASS_DELIM +
 						"set a[1]=BlzGetFrameByName(\"AllianceBackdrop\",0)" + JASS_DELIM +
 						//"BlzGetFrameByName(\"AllianceCancelButton\",0)" + JASS_DELIM +
@@ -2149,16 +2150,14 @@ public class CoopRewriter extends ScriptRewriter {
 						"set a[17]=BlzGetFrameByName(\"LogOkButton\",0)" + JASS_DELIM +
 						"set a[18]=BlzGetFrameByName(\"LogTitle\",0)" + JASS_DELIM +
 						"set a[19]=BlzGetFrameByName(\"LogDialog\",0)" + JASS_DELIM +
-						"set i=0" + JASS_DELIM +
-//						"set j=20" + JASS_DELIM +
+						"set a[20]=BlzGetFrameByName(\"SimpleInfoPanelIconAlly\",7)" + JASS_DELIM +
+						"set a[21]=BlzGetFrameByName(\"SimpleInfoPanelIconFood\",4)" + JASS_DELIM +
+						"set a[22]=BlzGetFrameByName(\"InfoPanelIconValue\",4)" + JASS_DELIM +
 						"loop" + JASS_DELIM +
 						"exitwhen i>=bj_MAX_PLAYERS" + JASS_DELIM +
-//						"set a[j]=BlzGetFrameByName(\"AllianceSlot\",i)" + JASS_DELIM +
-//						"set a[j+1]=BlzGetFrameByName(\"AlliedVictoryCheckBox\",i)" + JASS_DELIM +
 						"call BlzFrameSetVisible(BlzGetFrameByName(\"AllianceSlot\",i),false)" + JASS_DELIM +
 						"call BlzFrameSetVisible(BlzGetFrameByName(\"AlliedVictoryCheckBox\",i),false)" + JASS_DELIM +
 						"set i=i+1" + JASS_DELIM +
-//						"set j=j+2" + JASS_DELIM +
 						"endloop" + JASS_DELIM +
 						DebugOnly("call BJDebugMsg(\"a\")" + JASS_DELIM) +
 						"if not " + ARCHON_PREFIX + "AlliesMenuAvail and b then" + JASS_DELIM +
@@ -2172,15 +2171,6 @@ public class CoopRewriter extends ScriptRewriter {
 						END_IF + JASS_DELIM +
 						"if " + ARCHON_PREFIX + "AlliesMenuAvail then" + JASS_DELIM +
 						"if b then" + JASS_DELIM +
-//						"set i=0" + JASS_DELIM +
-//						"set j=20" + JASS_DELIM +
-//						"loop" + JASS_DELIM +
-//						"exitwhen i>=bj_MAX_PLAYERS" + JASS_DELIM +
-//						"call BlzFrameSetVisible(a[j],false)" + JASS_DELIM +
-//						"call BlzFrameSetVisible(a[j+1],false)" + JASS_DELIM +
-//						"set i=i+1" + JASS_DELIM +
-//						"set j=j+2" + JASS_DELIM +
-//						"endloop" + JASS_DELIM +
 						"set i=6" + JASS_DELIM +
 						"loop" + JASS_DELIM +
 						"exitwhen i>13" + JASS_DELIM +
@@ -2195,21 +2185,10 @@ public class CoopRewriter extends ScriptRewriter {
 						END_IF + JASS_DELIM +
 						"call BlzFrameSetVisible(a[19],b)" + JASS_DELIM +
 						END_IF + JASS_DELIM +
-						END_FUNCTION, sb);
-				// endregion
-				// region show food on allied buildings
-				append("function t_" + ARCHON_PREFIX + "BFP_Ac takes nothing returns nothing" + JASS_DELIM +
-						//"local integer f=" + ARCHON_PREFIX + "LBF[GetPlayerId(GetLocalPlayer())]" + JASS_DELIM +
-						"local integer f=" + ARCHON_PREFIX + "LBF" + JASS_DELIM +
-						"local framehandle array a" + JASS_DELIM +
-						"call " + ARCHON_PREFIX + "RAM()" + JASS_DELIM +
-						"set a[0]=BlzGetFrameByName(\"SimpleInfoPanelIconAlly\",7)" + JASS_DELIM +
-						"set a[1]=BlzGetFrameByName(\"SimpleInfoPanelIconFood\",4)" + JASS_DELIM +
-						"set a[2]=BlzGetFrameByName(\"InfoPanelIconValue\",4)" + JASS_DELIM +
 						"if f>0 then" + JASS_DELIM +
-						"    call BlzFrameSetVisible(a[0],false)" + JASS_DELIM +
-						"    call BlzFrameSetVisible(a[1],true)" + JASS_DELIM +
-						"    call BlzFrameSetText(a[2],I2S(f))" + JASS_DELIM +
+						"    call BlzFrameSetVisible(a[20],false)" + JASS_DELIM +
+						"    call BlzFrameSetVisible(a[21],true)" + JASS_DELIM +
+						"    call BlzFrameSetText(a[22],I2S(f))" + JASS_DELIM +
 						END_IF + JASS_DELIM +
 						END_FUNCTION + JASS_DELIM +
 						"function it_" + ARCHON_PREFIX + "BFP takes nothing returns nothing" + JASS_DELIM +
