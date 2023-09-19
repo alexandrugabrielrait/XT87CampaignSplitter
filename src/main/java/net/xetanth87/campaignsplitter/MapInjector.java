@@ -247,7 +247,7 @@ public class MapInjector {
 	}
 
 	public StringOffsets mergeStrings(W3I info) throws Exception {
-		WTS strings = null;
+		WTS strings;
 		StringOffsets offsets = new StringOffsets();
 		try {
 			mapEditor.extractFile(WTS.GAME_PATH.getPath(), tempFile);
@@ -263,30 +263,46 @@ public class MapInjector {
 		try {
 			if (strings == null)
 				strings = cs.campStrings;
-			else {
+			else
 				for (int i : cs.campStrings.getKeyedEntries().keySet())
 					strings.addEntry(offsets.campaignKeyOffset + i, cs.campStrings.getEntry(i));
-			}
+
+			Map<String, String> mapStrings = new HashMap<>();
+			info.write(tempFile);
 
 			if (mapIndex >= 0) {
-				Map<String, String> mapStrings = new HashMap<>();
-				info.write(tempFile);
-
 				int buttonStringIndex = cs.chapterNameKeysList.get(mapIndex) + offsets.campaignKeyOffset;
 				mapStrings.put(W3I.ofMapFile(mapFile).getMapName(), STRING_PREFIX + buttonStringIndex);
-
-				int campaignAuthorIndex = stringIndexToInt(cs.campaignData.getCampaignAuthor()) + offsets.campaignKeyOffset;
-				mapStrings.put(info.getMapAuthor(), STRING_PREFIX + campaignAuthorIndex);
-
-				changeMapStrings(tempFile, mapStrings);
-				insertDataFile(tempFile, W3I.GAME_PATH.getPath());
 			}
+
+			int campaignAuthorIndex = stringIndexToInt(cs.campaignData.getCampaignAuthor()) + offsets.campaignKeyOffset;
+			mapStrings.put(info.getMapAuthor(), STRING_PREFIX + campaignAuthorIndex);
+
+			String mapDescription = cs.getFeatureDescription() + "\n" + mapFile.getName();
+			// in Archon Mode, we don't have enough time to read the loading screen text, so we add it here if it exists
+			if (addedCoopPlayers > 0) {
+				try {
+					String loadingScreenText = WTS.ofMapFile(mapFile).getEntry(stringIndexToInt(info.getLoadingScreen().getText()));
+					loadingScreenText = loadingScreenText.replace("\r\n", "\n");
+					while (loadingScreenText.contains("\n "))
+						loadingScreenText = loadingScreenText.replace("\n ", "\n");
+					mapDescription = mapDescription + "\n\n" + loadingScreenText;
+				} catch (Throwable ignored) {
+				}
+			}
+			int mapDescriptionIndex = Collections.max(strings.getKeyedEntries().keySet()) + 1;
+			strings.addEntry(mapDescriptionIndex, mapDescription);
+			mapStrings.put(info.getMapDescription(), STRING_PREFIX + mapDescriptionIndex);
+
+			changeMapStrings(tempFile, mapStrings);
+			insertDataFile(tempFile, W3I.GAME_PATH.getPath());
 
 			insertDataFile(strings, WTS.GAME_PATH.getPath());
 		} catch (Throwable e) {
 			if (!(e instanceof IOException))
 				System.err.println(e.getMessage());
 		}
+
 		return offsets;
 	}
 
@@ -465,16 +481,6 @@ public class MapInjector {
 				}
 			}
 
-		String mapDescription = cs.getFeatureDescription() + "\n|cffecce87" + mapFile.getName() + "|r";
-		// in Archon Mode, we don't have enough time to read the loading screen text, so we add it here if it exists
-		if (addedCoopPlayers > 0) {
-			try {
-				mapDescription = WTS.ofMapFile(mapFile).getEntry(stringIndexToInt(info.getLoadingScreen().getText())) + "\n\n" + mapDescription;
-			} catch (Throwable ignored) {
-			}
-		}
-		info.setMapDescription(mapDescription);
-
 		List<W3I.Player> secondaryPlayers = null;
 		if (addedCoopPlayers > 0) {
 			// to enable 24 players in the lobby
@@ -522,12 +528,11 @@ public class MapInjector {
 		System.out.println("Adding imports to map \"" + mapFile.getName() + "\".");
 		mergeImports();
 		cs.IncrementValueProgressBar(1);
-		StringOffsets offsets = null;
 		MapInfo mapInfo = modifyInfo();
 		cs.IncrementValueProgressBar(1);
 		// strings
 		System.out.println("Adding strings to map \"" + mapFile.getName() + "\".");
-		offsets = mergeStrings(mapInfo.info);
+		StringOffsets offsets = mergeStrings(mapInfo.info);
 		cs.IncrementValueProgressBar(1);
 		// misc/constants
 		System.out.println("Adding misc/constants to map \"" + mapFile.getName() + "\".");

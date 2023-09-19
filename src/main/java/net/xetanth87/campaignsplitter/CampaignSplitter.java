@@ -122,7 +122,7 @@ public class CampaignSplitter {
 	}
 
 	public String getFeatureDescription() {
-		String featureDescription = "|cffffcc00Xetanth87's Campaign Splitter v" + getVersion() + "|r";// getClass().getPackage().getImplementationVersion();
+		String featureDescription = "Xetanth87's Campaign Splitter v" + getVersion();// getClass().getPackage().getImplementationVersion();
 		if (archonModeAddedSlots > 0)
 			featureDescription += "\n- Archon Mode (" + (archonModeRealAddedSlots + 1) + " slots)";
 		if (withDifficultySelector)
@@ -295,8 +295,7 @@ public class CampaignSplitter {
 				else {
 					int index = stringIndexToInt(titleKey);
 					mapTitle = hasButton ? campStrings.getKeyedEntries().get(index) : mapStrings.getEntry(index);
-					mapTitleIndex = hasButton ? index : campStrings.getKeyedEntries().keySet().stream()
-							.reduce(Integer.MIN_VALUE, BinaryOperator.maxBy(Integer::compareTo)) + 1;
+					mapTitleIndex = hasButton ? index : Collections.max(campStrings.getKeyedEntries().keySet()) + 1;
 				}
 
 				chapterTitle = chapterTitle == null ? "" : chapterTitle + ": ";
@@ -305,6 +304,7 @@ public class CampaignSplitter {
 				chapterNameKeysList.add(mapTitleIndex);
 				chapterNameKeysMap.put(map.getMapPath().toLowerCase(Locale.ROOT), mapTitleIndex);
 			}
+
 			campEditor.close();
 		}
 		// endregion
