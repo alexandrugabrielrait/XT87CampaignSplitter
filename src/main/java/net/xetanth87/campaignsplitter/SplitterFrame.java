@@ -124,7 +124,7 @@ public class SplitterFrame extends JFrame {
 		String labelTag = "difficulty_selector_check";
 		label = new JLabel(getLocalizedString(labelTag));
 		panel.add(label);
-		label.setToolTipText(getLocalizedString(labelTag + "_tooltip"));
+		//label.setToolTipText(getLocalizedString(labelTag + "_tooltip"));
 		difficultySelectorGroup = new ButtonGroup();
 		JRadioButton radioButton;
 		for (XT87Utils.TriOption option : XT87Utils.TriOption.values()) {
@@ -307,7 +307,7 @@ public class SplitterFrame extends JFrame {
 
 		menuItem = new JMenuItem(getLocalizedString("menu_item_tutorial"));
 		menuItem.setAccelerator(KeyStroke.getKeyStroke('T', KeyEvent.CTRL_DOWN_MASK));
-		menuItem.addActionListener(new ActionListenerInPopup(e -> browseAction(e, "https://www.youtube.com/watch?v=n902PNEm2DM")));
+		menuItem.addActionListener(new ActionListenerInPopup(e -> browseAction(e, "https://www.youtube.com/watch?v=6FAOfvdhPoU")));
 		menu.add(menuItem);
 
 		menuItem = new JMenuItem(getLocalizedString("menu_item_web_page"));
