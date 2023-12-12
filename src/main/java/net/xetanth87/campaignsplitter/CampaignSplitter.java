@@ -60,7 +60,7 @@ public class CampaignSplitter {
 	private int stepsPerMap = 0;
 
 	public static String getVersion() {
-		return "2.00";
+		return "2.2";
 	}
 
 	public void InitializeProgressBar(int i) {
@@ -276,8 +276,8 @@ public class CampaignSplitter {
 				String mapTitle;
 				String titleKey = hasButton ? button.getChapterTitle() : mapInfo.getLoadingScreen().getTitle();
 				if (titleKey == null || !titleKey.contains(STRING_PREFIX)) {
-					if (hasButton)
-						throw new Exception("Invalid chapter title for map " + map.getMapPath() + ": \"" + titleKey + "\" (Broken campaign)");
+//					if (hasButton)
+//						throw new Exception("Invalid chapter title for map " + map.getMapPath() + ": \"" + titleKey + "\" (Broken campaign)");
 				} else {
 					int index = stringIndexToInt(titleKey);
 					chapterTitle = hasButton ? campStrings.getKeyedEntries().get(index) : mapStrings.getEntry(index);
@@ -290,8 +290,11 @@ public class CampaignSplitter {
 					if (titleKey == null || !titleKey.contains(STRING_PREFIX))
 						titleKey = mapInfo.getMapName();
 				}
-				if (titleKey == null || !titleKey.contains(STRING_PREFIX))
-					throw new Exception("Invalid map title for map " + map.getMapPath() + ": \"" + titleKey + "\" (Broken campaign)");
+				if (titleKey == null || !titleKey.contains(STRING_PREFIX)) {
+//					throw new Exception("Invalid map title for map " + map.getMapPath() + ": \"" + titleKey + "\" (Broken campaign)");
+					mapTitle = "Unnamed";
+					mapTitleIndex = Collections.max(campStrings.getKeyedEntries().keySet()) + 1;
+				}
 				else {
 					int index = stringIndexToInt(titleKey);
 					mapTitle = hasButton ? campStrings.getKeyedEntries().get(index) : mapStrings.getEntry(index);

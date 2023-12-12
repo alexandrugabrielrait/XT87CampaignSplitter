@@ -15,6 +15,8 @@ import net.moonlightflower.wc3libs.bin.app.objMod.W3Q;
 import net.moonlightflower.wc3libs.bin.app.objMod.W3T;
 import net.moonlightflower.wc3libs.bin.app.objMod.W3U;
 import net.moonlightflower.wc3libs.dataTypes.app.Controller;
+import net.moonlightflower.wc3libs.dataTypes.app.Model;
+import net.moonlightflower.wc3libs.dataTypes.app.War3String;
 import net.moonlightflower.wc3libs.txt.TXT;
 import net.moonlightflower.wc3libs.txt.TXTSectionId;
 import net.moonlightflower.wc3libs.txt.WTS;
@@ -24,6 +26,7 @@ import net.xetanth87.campaignsplitter.rewriters.CallbackRewriter;
 import net.xetanth87.campaignsplitter.rewriters.CoopRewriter;
 import net.xetanth87.campaignsplitter.rewriters.DifficultySelectorRewriter;
 import net.xetanth87.campaignsplitter.rewriters.FakeUserPlayerRewriter;
+import net.xetanth87.campaignsplitter.rewriters.GlobalsRewriter;
 import net.xetanth87.campaignsplitter.rewriters.MinimapRewriter;
 import net.xetanth87.campaignsplitter.rewriters.ScriptRewriter;
 import net.xetanth87.campaignsplitter.rewriters.TimerRewriter;
@@ -44,6 +47,7 @@ import java.io.OutputStreamWriter;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -604,6 +608,8 @@ public class MapInjector {
 				System.out.println("Finished adding coop support to map \"" + mapFile.getName() + "\".");
 				cs.IncrementValueProgressBar(1);
 			}
+
+			new GlobalsRewriter(this).modifyScript();
 
 			ScriptRewriter.insertScript(this);
 		}

@@ -8,12 +8,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 
 public abstract class ScriptRewriter {
 	public static final String JASS_DELIM = "\r\n";
+	public static final String CONSTANT_DECLARATION = "constant ";
 	public static final String LOCAL_DECLARATION = "local ";
+	public static final String DIALOG_DECLARATION = "dialog ";
+	public static final String NATIVE_DECLARATION = "native ";
 	public static final String FUNCTION_DECLARATION = "function ";
 	public static final String CALL_DECLARATION = "call ";
 	public static final String END_FUNCTION = "endfunction";
@@ -22,7 +24,7 @@ public abstract class ScriptRewriter {
 	private static final boolean IS_DEBUG = false;
 	private static final boolean REMOVE_USELESS = true;
 	public MapInjector mi;
-	public boolean first = true;
+	public boolean first = true, insideGlobals, isReading;
 	public String insideFunction;
 
 	public ScriptRewriter(MapInjector mi) {
@@ -43,6 +45,16 @@ public abstract class ScriptRewriter {
 
 	public static boolean isInitFunction(String line) {
 		return line.contains("function RunInitializationTriggers takes") || line.contains("function main takes");
+	}
+
+	public void stopReading() {
+		isReading = false;
+	}
+
+	public void onStartReadAux(String text, StringBuffer sb) {
+		insideGlobals = false;
+		isReading = true;
+		onStartRead(text, sb);
 	}
 
 	public abstract void onStartRead(String text, StringBuffer sb);
@@ -109,36 +121,44 @@ public abstract class ScriptRewriter {
 		String text = mi.scriptBuffer.toString();
 		Scanner sc = new Scanner(text);
 		StringBuffer sb = new StringBuffer();
-		onStartRead(text, sb);
+		onStartReadAux(text, sb);
 		first = true;
-		boolean inGlobals = false;
-		boolean inMain = false;
-		while (sc.hasNextLine()) {
+		boolean doGlobals = false;
+		boolean doMain = false;
+		int doExitGlobals = 0;
+		while (isReading && sc.hasNextLine()) {
 			String line = sc.nextLine();
 			line = line.trim();
-			if (inGlobals) {
+			if (doGlobals) {
 				onEnterGlobals(sb);
-				inGlobals = false;
-			}
-			else if (line.equals("globals"))
-				inGlobals = true;
+				doGlobals = false;
+			} else if (line.equals("globals"))
+				doGlobals = true;
 
 			if (line.startsWith(FUNCTION_DECLARATION)) {
 				insideFunction = line.substring(FUNCTION_DECLARATION.length()).trim();
 				insideFunction = insideFunction.substring(0, insideFunction.indexOf(' '));
 				if ("main".equals(insideFunction))
-					inMain = true;
-			} else if (inMain && !line.startsWith(LOCAL_DECLARATION)) {
+					doMain = true;
+			} else if (doMain && !line.startsWith(LOCAL_DECLARATION)) {
 				onMainAfterLocals(sb);
-				inMain = false;
+				doMain = false;
 			}
-			onReadLine(line, sb);
-			if (line.equals(END_FUNCTION))
-				insideFunction = null;
-			else if (line.equals("endglobals"))
+			if (doExitGlobals == 1 && !line.startsWith(NATIVE_DECLARATION)) {
 				onExitGlobals(sb);
+				doExitGlobals = 2;
+			}
+			if (line.equals("endglobals"))
+				insideGlobals = false;
+			onReadLine(line, sb);
+			if (line.equals("globals"))
+				insideGlobals = true;
+			else if (line.equals(END_FUNCTION))
+				insideFunction = null;
+			else if (doExitGlobals == 0 && line.equals("endglobals"))
+				doExitGlobals = 1;
 		}
-
+		isReading = false;
 		mi.scriptBuffer = sb;
 	}
 
@@ -212,8 +232,7 @@ public abstract class ScriptRewriter {
 		}
 	}
 
-	public static String toJassCall(String call, String[] params)
-	{
+	public static String toJassCall(String call, String[] params) {
 		StringBuilder paramText = null;
 		for (String param : params) {
 			if (paramText == null)

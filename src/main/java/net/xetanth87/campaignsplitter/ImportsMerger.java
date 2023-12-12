@@ -40,6 +40,10 @@ public class ImportsMerger {
 				"units\\orc\\catapult\\catapult_portrait.mdx",
 				"units\\nightelf\\ballista\\ballista.mdx",
 				"units\\nightelf\\ballista\\ballista_portrait.mdx",
+				"units\\nightelf\\furion\\furion.mdx",
+				"units\\nightelf\\furion\\furion_portrait.mdx",
+				"units\\nightelf\\malfurion\\malfurionnostag.mdx",
+				"units\\nightelf\\malfurion\\malfurionnostag_portrait.mdx",
 				"units\\critters\\chaosspaceorc\\chaosspaceorc.mdx"
 		);
 		if (isHd)
