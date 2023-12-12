@@ -93,7 +93,7 @@ public abstract class ScriptRewriter {
 		else if (mi.mapEditor.hasFile(tempPath = scriptsPath + Jass.GAME_PATH.getName()))
 			mi.scriptPath = tempPath;
 		else if (mi.mapEditor.hasFile(luaName) || mi.mapEditor.hasFile(scriptsPath + luaName))
-			throw new Exception("Difficulty selection won't be added to the map with lua script \"" + mi.mapFile.getName() + "\".");
+			throw new Exception("Script modifications can't be made to the map with lua script \"" + mi.mapFile.getName() + "\".");
 		else
 			throw new Exception("No JASS script found for map \"" + mi.mapFile.getName() + "\".");
 		mi.mapEditor.extractFile(mi.scriptPath, mi.tempFile);
