@@ -30,7 +30,7 @@ public class GlobalsRewriter extends ScriptRewriter {
 					}
 				}
 			}
-		}.modifyScript();
+		}.scanScript();
 
 		if (!hasCallInGlobals[0])
 			stopReading();

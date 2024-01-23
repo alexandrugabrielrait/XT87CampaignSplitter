@@ -117,7 +117,7 @@ public abstract class ScriptRewriter {
 		XT87Utils.overwriteFile(mi.mapEditor, mi.scriptPath, mi.tempFile, true);
 	}
 
-	public void modifyScript() {
+	public void handleScript(boolean modify) {
 		String text = mi.scriptBuffer.toString();
 		Scanner sc = new Scanner(text);
 		StringBuffer sb = new StringBuffer();
@@ -158,8 +158,17 @@ public abstract class ScriptRewriter {
 			else if (doExitGlobals == 0 && line.equals("endglobals"))
 				doExitGlobals = 1;
 		}
+		if (isReading && modify)
+			mi.scriptBuffer = sb;
 		isReading = false;
-		mi.scriptBuffer = sb;
+	}
+
+	public void scanScript() {
+		handleScript(false);
+	}
+
+	public void modifyScript() {
+		handleScript(true);
 	}
 
 	public static String[] splitWithParentheses(String input) {
