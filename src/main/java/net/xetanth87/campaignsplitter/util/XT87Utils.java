@@ -26,6 +26,8 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.Stack;
 import java.util.prefs.Preferences;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class XT87Utils {
@@ -47,6 +49,7 @@ public class XT87Utils {
 	static {
 		assert BASE62_CHARS.length() == 62 && BASE62_CHARS.length() == BASE62_CHARS.chars().distinct().count();
 	}
+
 	public static Stack<File> createdFiles = new Stack<>();
 
 	public enum TriOption {
@@ -85,19 +88,17 @@ public class XT87Utils {
 	}
 
 	public static void deleteNewFiles() {
-		while (!createdFiles.empty())
-		{
+		while (!createdFiles.empty()) {
 			File file = createdFiles.pop();
 			if (file.exists())
 				file.delete();
 		}
 	}
 
-	public static String zeroedNumber(int number, int charCount)
-	{
+	public static String zeroedNumber(int number, int charCount) {
 		StringBuilder buttonIndexText = new StringBuilder(number + "");
 		int addedZeroes = Math.max(charCount - buttonIndexText.length(), 0);
-		for (int i = 0; i < addedZeroes; i ++)
+		for (int i = 0; i < addedZeroes; i++)
 			buttonIndexText.insert(0, "0");
 		return buttonIndexText.toString();
 	}
@@ -121,8 +122,7 @@ public class XT87Utils {
 		return result.toString();
 	}
 
-	public static String toCampaignPath(String gamePath)
-	{
+	public static String toCampaignPath(String gamePath) {
 		return gamePath.replace("war3map.", "war3campaign.");
 	}
 
@@ -133,7 +133,8 @@ public class XT87Utils {
 	}
 
 	public static <T extends ObjMod> T objModOfMapFile(Class<T> clazz, File mapFile, boolean isSkin) throws IOException {
-		if (!mapFile.exists()) throw new IOException(String.format("file %s does not exist", mapFile));
+		if (!mapFile.exists())
+			throw new IOException(String.format("file %s does not exist", mapFile));
 
 		MpqPort.Out port = new JMpqPort.Out();
 
@@ -146,7 +147,8 @@ public class XT87Utils {
 
 			MpqPort.Out.Result portResult = port.commit(mapFile);
 
-			if (!portResult.getExports().containsKey(inFilePath)) throw new IOException("could not extract w3a file");
+			if (!portResult.getExports().containsKey(inFilePath))
+				throw new IOException("could not extract w3a file");
 
 			Wc3BinInputStream inStream = new Wc3BinInputStream(portResult.getInputStream(inFilePath));
 
@@ -176,12 +178,30 @@ public class XT87Utils {
 		String defaultPath = isCampaignFile ? "war3campImported\\" : "war3mapImported\\";
 		byte[] bytes = Files.readAllBytes(extractedFile.toPath());
 		byte[] content = new byte[bytes.length - 8];
-		for (int i = 0; i < content.length; i++)
-			content[i] = bytes[i + 8];
-		String s = new String(content, StandardCharsets.US_ASCII)
-				.replace("\u0005", IMPORT_DELIM)
-				.replace("\b" + defaultPath, IMPORT_DELIM + defaultPath)
-				.replace("\b", IMPORT_DELIM + defaultPath)
+		System.arraycopy(bytes, 8, content, 0, content.length);
+		String correctedContent = new String(content, StandardCharsets.US_ASCII)
+				.replace("\u0005", IMPORT_DELIM);
+
+		if (correctedContent.contains("\b")) {
+			// Regular expression pattern to match paths between \b and \0 or until the last character
+
+			// Matcher to find matches in the input string
+			Matcher matcher = Pattern.compile("\b(.*?)(\0|$)").matcher(correctedContent);
+
+			// StringBuffer to store the modified result
+			StringBuilder result = new StringBuilder();
+
+			// Loop through matches and replace paths with defaultPath
+			while (matcher.find()) {
+				String matchedPath = matcher.group(1);
+				String replacedPath = defaultPath + "\\" + matchedPath.substring(matchedPath.lastIndexOf('\\') + 1);
+				matcher.appendReplacement(result, IMPORT_DELIM + replacedPath + "\0");
+			}
+			matcher.appendTail(result);
+			correctedContent = result.toString();
+		}
+
+		correctedContent = correctedContent
 				.replace("\0\0", "\0" + IMPORT_DELIM + defaultPath)
 				.replace(defaultPath + "\0", "\b\0")
 				.replace("\u0015", IMPORT_DELIM)
@@ -192,7 +212,7 @@ public class XT87Utils {
 		}
 
 		FileWriter writer = new FileWriter(extractedFile, true);
-		writer.append(s);
+		writer.append(correctedContent);
 		writer.close();
 	}
 
@@ -240,41 +260,32 @@ public class XT87Utils {
 		return map.get(key);
 	}
 
-	public static String getLocalizedString(String label, Locale locale)
-	{
+	public static String getLocalizedString(String label, Locale locale) {
 		try {
 			ResourceBundle bundle = ResourceBundle.getBundle("properties/Localization", locale);
 			return bundle.getString(label);
-		}
-		catch (Throwable ignored)
-		{
+		} catch (Throwable ignored) {
 			return label;
 		}
 	}
 
-	public static String getLocalizedString(String label)
-	{
+	public static String getLocalizedString(String label) {
 		return getLocalizedString(label, SplitterLanguage.selectedLanguage.getLocale());
 	}
 
-	public static String getUnicodeString(String readable)
-	{
+	public static String getUnicodeString(String readable) {
 		try {
 			return new String(readable.getBytes(), StandardCharsets.UTF_8);
-		}
-		catch (Exception ignored)
-		{
+		} catch (Exception ignored) {
 			return readable;
 		}
 	}
 
-	public static void savePreference(String key, String value)
-	{
+	public static void savePreference(String key, String value) {
 		Preferences.userNodeForPackage(XT87Utils.class).put(key, value);
 	}
 
-	public static String loadPreference(String key)
-	{
+	public static String loadPreference(String key) {
 		return Preferences.userNodeForPackage(XT87Utils.class).get(key, null);
 	}
 }
