@@ -45,6 +45,18 @@ public class XT87Utils {
 	public static final String CAMPAIGNS_FOLDER = GAME_FOLDER + "/Campaigns";
 	public static final String DOWNLOAD_FOLDER = MAPS_FOLDER + "/Download";
 	public static final Controller FAKE_PLAYER_CONTROLLER = Controller.COMPUTER;
+	public static final String TRIGGER_PREFIX = "t_";
+	public static final String TRIGGER_ACTION_PREFIX = "a" + TRIGGER_PREFIX;
+	public static final String TRIGGER_INIT_PREFIX = "i" + TRIGGER_PREFIX;
+	public static final String TRIGGER_VAR_REPLACE = "{T}";
+	public static final String JASS_DELIM = "\r\n";
+	public static final String CONSTANT_DECLARATION = "constant ";
+	public static final String LOCAL_DECLARATION = "local ";
+	public static final String DIALOG_DECLARATION = "dialog ";
+	public static final String NATIVE_DECLARATION = "native ";
+	public static final String FUNCTION_DECLARATION = "function ";
+	public static final String CALL_DECLARATION = "call ";
+	public static final String END_FUNCTION = "endfunction";
 
 	static {
 		assert BASE62_CHARS.length() == 62 && BASE62_CHARS.length() == BASE62_CHARS.chars().distinct().count();

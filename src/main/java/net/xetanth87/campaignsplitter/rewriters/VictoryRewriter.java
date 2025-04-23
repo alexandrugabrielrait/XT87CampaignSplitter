@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
+import static net.xetanth87.campaignsplitter.util.XT87Utils.END_FUNCTION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.JASS_DELIM;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.STRING_PREFIX;
 
 public class VictoryRewriter extends ScriptRewriter {
@@ -17,7 +19,7 @@ public class VictoryRewriter extends ScriptRewriter {
 	public static final String VICTORY_CALL = "call CustomVictoryBJ(";
 
 	public VictoryRewriter(MapInjector mi, int campaignKeyOffset, boolean addNextLevelMessage) {
-		super(mi);
+		super(mi, "VT");
 		this.campaignKeyOffset = campaignKeyOffset;
 		this.addNextLevelMessage = addNextLevelMessage;
 	}

@@ -5,18 +5,20 @@ import net.xetanth87.campaignsplitter.MapInjector;
 import java.util.ArrayList;
 import java.util.List;
 
+import static net.xetanth87.campaignsplitter.util.XT87Utils.CONSTANT_DECLARATION;
+
 public class GlobalsRewriter extends ScriptRewriter {
 	public List<String> setList;
 
 	public GlobalsRewriter(MapInjector mi) {
-		super(mi);
+		super(mi, "GB");
 	}
 
 	@Override
 	public void onStartRead(String text, StringBuffer sb) {
 		setList = new ArrayList<>();
 		final boolean[] hasCallInGlobals = {false};
-		new ScriptRewriter(mi) {
+		new ScriptRewriter(mi, "G2") {
 			@Override
 			public void onStartRead(String text, StringBuffer sb) {
 			}

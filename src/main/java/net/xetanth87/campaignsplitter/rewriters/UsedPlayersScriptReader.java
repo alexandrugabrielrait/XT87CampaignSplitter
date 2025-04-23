@@ -11,7 +11,7 @@ public class UsedPlayersScriptReader extends ScriptRewriter {
 	private final Set<Integer> unusedSet;
 
 	public UsedPlayersScriptReader(MapInjector mi, Set<Integer> list) {
-		super(mi);
+		super(mi, "UP");
 		this.usedSet = list;
 		unusedSet = new HashSet<>();
 		for (int id = 0; id < XT87Utils.MAX_PLAYER_COUNT; id++) {

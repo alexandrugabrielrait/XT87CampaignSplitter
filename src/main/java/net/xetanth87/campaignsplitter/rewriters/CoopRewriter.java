@@ -15,6 +15,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import static net.xetanth87.campaignsplitter.util.XT87Utils.DIALOG_DECLARATION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.END_FUNCTION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.JASS_DELIM;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.LOCAL_DECLARATION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_PREFIX;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_VAR_REPLACE;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.putWithCount;
 
 public class CoopRewriter extends ScriptRewriter {
@@ -22,8 +28,6 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final String DEFINE_START_LOC = "call DefineStartLocation(";
 	private static final String SETPLAYERCOLORBJ = "call SetPlayerColorBJ(";
 	private static final String CONVERTPLAYERCOLOR = "ConvertPlayerColor(";
-	private static final String PLAYER_FUNC = "Player(";
-	private static final String TRIGGER_PREFIX = "t_";
 	private static final String ARCHON_PREFIX_BASE = "XT87A";
 	private static final String ARCHON_PREFIX = ARCHON_PREFIX_BASE + "S";
 	private static final String FILE_IO_PREFIX = ARCHON_PREFIX_BASE + "I";
@@ -174,7 +178,7 @@ public class CoopRewriter extends ScriptRewriter {
 	public Map<String, Integer> cacheFieldMap;
 
 	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers) {
-		super(mi);
+		super(mi, "AS");
 		this.info = info;
 		this.mainPlayer = mainPlayer;
 		this.secondaryPlayers = secondaryPlayers;
@@ -182,6 +186,150 @@ public class CoopRewriter extends ScriptRewriter {
 		allPlayerNumbers.add(mainPlayer.getNum());
 		secondaryPlayers.forEach(x -> allPlayerNumbers.add(x.getNum()));
 		dialogNames = new ArrayList<>();
+
+		// region trigger config
+		if (WITH_CUSTOM_GAMECACHE) {
+			// region refresh paused units
+			addTriggerConfiguration("PeriodicRefresh",
+					"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "EnumRefreshPausedUnit)",
+					"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh)" + JASS_DELIM +
+							"call TriggerRegisterTimerEventPeriodic(" + TRIGGER_VAR_REPLACE + ",0.03)");
+			// endregion
+			// region pause spawned units
+			addTriggerConfiguration("PSU",
+					"local unit u=GetEnteringUnit()" + JASS_DELIM +
+							"if not HaveSavedBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_IS_PAUSED + ",GetHandleId(u)) then" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "SavePausedUnit(u)" + JASS_DELIM +
+							END_IF,
+					"call TriggerRegisterEnterRectSimple(" + TRIGGER_VAR_REPLACE + ", GetPlayableMapRect())");
+			// endregion
+			// region watch learned skill
+			addTriggerConfiguration("WatchLearnedSkill",
+					"    local integer i=0" + JASS_DELIM +
+							"    local integer a=GetLearnedSkill()" + JASS_DELIM +
+							"    if " + ARCHON_PREFIX + "WatchSkill(a)==true then" + JASS_DELIM +
+							DebugOnly("call BJDebugMsg(I2S(i)+\"] \"+I2S(a)+\" _\"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
+							"        loop" + JASS_DELIM +
+							"            exitwhen i>=" + ABILITY_ARRAY_SIZE + JASS_DELIM +
+							DebugOnly("call BJDebugMsg(I2S(i)+\") \"+I2S(" + ABILITY_ARRAY + "[i])+\" \"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
+							"            set i=i+1" + JASS_DELIM +
+							"        endloop" + JASS_DELIM +
+							"    " + END_IF,
+					"call TriggerRegisterAnyUnitEventBJ(" + TRIGGER_VAR_REPLACE + ", EVENT_PLAYER_HERO_SKILL)");
+			// endregion
+			// region sync data
+			addTriggerConfiguration("SyncData",
+					"    local string contents=BlzGetTriggerSyncData()" + JASS_DELIM +
+							"    local integer len=StringLength(contents)" + JASS_DELIM +
+							"    local string char" + JASS_DELIM +
+							"    local string buffer=\"\"" + JASS_DELIM +
+							"    local integer curLine=0" + JASS_DELIM +
+							"    local integer i=0" + JASS_DELIM +
+							"    if len<=0 then" + JASS_DELIM +
+							"        set XT87ReadLines[0]=null" + JASS_DELIM +
+							"    else" + JASS_DELIM +
+							"        loop" + JASS_DELIM +
+							"            exitwhen i > len" + JASS_DELIM +
+							"            set char=SubString(contents,i,i+1)" + JASS_DELIM +
+							"            if char==\"\\n\" then" + JASS_DELIM +
+							"                set XT87ReadLines[curLine]=buffer" + JASS_DELIM +
+							"                set curLine=curLine+1" + JASS_DELIM +
+							"                set buffer=\"\"" + JASS_DELIM +
+							"            else" + JASS_DELIM +
+							"                set buffer=buffer+char" + JASS_DELIM +
+							"            endif" + JASS_DELIM +
+							"        set i=i+1" + JASS_DELIM +
+							"        endloop" + JASS_DELIM +
+							"        set XT87ReadLines[curLine]=buffer" + JASS_DELIM +
+							"    endif" + JASS_DELIM +
+							"set XT87ReadLinesAreRead=true",
+					"    local integer i=0",
+					"    loop" + JASS_DELIM +
+							"        exitwhen i>=bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
+							"        call BlzTriggerRegisterPlayerSyncEvent(" + TRIGGER_VAR_REPLACE + ",Player(i),\"XTContents\",false)" + JASS_DELIM +
+							"        set i=i+1" + JASS_DELIM +
+							"    endloop");
+			// endregion
+		}
+		// endregion
+		addFunctionConfiguration("CBF", "nothing", "nothing",
+				"local timer t=GetExpiredTimer()" + JASS_DELIM +
+						"local integer h=GetHandleId(t)" + JASS_DELIM +
+						"local string c=LoadStr(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h)" + JASS_DELIM +
+						"local real r" + JASS_DELIM +
+						"if c!=null then" + JASS_DELIM +
+						"call ExecuteFunc(c)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"if LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PERIODIC + ",h) then" + JASS_DELIM +
+						"set r=LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_TIMEOUT + ",h)" + JASS_DELIM +
+						"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h,r)" + JASS_DELIM +
+						"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h,false)" + JASS_DELIM +
+						"call TimerStart(t,r,false,function " + ARCHON_PREFIX + "CBF)" + JASS_DELIM +
+						END_IF); // Callback function
+		addFunctionConfiguration("CreateTimer", "nothing", "timer",
+				"local integer i=" + ARCHON_PREFIX + "ATL" + JASS_DELIM +
+						"set " + ARCHON_PREFIX + "ATL=i+1" + JASS_DELIM +
+						"set " + ARCHON_PREFIX + "ATA[i]=CreateTimer()" + JASS_DELIM +
+						"return " + ARCHON_PREFIX + "ATA[i]");
+		addFunctionConfiguration("TimerStart", "timer t,real r,boolean b,string c", "nothing",
+				"local integer h=GetHandleId(t)" + JASS_DELIM +
+						"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_TIMEOUT + ",h,r)" + JASS_DELIM +
+						"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h,r)" + JASS_DELIM +
+						"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h,false)" + JASS_DELIM +
+						"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PERIODIC + ",h,b)" + JASS_DELIM +
+						"if c!=null then" + JASS_DELIM +
+						"call SaveStr(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h,c)" + JASS_DELIM +
+						"else" + JASS_DELIM +
+						"call RemoveSavedString(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"call TimerStart(t,r,false,function " + ARCHON_PREFIX + "CBF)");
+		addFunctionConfiguration("TimerGetRemaining", "timer t", "real",
+				"local integer h=GetHandleId(t)" + JASS_DELIM +
+						"if LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h) then" + JASS_DELIM +
+						"return LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h)" + JASS_DELIM +
+						"else" + JASS_DELIM +
+						"return TimerGetRemaining(t)" + JASS_DELIM +
+						END_IF);
+		addFunctionConfiguration("TimerGetTimeout", "timer t", "real",
+				"return LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_TIMEOUT + ",GetHandleId(t))");
+		addFunctionConfiguration("TimerGetElapsed", "timer t", "real",
+				"return " + ARCHON_PREFIX + "TimerGetTimeout(t)-" + ARCHON_PREFIX + "TimerGetRemaining(t)");
+		addFunctionConfiguration("PauseTimer", "timer t", "nothing",
+				"local integer h=GetHandleId(t)" + JASS_DELIM +
+						"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h,TimerGetRemaining(t))" + JASS_DELIM +
+						"call TimerStart(t,2340000,false,null)" + JASS_DELIM +
+						"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h,true)");
+		addFunctionConfiguration("ResumeTimer", "timer t", "nothing",
+				"local integer h=GetHandleId(t)" + JASS_DELIM +
+						"local real r=LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h)" + JASS_DELIM +
+						"local code c=null" + JASS_DELIM +
+						"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h,false)" + JASS_DELIM +
+						"call TimerStart(t,r,false,function " + ARCHON_PREFIX + "CBF)");
+		addFunctionConfiguration("StartTimerBJ", "timer t, boolean b, real r", "timer",
+				"set bj_lastStartedTimer=t" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "TimerStart(bj_lastStartedTimer,r,b,null)" + JASS_DELIM +
+						"return bj_lastStartedTimer");
+		addFunctionConfiguration("CreateTimerBJ", "boolean b, real r", "timer",
+				"set bj_lastStartedTimer=" + ARCHON_PREFIX + "CreateTimer()" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "TimerStart(bj_lastStartedTimer,r,b,null)" + JASS_DELIM +
+						"return bj_lastStartedTimer");
+// addFunctionConfiguration("DestroyTimer", "timer t", "nothing",
+// 				// todo destroy from hashtable
+// 				"call DestroyTimerBJ(t)");
+// // todo merge with above function
+// addFunctionConfiguration("DestroyTimerBJ", "timer t", "nothing",
+// 				"call " + ARCHON_PREFIX + "DestroyTimerBJ(t)");
+		addFunctionConfiguration("PauseTimerBJ", "boolean b, timer t", "nothing",
+				"if b then" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "PauseTimer(t)" + JASS_DELIM +
+						"else" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "ResumeTimer(t)" + JASS_DELIM +
+						END_IF);
+		addFunctionConfiguration("SetReservedLocalHeroButtons", "integer i", "nothing",
+				"if GetLocalPlayer()==" + toMainPlayerFunc() + " then" + JASS_DELIM +
+						"call SetReservedLocalHeroButtons(i)" + JASS_DELIM +
+						END_IF);
+
 	}
 
 	public static String getNewPath(String oldPath) {
@@ -202,10 +350,6 @@ public class CoopRewriter extends ScriptRewriter {
 
 	private int getCacheFieldIndex(String key) {
 		return putWithCount(cacheFieldMap, key);
-	}
-
-	public static String toPlayerFunc(int i) {
-		return PLAYER_FUNC + i + ")";
 	}
 
 	public String toMainPlayerFunc() {
@@ -301,97 +445,6 @@ public class CoopRewriter extends ScriptRewriter {
 
 	@Override
 	public void onExitGlobals(StringBuffer sb) {
-		append("function " + ARCHON_PREFIX + "CBF takes nothing returns nothing" + JASS_DELIM + // Callback function
-				"local timer t=GetExpiredTimer()" + JASS_DELIM +
-				"local integer h=GetHandleId(t)" + JASS_DELIM +
-				"local string c=LoadStr(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h)" + JASS_DELIM +
-				"local real r" + JASS_DELIM +
-				"if c!=null then" + JASS_DELIM +
-				"call ExecuteFunc(c)" + JASS_DELIM +
-				END_IF + JASS_DELIM +
-				"if LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PERIODIC + ",h) then" + JASS_DELIM +
-				"set r=LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_TIMEOUT + ",h)" + JASS_DELIM +
-				"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h,r)" + JASS_DELIM +
-				"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h,false)" + JASS_DELIM +
-				"call TimerStart(t,r,false,function " + ARCHON_PREFIX + "CBF)" + JASS_DELIM +
-				END_IF + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "CreateTimer takes nothing returns timer" + JASS_DELIM +
-				"local integer i=" + ARCHON_PREFIX + "ATL" + JASS_DELIM +
-				"set " + ARCHON_PREFIX + "ATL=i+1" + JASS_DELIM +
-				"set " + ARCHON_PREFIX + "ATA[i]=CreateTimer()" + JASS_DELIM +
-				"return " + ARCHON_PREFIX + "ATA[i]" + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "TimerStart takes timer t,real r,boolean b,string c returns nothing" + JASS_DELIM +
-				"local integer h=GetHandleId(t)" + JASS_DELIM +
-				"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_TIMEOUT + ",h,r)" + JASS_DELIM +
-				"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h,r)" + JASS_DELIM +
-				"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h,false)" + JASS_DELIM +
-				"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PERIODIC + ",h,b)" + JASS_DELIM +
-				"if c!=null then" + JASS_DELIM +
-				"call SaveStr(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h,c)" + JASS_DELIM +
-				"else" + JASS_DELIM +
-				"call RemoveSavedString(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h)" + JASS_DELIM +
-				END_IF + JASS_DELIM +
-				"call TimerStart(t,r,false,function " + ARCHON_PREFIX + "CBF)" + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "TimerGetRemaining takes timer t returns real" + JASS_DELIM +
-				"local integer h=GetHandleId(t)" + JASS_DELIM +
-				"if LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h) then" + JASS_DELIM +
-				"return LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h)" + JASS_DELIM +
-				"else" + JASS_DELIM +
-				"return TimerGetRemaining(t)" + JASS_DELIM +
-				END_IF + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "TimerGetTimeout takes timer t returns real" + JASS_DELIM +
-				"return LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_TIMEOUT + ",GetHandleId(t))" + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "TimerGetElapsed takes timer t returns real" + JASS_DELIM +
-				"return " + ARCHON_PREFIX + "TimerGetTimeout(t)-" + ARCHON_PREFIX + "TimerGetRemaining(t)" + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "PauseTimer takes timer t returns nothing" + JASS_DELIM +
-				"local integer h=GetHandleId(t)" + JASS_DELIM +
-				"call SaveReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h,TimerGetRemaining(t))" + JASS_DELIM +
-				"call TimerStart(t,2340000,false,null)" + JASS_DELIM +
-				"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h,true)" + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "ResumeTimer takes timer t returns nothing" + JASS_DELIM +
-				"local integer h=GetHandleId(t)" + JASS_DELIM +
-				"local real r=LoadReal(" + GENERAL_HASHTABLE + "," + GH_REAL_TIMER_REMAINING + ",h)" + JASS_DELIM +
-				"local code c=null" + JASS_DELIM +
-				"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h,false)" + JASS_DELIM +
-				"call TimerStart(t,r,false,function " + ARCHON_PREFIX + "CBF)" + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "StartTimerBJ takes timer t, boolean b, real r returns timer" + JASS_DELIM +
-				"set bj_lastStartedTimer=t" + JASS_DELIM +
-				"call " + ARCHON_PREFIX + "TimerStart(bj_lastStartedTimer,r,b,null)" + JASS_DELIM +
-				"return bj_lastStartedTimer" + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "CreateTimerBJ takes boolean b, real r returns timer" + JASS_DELIM +
-				"set bj_lastStartedTimer=" + ARCHON_PREFIX + "CreateTimer()" + JASS_DELIM +
-				"call " + ARCHON_PREFIX + "TimerStart(bj_lastStartedTimer,r,b,null)" + JASS_DELIM +
-				"return bj_lastStartedTimer" + JASS_DELIM +
-				END_FUNCTION, sb);
-//		append("function " + ARCHON_PREFIX + "DestroyTimer takes timer t returns nothing" + JASS_DELIM +
-//				// todo destroy from hashtable
-//				"call DestroyTimerBJ(t)" + JASS_DELIM +
-//				END_FUNCTION, sb);
-//		// todo merge with above function
-//		append("function " + ARCHON_PREFIX + "DestroyTimerBJ takes timer t returns nothing" + JASS_DELIM +
-//				"call " + ARCHON_PREFIX + "DestroyTimerBJ(t)" + JASS_DELIM +
-//				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "PauseTimerBJ takes boolean b, timer t returns nothing" + JASS_DELIM +
-				"if b then" + JASS_DELIM +
-				"call " + ARCHON_PREFIX + "PauseTimer(t)" + JASS_DELIM +
-				"else" + JASS_DELIM +
-				"call " + ARCHON_PREFIX + "ResumeTimer(t)" + JASS_DELIM +
-				END_IF + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + ARCHON_PREFIX + "SetReservedLocalHeroButtons takes integer i returns nothing" + JASS_DELIM +
-				"if GetLocalPlayer()==" + toMainPlayerFunc() + " then" + JASS_DELIM +
-				"call SetReservedLocalHeroButtons(i)" + JASS_DELIM +
-				END_IF + JASS_DELIM +
-				END_FUNCTION, sb);
 		if (WITH_CUSTOM_GAMECACHE) {
 			// region FileIO library
 			append("function " + FILE_LIBRARY_PREFIX + "open takes string f returns integer" + JASS_DELIM + // filename f
@@ -732,31 +785,6 @@ public class CoopRewriter extends ScriptRewriter {
 					"endloop" + JASS_DELIM +
 					END_FUNCTION, sb);
 			// endregion
-			// region refresh paused units
-			append("function t_" + ARCHON_PREFIX + "PeriodicRefresh_Ac takes nothing returns nothing" + JASS_DELIM +
-					"call " + ARCHON_PREFIX + "ForAllUnits(function " + ARCHON_PREFIX + "EnumRefreshPausedUnit)" + JASS_DELIM +
-					END_FUNCTION + JASS_DELIM +
-					"function it_" + ARCHON_PREFIX + "PeriodicRefresh takes nothing returns nothing" + JASS_DELIM +
-					"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh=CreateTrigger()" + JASS_DELIM +
-					"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh)" + JASS_DELIM +
-					"call TriggerRegisterTimerEventPeriodic(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh,0.03)" + JASS_DELIM +
-					"call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh,function t_" + ARCHON_PREFIX + "PeriodicRefresh_Ac)" + JASS_DELIM +
-					END_FUNCTION, sb);
-			// endregion
-			// region pause spawned units
-			append("function t_" + ARCHON_PREFIX + "PSU_Ac takes nothing returns nothing" + JASS_DELIM +
-					"local unit u=GetEnteringUnit()" + JASS_DELIM +
-					"if not HaveSavedBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_IS_PAUSED + ",GetHandleId(u)) then" + JASS_DELIM +
-					"call " + ARCHON_PREFIX + "SavePausedUnit(u)" + JASS_DELIM +
-					END_IF + JASS_DELIM +
-					END_FUNCTION + JASS_DELIM +
-					"function it_" + ARCHON_PREFIX + "PSU takes nothing returns nothing" + JASS_DELIM +
-					"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU=CreateTrigger()" + JASS_DELIM +
-					"call DisableTrigger(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU)" + JASS_DELIM +
-					"    call TriggerRegisterEnterRectSimple(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU,GetPlayableMapRect())" + JASS_DELIM +
-					"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU,function t_" + ARCHON_PREFIX + "PSU_Ac)" + JASS_DELIM +
-					END_FUNCTION, sb);
-			// endregion
 			// region custom functions
 			append("function " + ARCHON_PREFIX + "WatchSkill takes integer a returns boolean" + JASS_DELIM +
 					"    if not LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_HAS_ABILITY + ",a) then" + JASS_DELIM +
@@ -767,23 +795,6 @@ public class CoopRewriter extends ScriptRewriter {
 					"    else" + JASS_DELIM +
 					"        return false" + JASS_DELIM +
 					END_IF + JASS_DELIM +
-					END_FUNCTION + JASS_DELIM +
-					"function t_" + ARCHON_PREFIX + "WatchLearnedSkill_Ac takes nothing returns nothing" + JASS_DELIM +
-					"    local integer i=0" + JASS_DELIM +
-					"    local integer a=GetLearnedSkill()" + JASS_DELIM +
-					"    if " + ARCHON_PREFIX + "WatchSkill(a)==true then" + JASS_DELIM +
-					DebugOnly("call BJDebugMsg(I2S(i)+\"] \"+I2S(a)+\" _\"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
-					"        loop" + JASS_DELIM +
-					"            exitwhen i>=" + ABILITY_ARRAY_SIZE + JASS_DELIM +
-					DebugOnly("call BJDebugMsg(I2S(i)+\") \"+I2S(" + ABILITY_ARRAY + "[i])+\" \"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
-					"            set i=i+1" + JASS_DELIM +
-					"        endloop" + JASS_DELIM +
-					"    " + END_IF + JASS_DELIM +
-					END_FUNCTION + JASS_DELIM +
-					"function it_" + ARCHON_PREFIX + "WatchLearnedSkill takes nothing returns nothing" + JASS_DELIM +
-					"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill=CreateTrigger()" + JASS_DELIM +
-					"    call TriggerRegisterAnyUnitEventBJ(" + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill,EVENT_PLAYER_HERO_SKILL)" + JASS_DELIM +
-					"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill,function t_" + ARCHON_PREFIX + "WatchLearnedSkill_Ac)" + JASS_DELIM +
 					END_FUNCTION + JASS_DELIM +
 					"function " + ARCHON_PREFIX + "S2B takes string s returns boolean" + JASS_DELIM +
 					"    if s==\"t\" then" + JASS_DELIM +
@@ -960,42 +971,6 @@ public class CoopRewriter extends ScriptRewriter {
 					DebugOnly("call BJDebugMsg(\"1)\"+XT87ReadLines[1])" + JASS_DELIM) +
 					DebugOnly("call BJDebugMsg(\"2)\"+XT87ReadLines[2])" + JASS_DELIM) +
 					"    return " + ARCHON_PREFIX + "S62I(XT87ReadLines[0])" + JASS_DELIM +
-					END_FUNCTION + JASS_DELIM +
-					"function t_" + ARCHON_PREFIX + "SyncData_Ac takes nothing returns nothing" + JASS_DELIM +
-					"    local string contents=BlzGetTriggerSyncData()" + JASS_DELIM +
-					"    local integer len=StringLength(contents)" + JASS_DELIM +
-					"    local string char" + JASS_DELIM +
-					"    local string buffer=\"\"" + JASS_DELIM +
-					"    local integer curLine=0" + JASS_DELIM +
-					"    local integer i=0" + JASS_DELIM +
-					"    if len<=0 then" + JASS_DELIM +
-					"        set XT87ReadLines[0]=null" + JASS_DELIM +
-					"    else" + JASS_DELIM +
-					"        loop" + JASS_DELIM +
-					"            exitwhen i > len" + JASS_DELIM +
-					"            set char=SubString(contents,i,i+1)" + JASS_DELIM +
-					"            if char==\"\\n\" then" + JASS_DELIM +
-					"                set XT87ReadLines[curLine]=buffer" + JASS_DELIM +
-					"                set curLine=curLine+1" + JASS_DELIM +
-					"                set buffer=\"\"" + JASS_DELIM +
-					"            else" + JASS_DELIM +
-					"                set buffer=buffer+char" + JASS_DELIM +
-					"            endif" + JASS_DELIM +
-					"        set i=i+1" + JASS_DELIM +
-					"        endloop" + JASS_DELIM +
-					"        set XT87ReadLines[curLine]=buffer" + JASS_DELIM +
-					"    endif" + JASS_DELIM +
-					"set XT87ReadLinesAreRead=true" + JASS_DELIM +
-					END_FUNCTION + JASS_DELIM +
-					"function it_" + ARCHON_PREFIX + "SyncData takes nothing returns nothing" + JASS_DELIM +
-					"    local integer i=0" + JASS_DELIM +
-					"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData=CreateTrigger()" + JASS_DELIM +
-					"    loop" + JASS_DELIM +
-					"        exitwhen i>=bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
-					"        call BlzTriggerRegisterPlayerSyncEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,Player(i),\"XTContents\",false)" + JASS_DELIM +
-					"        set i=i+1" + JASS_DELIM +
-					"    endloop" + JASS_DELIM +
-					"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData,function t_" + ARCHON_PREFIX + "SyncData_Ac)" + JASS_DELIM +
 					END_FUNCTION, sb);
 			// endregion
 			// region button add functions
@@ -1762,7 +1737,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest,function t_" + ARCHON_PREFIX + "PauseTest_Ac)" + JASS_DELIM +
 					END_FUNCTION, sb);
 		// endregion
-		// region pause test
+		// region player leaves game
 		append("function t_" + ARCHON_PREFIX + "PLG_Ac takes nothing returns nothing" + JASS_DELIM +
 				"call RemovePlayerPreserveUnitsBJ(GetTriggerPlayer(),PLAYER_GAME_RESULT_DEFEAT,true)" + JASS_DELIM +
 				END_FUNCTION + JASS_DELIM +
@@ -2303,8 +2278,6 @@ public class CoopRewriter extends ScriptRewriter {
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP" + JASS_DELIM + // Building Food periodic
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync" + JASS_DELIM +
 							"boolean " + ARCHON_PREFIX + "AlliesMenuAvail=false" + JASS_DELIM +
-							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PeriodicRefresh" + JASS_DELIM +
-							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PSU" + JASS_DELIM + // pause spawned unit
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PLG" + JASS_DELIM + // player left game
 							"boolean " + ARCHON_PREFIX + "GIP=false" + JASS_DELIM + // game is paused
 							"boolean " + ARCHON_PREFIX + "TDS=false" + JASS_DELIM + // time of day suspended
@@ -2318,8 +2291,6 @@ public class CoopRewriter extends ScriptRewriter {
 				append("hashtable " + LAST_CREATED_COOP_CACHE + JASS_DELIM +
 						"integer array " + ABILITY_ARRAY + JASS_DELIM +
 						"integer " + ABILITY_ARRAY_SIZE + "=0" + JASS_DELIM +
-						"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "WatchLearnedSkill" + JASS_DELIM +
-						"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "SyncData" + JASS_DELIM +
 						"integer " + FILE_LIBRARY_PREFIX + "CT=0" + JASS_DELIM + // Counter
 						"integer array " + FILE_LIBRARY_PREFIX + "LS" + JASS_DELIM + // List
 						"integer array " + FILE_LIBRARY_PREFIX + "AL" + JASS_DELIM + // AbilityList
@@ -2332,17 +2303,15 @@ public class CoopRewriter extends ScriptRewriter {
 						"integer XT87ReadLinesWaiting=0", sb);
 		} else if (line.contains("function InitCustomTriggers takes")) {
 			for (String resourceName : getAllResourceNames())
-				append("    call it_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
-			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync", "PeriodicRefresh", "PSU", "PLG")) //, "Deselect", "DeselectOnDeath"))
-				append("    call it_" + ARCHON_PREFIX + triggerName + "()", sb);
+				append("call it_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
+			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync", "PLG")) //, "Deselect", "DeselectOnDeath"))
+				append("call it_" + ARCHON_PREFIX + triggerName + "()", sb);
 			for (String triggerName : Arrays.asList("BF", "BFP"))
-				append("    call it_" + ARCHON_PREFIX + triggerName + "()", sb);
+				append("call it_" + ARCHON_PREFIX + triggerName + "()", sb);
 			if (WITH_PAUSE_COMMAND)
-				append("    call it_" + ARCHON_PREFIX + "PauseTest()", sb);
+				append("call it_" + ARCHON_PREFIX + "PauseTest()", sb);
 			if (WITH_CUSTOM_GAMECACHE) {
-				append("    call it_" + ARCHON_PREFIX + "SyncData()" + JASS_DELIM +
-								"    call it_" + ARCHON_PREFIX + "WatchLearnedSkill()" + JASS_DELIM +
-								"    call " + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "Init()"
+				append("call " + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "Init()"
 						, sb);
 			}
 		} else if (line.contains("SetForceAllianceStateBJ("))

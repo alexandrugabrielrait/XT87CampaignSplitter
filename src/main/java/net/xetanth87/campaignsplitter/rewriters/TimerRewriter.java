@@ -7,6 +7,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
+import static net.xetanth87.campaignsplitter.util.XT87Utils.END_FUNCTION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.JASS_DELIM;
+
 public class TimerRewriter extends ScriptRewriter {
 	private static final String TIMER_PREFIX = "XT87TS";
 	public boolean mainStartAdded;
@@ -17,7 +20,7 @@ public class TimerRewriter extends ScriptRewriter {
 	public static final String PERIODIC_TIMER_PREFIX = TIMER_PREFIX + "PeriodicTimer_";
 
 	public TimerRewriter(MapInjector mi) {
-		super(mi);
+		super(mi, "TS");
 	}
 
 	public void scan(String text) {
@@ -70,7 +73,7 @@ public class TimerRewriter extends ScriptRewriter {
 //			append("call TimerStart(" + ELAPSED_TIMER_PREFIX + elapsedTimeIndices.get(elapsedTime) + "," + elapsedTime + ",false,null)", sb);
 //		for (String periodicTime : periodicTimeIndices.keySet())
 //			append("call TimerStart(" + PERIODIC_TIMER_PREFIX + periodicTimeIndices.get(periodicTime) + "," + periodicTime + ",true,null)", sb);
-		append("timer array " + TIMER_PREFIX + "ETA" + JASS_DELIM + // Event Timer Array
+		append("timer array " + rewriterPrefix + "ETA" + JASS_DELIM + // Event Timer Array
 				"integer " + TIMER_PREFIX + "ETL=0" + JASS_DELIM + // Event Timer Array Length
 				"boolean " + TIMER_PREFIX + "TSP=false", sb); // Timers Start Paused
 	}

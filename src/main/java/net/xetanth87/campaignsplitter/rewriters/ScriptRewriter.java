@@ -2,6 +2,9 @@ package net.xetanth87.campaignsplitter.rewriters;
 
 import net.moonlightflower.wc3libs.txt.app.jass.Jass;
 import net.xetanth87.campaignsplitter.MapInjector;
+import net.xetanth87.campaignsplitter.util.configurations.FunctionConfiguration;
+import net.xetanth87.campaignsplitter.util.configurations.IFunctionConfiguration;
+import net.xetanth87.campaignsplitter.util.configurations.TriggerConfiguration;
 import net.xetanth87.campaignsplitter.util.XT87Utils;
 
 import java.io.FileWriter;
@@ -10,15 +13,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
+import static net.xetanth87.campaignsplitter.util.XT87Utils.CALL_DECLARATION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.END_FUNCTION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.FUNCTION_DECLARATION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.JASS_DELIM;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.LOCAL_DECLARATION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.NATIVE_DECLARATION;
+
 public abstract class ScriptRewriter {
-	public static final String JASS_DELIM = "\r\n";
-	public static final String CONSTANT_DECLARATION = "constant ";
-	public static final String LOCAL_DECLARATION = "local ";
-	public static final String DIALOG_DECLARATION = "dialog ";
-	public static final String NATIVE_DECLARATION = "native ";
-	public static final String FUNCTION_DECLARATION = "function ";
-	public static final String CALL_DECLARATION = "call ";
-	public static final String END_FUNCTION = "endfunction";
+	protected static final String PLAYER_FUNC = "Player(";
 	public static final String END_IF = "endif";
 	public static final String INIT_CALL = "call ConditionalTriggerExecute(";
 	private static final boolean IS_DEBUG = false;
@@ -26,9 +29,29 @@ public abstract class ScriptRewriter {
 	public MapInjector mi;
 	public boolean first = true, insideGlobals, isReading;
 	public String insideFunction;
+	public String rewriterPrefix;
+	private final List<FunctionConfiguration> functionConfig = new ArrayList<>();
+	private final List<TriggerConfiguration> triggerConfig = new ArrayList<>();
 
-	public ScriptRewriter(MapInjector mi) {
+	public ScriptRewriter(MapInjector mi, String rewriterPrefix) {
 		this.mi = mi;
+		this.rewriterPrefix = "XT87" + rewriterPrefix;
+	}
+
+	public void addFunctionConfiguration(String functionName, String functionParams, String functionReturn, String functionCode) {
+		functionConfig.add(new FunctionConfiguration(rewriterPrefix + functionName, functionParams, functionReturn, functionCode));
+	}
+
+	public void addTriggerConfiguration(String triggerName, String triggerActionCode, String triggerInitCode) {
+		triggerConfig.add(new TriggerConfiguration(rewriterPrefix + triggerName, triggerActionCode, null, triggerInitCode));
+	}
+
+	public void addTriggerConfiguration(String triggerName, String triggerActionCode, String triggerLocalCode, String triggerInitCode) {
+		triggerConfig.add(new TriggerConfiguration(rewriterPrefix + triggerName, triggerActionCode, triggerLocalCode, triggerInitCode));
+	}
+
+	public static String toPlayerFunc(int i) {
+		return PLAYER_FUNC + i + ")";
 	}
 
 	public static String DebugOnly(String text) {
@@ -71,6 +94,8 @@ public abstract class ScriptRewriter {
 	}
 
 	public void append(String block, StringBuffer sb) {
+		if (block == null)
+			return;
 		for (String line : block.split(JASS_DELIM)) {
 			if (REMOVE_USELESS) {
 				line = line.trim();
@@ -130,6 +155,9 @@ public abstract class ScriptRewriter {
 			String line = sc.nextLine();
 			line = line.trim();
 			if (doGlobals) {
+				for (var configuration : triggerConfig) {
+					append(configuration.getDeclaration(), sb);
+				}
 				onEnterGlobals(sb);
 				doGlobals = false;
 			} else if (line.equals("globals"))
@@ -141,11 +169,20 @@ public abstract class ScriptRewriter {
 				if ("main".equals(insideFunction))
 					doMain = true;
 			} else if (doMain && !line.startsWith(LOCAL_DECLARATION)) {
+				for (var configuration : triggerConfig) {
+					append(configuration.getInitCall(), sb);
+				}
 				onMainAfterLocals(sb);
 				doMain = false;
 			}
 			if (doExitGlobals == 1 && !line.startsWith(NATIVE_DECLARATION)) {
+				for (var configuration : functionConfig) {
+					append(configuration.getDefinitionCode(), sb);
+				}
 				onExitGlobals(sb);
+				for (var configuration : triggerConfig) {
+					append(configuration.getDefinitionCode(), sb);
+				}
 				doExitGlobals = 2;
 			}
 			if (line.equals("endglobals"))

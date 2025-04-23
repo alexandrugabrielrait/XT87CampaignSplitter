@@ -23,6 +23,7 @@ import net.moonlightflower.wc3libs.txt.WTS;
 import net.moonlightflower.wc3libs.txt.app.MiscTXT;
 import net.moonlightflower.wc3libs.txt.app.SkinTXT;
 import net.xetanth87.campaignsplitter.rewriters.CallbackRewriter;
+import net.xetanth87.campaignsplitter.rewriters.CheatsRewriter;
 import net.xetanth87.campaignsplitter.rewriters.CoopRewriter;
 import net.xetanth87.campaignsplitter.rewriters.DifficultySelectorRewriter;
 import net.xetanth87.campaignsplitter.rewriters.FakeUserPlayerRewriter;
@@ -600,6 +601,8 @@ public class MapInjector {
 				System.out.println("Finished adding next level message to map \"" + mapFile.getName() + "\".");
 				cs.IncrementValueProgressBar(1);
 			}
+
+			new CheatsRewriter(this, mapInfo.mainPlayer).modifyScript();
 
 			if (addedCoopPlayers > 0) {
 				System.out.println("Adding coop support to map \"" + mapFile.getName() + "\".");

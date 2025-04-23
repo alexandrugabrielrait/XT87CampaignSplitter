@@ -8,7 +8,7 @@ public class FakeUserPlayerRewriter extends ScriptRewriter {
 	private final Set<Integer> fakeUserPlayersSet;
 
 	public FakeUserPlayerRewriter(MapInjector mi, Set<Integer> fakeUserPlayersSet) {
-		super(mi);
+		super(mi, "FK");
 		this.fakeUserPlayersSet = fakeUserPlayersSet;
 	}
 

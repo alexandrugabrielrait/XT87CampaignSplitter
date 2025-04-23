@@ -4,7 +4,7 @@ import net.xetanth87.campaignsplitter.MapInjector;
 
 public class CallbackRewriter extends ScriptRewriter {
 	public CallbackRewriter(MapInjector mi) {
-		super(mi);
+		super(mi, "CB");
 	}
 
 	@Override
