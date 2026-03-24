@@ -60,7 +60,7 @@ public class CampaignSplitter {
 	private int stepsPerMap = 0;
 
 	public static String getVersion() {
-		return "2.4.1";
+		return "2.4B";
 	}
 
 	public void InitializeProgressBar(int i) {
@@ -124,19 +124,19 @@ public class CampaignSplitter {
 	public String getFeatureDescription() {
 		String featureDescription = "Xetanth87's Campaign Splitter v" + getVersion();// getClass().getPackage().getImplementationVersion();
 		if (archonModeAddedSlots > 0)
-			featureDescription += "\n- Archon Mode (" + (archonModeRealAddedSlots + 1) + " slots)";
+			featureDescription += "-AM(" + (archonModeRealAddedSlots + 1) + ")";
 		if (withDifficultySelector)
-			featureDescription += "\n- Difficulty Selector";
+			featureDescription += "-DS";
 		if (withCampaignPreview)
-			featureDescription += "\n- Campaign Preview";
+			featureDescription += "-PR";
 		if (withNextLevel)
-			featureDescription += "\n- Next Level Name";
+			featureDescription += "-NL";
 		if (withLegacyAssetsSD)
-			featureDescription += "\n- SD Legacy Assets";
+			featureDescription += "-SD";
 		if (withLegacyAssetsHD)
-			featureDescription += "\n- HD Legacy Assets";
+			featureDescription += "-HD";
 		if (withUpkeepRemoval)
-			featureDescription += "\n-Upkeep removed";
+			featureDescription += "-UR";
 		return featureDescription;
 	}
 

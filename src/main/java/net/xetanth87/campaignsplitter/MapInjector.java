@@ -15,8 +15,6 @@ import net.moonlightflower.wc3libs.bin.app.objMod.W3Q;
 import net.moonlightflower.wc3libs.bin.app.objMod.W3T;
 import net.moonlightflower.wc3libs.bin.app.objMod.W3U;
 import net.moonlightflower.wc3libs.dataTypes.app.Controller;
-import net.moonlightflower.wc3libs.dataTypes.app.Model;
-import net.moonlightflower.wc3libs.dataTypes.app.War3String;
 import net.moonlightflower.wc3libs.txt.TXT;
 import net.moonlightflower.wc3libs.txt.TXTSectionId;
 import net.moonlightflower.wc3libs.txt.WTS;
@@ -29,6 +27,7 @@ import net.xetanth87.campaignsplitter.rewriters.DifficultySelectorRewriter;
 import net.xetanth87.campaignsplitter.rewriters.FakeUserPlayerRewriter;
 import net.xetanth87.campaignsplitter.rewriters.GlobalsRewriter;
 import net.xetanth87.campaignsplitter.rewriters.MinimapRewriter;
+import net.xetanth87.campaignsplitter.rewriters.NeutralPlayerRewriter;
 import net.xetanth87.campaignsplitter.rewriters.ScriptRewriter;
 import net.xetanth87.campaignsplitter.rewriters.TimerRewriter;
 import net.xetanth87.campaignsplitter.rewriters.VictoryRewriter;
@@ -76,6 +75,7 @@ public class MapInjector {
 	public StringBuffer scriptBuffer = null;
 	public String scriptPath;
 	public boolean isLua;
+	public boolean wasTwelvePlayerMap = false;
 
 	public MapInjector(CampaignSplitter cs, File mapFile, int mapIndex) throws IOException {
 		if (!mapFile.getName().endsWith(".w3m") && !mapFile.getName().endsWith(".w3x"))
@@ -283,7 +283,7 @@ public class MapInjector {
 			int campaignAuthorIndex = stringIndexToInt(cs.campaignData.getCampaignAuthor()) + offsets.campaignKeyOffset;
 			mapStrings.put(info.getMapAuthor(), STRING_PREFIX + campaignAuthorIndex);
 
-			String mapDescription = cs.getFeatureDescription() + "\n" + mapFile.getName();
+			String mapDescription = cs.getFeatureDescription() + "[" + mapFile.getName() + "]";
 			// in Archon Mode, we don't have enough time to read the loading screen text, so we add it here if it exists
 			if (addedCoopPlayers > 0) {
 				try {
@@ -489,8 +489,10 @@ public class MapInjector {
 		List<W3I.Player> secondaryPlayers = null;
 		if (addedCoopPlayers > 0) {
 			// to enable 24 players in the lobby
-			if (info.getEditorVersion() < MIN_EDITOR_VERSION)
+			if (info.getEditorVersion() < MIN_EDITOR_VERSION) {
+				wasTwelvePlayerMap = true;
 				info.setEditorVersion(MIN_EDITOR_VERSION);
+			}
 			W3I.Player finalMainPlayer = mainPlayer;
 			W3I.Force force = info.getForces().stream().filter(f -> f.getPlayerNums().contains(finalMainPlayer.getNum())).findFirst().get();
 			List<Integer> unusedPlayerNumbers = new ArrayList<>();
@@ -573,10 +575,13 @@ public class MapInjector {
 
 		boolean editScript = withDifficultySelector || cs.withCampaignPreview
 				|| cs.withLegacyAssetsSD || cs.withLegacyAssetsHD
-				|| cs.withNextLevel || addedCoopPlayers > 0;
+				|| cs.withNextLevel || addedCoopPlayers > 0 || wasTwelvePlayerMap;
 
 		if (editScript) {
 			ScriptRewriter.readScript(this);
+
+			if (wasTwelvePlayerMap)
+				new NeutralPlayerRewriter(this).modifyScript();
 
 			if (mapInfo.fakeUserPlayersSet != null && !mapInfo.fakeUserPlayersSet.isEmpty())
 				new FakeUserPlayerRewriter(this, mapInfo.fakeUserPlayersSet).modifyScript();
