@@ -21,6 +21,12 @@ test {
     useJUnitPlatform()
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
 jar {
     manifest {
         attributes 'Main-Class': 'net.xetanth87.campaignsplitter.SplitterFrame'

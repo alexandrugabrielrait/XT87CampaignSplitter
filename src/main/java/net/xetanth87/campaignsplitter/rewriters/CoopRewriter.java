@@ -168,7 +168,7 @@ public class CoopRewriter extends ScriptRewriter {
 		return l;
 	}
 
-	public boolean triggersAdded, mainStartAdded, initGlobalsAdded, insideInitGlobals, insideConfig, insideCustomPlayerSlots;
+	public boolean triggersAdded, mainStartAdded, insideConfig;
 	private boolean pauseLockAdded;
 	public W3I info;
 	public W3I.Player mainPlayer;
@@ -340,10 +340,7 @@ public class CoopRewriter extends ScriptRewriter {
 	public void onStartRead(String text, StringBuffer sb) {
 		triggersAdded = false;
 		mainStartAdded = false;
-		initGlobalsAdded = false;
-		insideInitGlobals = false;
 		insideConfig = false;
-		insideCustomPlayerSlots = false;
 		insideFunction = null;
 		cacheFieldMap = new HashMap<>();
 	}
@@ -2163,6 +2160,21 @@ public class CoopRewriter extends ScriptRewriter {
 				mainStartAdded = true;
 			}
 			if (line.contains(END_FUNCTION)) {
+				for (String resourceName : getAllResourceNames())
+					append("call it_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
+				for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync", "PLG")) //, "Deselect", "DeselectOnDeath"))
+					append("call it_" + ARCHON_PREFIX + triggerName + "()", sb);
+				for (String triggerName : Arrays.asList("BF", "BFP"))
+					append("call it_" + ARCHON_PREFIX + triggerName + "()", sb);
+				if (WITH_PAUSE_COMMAND)
+					append("call it_" + ARCHON_PREFIX + "PauseTest()", sb);
+				if (WITH_CUSTOM_GAMECACHE) {
+					append("call " + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "Init()"
+							, sb);
+				}
+				append("    set " + FORCE_NAME + "=CreateForce()", sb);
+				for (int playerNumber : allPlayerNumbers)
+					append("    call ForceAddPlayer(" + FORCE_NAME + "," + toPlayerFunc(playerNumber) + ")", sb);
 				for (W3I.Player player : secondaryPlayers) {
 					String playerFunc = toPlayerFunc(player.getNum());
 					append(SETPLAYERCOLOR + playerFunc + "," + CONVERTPLAYERCOLOR + player.getNum() + "))" + JASS_DELIM +
@@ -2173,18 +2185,9 @@ public class CoopRewriter extends ScriptRewriter {
 						"call SetReservedLocalHeroButtons(0)" + JASS_DELIM +
 						END_IF, sb);
 			}
-		} else if (insideInitGlobals) {
-			if (line.trim().equals(END_FUNCTION)) {
-				insideInitGlobals = false;
-			} else if (!initGlobalsAdded && line.contains("set ")) {
-				append("    set " + FORCE_NAME + "=CreateForce()", sb);
-				for (int playerNumber : allPlayerNumbers)
-					append("    call ForceAddPlayer(" + FORCE_NAME + "," + toPlayerFunc(playerNumber) + ")", sb);
-				initGlobalsAdded = true;
-			}
-		} else if (line.contains("function InitGlobals takes"))
-			insideInitGlobals = true;
+		}
 
+		// Lobby configuration
 		if (Arrays.asList("config", "InitCustomPlayerSlots").contains(insideFunction)) {
 			if (line.contains(SETPLAYERCOLOR)) {
 				String[] params = getParamsFromLine(line);
@@ -2301,19 +2304,6 @@ public class CoopRewriter extends ScriptRewriter {
 						"boolean XT87ReadLinesAreRead=false" + JASS_DELIM +
 						"boolean XT87ReadLinesLock=false" + JASS_DELIM +
 						"integer XT87ReadLinesWaiting=0", sb);
-		} else if (line.contains("function InitCustomTriggers takes")) {
-			for (String resourceName : getAllResourceNames())
-				append("call it_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
-			for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync", "PLG")) //, "Deselect", "DeselectOnDeath"))
-				append("call it_" + ARCHON_PREFIX + triggerName + "()", sb);
-			for (String triggerName : Arrays.asList("BF", "BFP"))
-				append("call it_" + ARCHON_PREFIX + triggerName + "()", sb);
-			if (WITH_PAUSE_COMMAND)
-				append("call it_" + ARCHON_PREFIX + "PauseTest()", sb);
-			if (WITH_CUSTOM_GAMECACHE) {
-				append("call " + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "Init()"
-						, sb);
-			}
 		} else if (line.contains("SetForceAllianceStateBJ("))
 			append("call " + ENFORCE_ARCHON + "()", sb);
 
