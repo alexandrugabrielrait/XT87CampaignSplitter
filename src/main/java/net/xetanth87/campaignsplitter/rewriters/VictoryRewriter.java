@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.stream.Collectors;
 
 import static net.xetanth87.campaignsplitter.util.XT87Utils.END_FUNCTION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.END_IF;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.JASS_DELIM;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.STRING_PREFIX;
 
@@ -46,9 +47,9 @@ public class VictoryRewriter extends ScriptRewriter {
 			//		VICTORY_CALL + words.get(0) + ", true,true)", sb);
 			if (addNextLevelMessage)
 				append(VICTORY_CALL + words.get(0) + ",true,true)" + JASS_DELIM +
-						"    if XT87VN!=\"\" then" + JASS_DELIM +
-						"        call DisplayTimedTextToPlayer(" + words.get(0) + ",0,0,0,GetLocalizedString(\"CONTINUE_PLAYING\")+\":\\n|cffffcc00\"+XT87VN+\"|r\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\")" + JASS_DELIM +
-						"    endif", sb);
+						"if XT87VN!=\"\" then" + JASS_DELIM +
+						"call DisplayTimedTextToPlayer(" + words.get(0) + ",0,0,0,GetLocalizedString(\"CONTINUE_PLAYING\")+\":\\n|cffffcc00\"+XT87VN+\"|r\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\")" + JASS_DELIM +
+						END_IF, sb);
 			else
 				// force scorescreens
 				append(VICTORY_CALL + words.get(0) + "," + words.get(0) +  ",true)", sb);
@@ -64,7 +65,7 @@ public class VictoryRewriter extends ScriptRewriter {
 			} else if (line.contains(SET_LEVEL_CALL)) {
 				String mapPath = line.substring(line.indexOf("\"") + 1, line.lastIndexOf("\"")).toLowerCase(Locale.ROOT);
 				sb.append(JASS_DELIM +
-						"    set XT87VN=GetLocalizedString(\"" + STRING_PREFIX + (campaignKeyOffset + mi.cs.chapterNameKeysMap.get(mapPath)) + "\")");
+						"set XT87VN=GetLocalizedString(\"" + STRING_PREFIX + (campaignKeyOffset + mi.cs.chapterNameKeysMap.get(mapPath)) + "\")");
 			}
 	}
 }

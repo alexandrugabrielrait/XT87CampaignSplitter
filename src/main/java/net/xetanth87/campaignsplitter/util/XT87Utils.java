@@ -56,6 +56,7 @@ public class XT87Utils {
 	public static final String NATIVE_DECLARATION = "native ";
 	public static final String FUNCTION_DECLARATION = "function ";
 	public static final String CALL_DECLARATION = "call ";
+	public static final String END_IF = "endif";
 	public static final String END_FUNCTION = "endfunction";
 
 	static {
@@ -291,6 +292,16 @@ public class XT87Utils {
 		} catch (Exception ignored) {
 			return readable;
 		}
+	}
+
+	public static String forceDefaultValue(String value, String defaultValue)
+	{
+		if (value == null || value.isBlank())
+		{
+			return defaultValue;
+		}
+
+		return value;
 	}
 
 	public static void savePreference(String key, String value) {

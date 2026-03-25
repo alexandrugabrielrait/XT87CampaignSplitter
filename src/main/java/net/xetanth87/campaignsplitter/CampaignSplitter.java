@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -60,7 +59,7 @@ public class CampaignSplitter {
 	private int stepsPerMap = 0;
 
 	public static String getVersion() {
-		return "2.4B";
+		return "2.4C";
 	}
 
 	public void InitializeProgressBar(int i) {

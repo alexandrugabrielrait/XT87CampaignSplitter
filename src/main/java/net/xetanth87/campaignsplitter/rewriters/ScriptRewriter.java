@@ -3,7 +3,6 @@ package net.xetanth87.campaignsplitter.rewriters;
 import net.moonlightflower.wc3libs.txt.app.jass.Jass;
 import net.xetanth87.campaignsplitter.MapInjector;
 import net.xetanth87.campaignsplitter.util.configurations.FunctionConfiguration;
-import net.xetanth87.campaignsplitter.util.configurations.IFunctionConfiguration;
 import net.xetanth87.campaignsplitter.util.configurations.TriggerConfiguration;
 import net.xetanth87.campaignsplitter.util.XT87Utils;
 
@@ -22,7 +21,6 @@ import static net.xetanth87.campaignsplitter.util.XT87Utils.NATIVE_DECLARATION;
 
 public abstract class ScriptRewriter {
 	protected static final String PLAYER_FUNC = "Player(";
-	public static final String END_IF = "endif";
 	public static final String INIT_CALL = "call ConditionalTriggerExecute(";
 	private static final boolean IS_DEBUG = false;
 	private static final boolean REMOVE_USELESS = true;
