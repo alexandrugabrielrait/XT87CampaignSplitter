@@ -107,14 +107,6 @@ public class CheatsRewriter extends ScriptRewriter {
 	}
 
 	@Override
-	public void onExitGlobals(StringBuffer sb) {
-	}
-
-	@Override
-	public void onMainAfterLocals(StringBuffer sb) {
-	}
-
-	@Override
 	public void onReadLine(String line, StringBuffer sb) {
 		append(line, sb);
 	}

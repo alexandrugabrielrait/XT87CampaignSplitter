@@ -59,7 +59,7 @@ public class CampaignSplitter {
 	private int stepsPerMap = 0;
 
 	public static String getVersion() {
-		return "2.4C";
+		return "2.4B1";
 	}
 
 	public void InitializeProgressBar(int i) {

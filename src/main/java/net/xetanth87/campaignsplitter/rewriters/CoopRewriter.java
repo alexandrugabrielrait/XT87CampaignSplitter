@@ -687,7 +687,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"            return " + FILE_LIBRARY_PREFIX + "write(" + FILE_LIBRARY_PREFIX + "open(f),\"\")" + JASS_DELIM +
 					END_FUNCTION + JASS_DELIM +
 					//Implemented from module FileIO__FileInit:
-					"        function " + FILE_LIBRARY_PREFIX + "" + FILE_IO_PREFIX + "Init takes nothing returns nothing" + JASS_DELIM +
+					"        function " + FILE_LIBRARY_PREFIX + "Init takes nothing returns nothing" + JASS_DELIM +
 					// We can't use a single ability with multiple levels because
 					// tooltips return the first level's value if the value hasn't
 					// been set. This way we don't need to edit any object editor data.
@@ -2004,12 +2004,13 @@ public class CoopRewriter extends ScriptRewriter {
 		append(END_FUNCTION, sb);
 		// endregion
 		// region dialog triggers
-		append("function t_" + ARCHON_PREFIX + "DialogSync_Ac takes nothing returns nothing" + JASS_DELIM +
+		append("function t_" + ARCHON_PREFIX + "DS_Ac takes nothing returns nothing" + JASS_DELIM +
 						"local player p=GetTriggerPlayer()" + JASS_DELIM +
+						"local dialog d=GetClickedDialog()" + JASS_DELIM +
 						"local string s=LoadStr(" + GENERAL_HASHTABLE + "," + GH_STRING_DIALOG_BUTTON_TEXT + ",GetHandleId(GetClickedButton()))"
 				, sb);
 		for (int playerNumber : allPlayerNumbers)
-			append("call DialogDisplay(" + toPlayerFunc(playerNumber) + ",GetClickedDialog(),false)", sb);
+			append("call DialogDisplay(" + toPlayerFunc(playerNumber) + ",d,false)", sb);
 		append("call TriggerSleepAction(0.01)" + JASS_DELIM +
 				"call DisplayTimedTextFromPlayer(p,0,0,10,\"%s => \"+GetLocalizedString(s))" + JASS_DELIM +
 				"if " + ARCHON_PREFIX + "DIP then" + JASS_DELIM +
@@ -2017,13 +2018,56 @@ public class CoopRewriter extends ScriptRewriter {
 				"set " + ARCHON_PREFIX + "DIP=false" + JASS_DELIM +
 				END_IF + JASS_DELIM +
 				END_FUNCTION + JASS_DELIM +
-				"function it_" + ARCHON_PREFIX + "DialogSync takes nothing returns nothing" + JASS_DELIM +
-				"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync=CreateTrigger()", sb);
+				"function it_" + ARCHON_PREFIX + "DS takes nothing returns nothing" + JASS_DELIM +
+				"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "DS=CreateTrigger()", sb);
 		for (String dialogName : dialogNames)
-			append("    call TriggerRegisterDialogEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync," + dialogName + ")", sb);
-		append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync,function t_" + ARCHON_PREFIX + "DialogSync_Ac)" + JASS_DELIM +
+			append("    call TriggerRegisterDialogEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DS," + dialogName + ")", sb);
+		append("    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DS,function t_" + ARCHON_PREFIX + "DS_Ac)" + JASS_DELIM +
 				END_FUNCTION, sb);
 		// endregion
+	}
+
+	@Override
+	public void onMainLocals(StringBuffer sb) {
+		int index = 0;
+		for (int playerNum : allPlayerNumbers) {
+			append("set " + PLAYER_ID_ARRAY + "[" + index + "]=" + playerNum + JASS_DELIM +
+					"set " + PLAYER_INDEX_ARRAY + "[" + playerNum + "]=" + index, sb);
+			index++;
+		}
+		for (String key : getCommonHashKeys())
+			append("set " + getCommonHashFunc(key) + "=StringHash(\"" + key + "\")", sb);
+		append("    " + SETPLAYERCOLORBJ + toMainPlayerFunc() + "," + CONVERTPLAYERCOLOR + mainPlayer.getNum() + "),true)", sb);
+		//if (line.contains(END_FUNCTION)) {
+		for (String resourceName : getAllResourceNames())
+			append("call it_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
+		for (String triggerName : Arrays.asList("UnitShare", "Select", "PLG")) //, "Deselect", "DeselectOnDeath"))
+			append("call it_" + ARCHON_PREFIX + triggerName + "()", sb);
+		for (String triggerName : Arrays.asList("BF", "BFP"))
+			append("call it_" + ARCHON_PREFIX + triggerName + "()", sb);
+		append(bCall("it_" + ARCHON_PREFIX + "GIL"), sb);
+		if (WITH_PAUSE_COMMAND)
+			append(bCall("it_" + ARCHON_PREFIX + "PauseTest"), sb);
+		if (WITH_CUSTOM_GAMECACHE) {
+			append("call " + FILE_LIBRARY_PREFIX + "Init()", sb);
+		}
+		append(bSet(FORCE_NAME, bFunc("CreateForce")), sb);
+		for (int playerNumber : allPlayerNumbers)
+			append("    call ForceAddPlayer(" + FORCE_NAME + "," + toPlayerFunc(playerNumber) + ")", sb);
+		for (W3I.Player player : secondaryPlayers) {
+			String playerFunc = toPlayerFunc(player.getNum());
+			append(SETPLAYERCOLOR + playerFunc + "," + CONVERTPLAYERCOLOR + player.getNum() + "))" + JASS_DELIM +
+					"call SetPlayerOnScoreScreen(" + playerFunc + ",false)", sb);
+		}
+		append("call " + ENFORCE_ARCHON + "()" + JASS_DELIM +
+				"if GetLocalPlayer()!=" + toMainPlayerFunc() + " then" + JASS_DELIM +
+				"call SetReservedLocalHeroButtons(0)" + JASS_DELIM +
+				END_IF, sb);
+	}
+
+	@Override
+	public void onMainEnd(StringBuffer sb) {
+		append("call it_" + ARCHON_PREFIX + "DS()", sb);
 	}
 
 	@Override
@@ -2206,47 +2250,6 @@ public class CoopRewriter extends ScriptRewriter {
 			}
 		}
 
-		if ("main".equals(insideFunction)) {
-			if (!mainStartAdded && !line.startsWith("local ") && !line.startsWith("function ")) {
-				int index = 0;
-				for (int playerNum : allPlayerNumbers) {
-					append("set " + PLAYER_ID_ARRAY + "[" + index + "]=" + playerNum + JASS_DELIM +
-							"set " + PLAYER_INDEX_ARRAY + "[" + playerNum + "]=" + index, sb);
-					index++;
-				}
-				for (String key : getCommonHashKeys())
-					append("set " + getCommonHashFunc(key) + "=StringHash(\"" + key + "\")", sb);
-				append("    " + SETPLAYERCOLORBJ + toMainPlayerFunc() + "," + CONVERTPLAYERCOLOR + mainPlayer.getNum() + "),true)", sb);
-				mainStartAdded = true;
-			}
-			if (line.contains(END_FUNCTION)) {
-				for (String resourceName : getAllResourceNames())
-					append("call it_" + ARCHON_PREFIX + resourceName + "Sync()", sb);
-				for (String triggerName : Arrays.asList("UnitShare", "Select", "DialogSync", "PLG")) //, "Deselect", "DeselectOnDeath"))
-					append("call it_" + ARCHON_PREFIX + triggerName + "()", sb);
-				for (String triggerName : Arrays.asList("BF", "BFP"))
-					append("call it_" + ARCHON_PREFIX + triggerName + "()", sb);
-				append(bCall("it_" + ARCHON_PREFIX + "GIL"), sb);
-				if (WITH_PAUSE_COMMAND)
-					append(bCall("it_" + ARCHON_PREFIX + "PauseTest"), sb);
-				if (WITH_CUSTOM_GAMECACHE) {
-					append("call " + FILE_LIBRARY_PREFIX + FILE_IO_PREFIX + "Init()", sb);
-				}
-				append(bSet(FORCE_NAME, bFunc("CreateForce")), sb);
-				for (int playerNumber : allPlayerNumbers)
-					append("    call ForceAddPlayer(" + FORCE_NAME + "," + toPlayerFunc(playerNumber) + ")", sb);
-				for (W3I.Player player : secondaryPlayers) {
-					String playerFunc = toPlayerFunc(player.getNum());
-					append(SETPLAYERCOLOR + playerFunc + "," + CONVERTPLAYERCOLOR + player.getNum() + "))" + JASS_DELIM +
-							"call SetPlayerOnScoreScreen(" + playerFunc + ",false)", sb);
-				}
-				append("call " + ENFORCE_ARCHON + "()" + JASS_DELIM +
-						"if GetLocalPlayer()!=" + toMainPlayerFunc() + " then" + JASS_DELIM +
-						"call SetReservedLocalHeroButtons(0)" + JASS_DELIM +
-						END_IF, sb);
-			}
-		}
-
 		// Lobby configuration
 		if (Arrays.asList("config", "InitCustomPlayerSlots").contains(insideFunction)) {
 			if (line.contains(SETPLAYERCOLOR)) {
@@ -2339,7 +2342,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "BF" + JASS_DELIM + // Building Food selection
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP" + JASS_DELIM + // Building Food periodic
-							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DialogSync" + JASS_DELIM +
+							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DS" + JASS_DELIM + // Dialog Sync
 							"boolean " + ARCHON_PREFIX + "AlliesMenuAvail=false" + JASS_DELIM +
 							"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PLG" + JASS_DELIM + // player left game
 							"boolean " + ARCHON_PREFIX + "GIP=false" + JASS_DELIM + // game is paused
