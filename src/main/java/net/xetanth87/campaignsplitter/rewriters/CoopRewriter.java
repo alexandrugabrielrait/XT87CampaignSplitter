@@ -2071,9 +2071,13 @@ public class CoopRewriter extends ScriptRewriter {
 				"call SetReservedLocalHeroButtons(0)" + JASS_DELIM +
 				END_IF, sb);
 
-		for (String key : mi.cs.chapterNameKeysMap.keySet()) {
-			String value = STRING_PREFIX + (campaignKeyOffset + mi.cs.chapterNameKeysMap.get(key));
-			append("call SaveStr(" + GENERAL_HASHTABLE + "," + GH_STRING_CAMPAIGN_BUTTON_NAME + ",StringHash(\"" + key + "\"),\"" + value + "\")", sb);
+		List<String> mapPaths = new ArrayList<>(mi.cs.chapterNameKeysMap.keySet());
+		Collections.sort(mapPaths);
+
+		for (String mapPath : mapPaths) {
+			String buttonName = STRING_PREFIX + (campaignKeyOffset + mi.cs.chapterNameKeysMap.get(mapPath));
+			append("call SaveStr(" + GENERAL_HASHTABLE + "," + GH_STRING_CAMPAIGN_BUTTON_NAME +
+					",StringHash(\"" + mapPath + "\"),\"" + buttonName + "\")", sb);
 		}
 	}
 
