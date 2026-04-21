@@ -438,7 +438,8 @@ public class CoopRewriter extends ScriptRewriter {
 		addFunctionConfiguration("LoadGame", "string s, boolean b", null,
 				"call " + ARCHON_PREFIX + "HandleSLM(\"LOAD_GAME\",s,true)");
 		addFunctionConfiguration("SaveGame", "string s", null,
-				"call " + ARCHON_PREFIX + "HandleSLM(\"SAVE_GAME\",s,false)");
+				"call EnableUserControl(true)" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "HandleSLM(\"SAVE_GAME\",s,false)");
 		addFunctionConfiguration("LoadGameBJ", "string s, boolean b", null,
 				"call " + ARCHON_PREFIX + "LoadGame(s,b)");
 		addFunctionConfiguration("SaveAndChangeLevelBJ", "string s, string l, boolean b", null,
@@ -1796,6 +1797,7 @@ public class CoopRewriter extends ScriptRewriter {
 		// endregion
 		// region game is loaded
 		append("function t_" + ARCHON_PREFIX + "GIL_Ac takes nothing returns nothing" + JASS_DELIM +
+				bCall("SetMapFlag", "MAP_RELOADED,true") + JASS_DELIM +
 				bIf(ARCHON_PREFIX + "LUP",
 						bSet(ARCHON_PREFIX + "LUP", "false") + JASS_DELIM +
 								bCall(ARCHON_PREFIX + "PauseGame", "false")) + JASS_DELIM +
