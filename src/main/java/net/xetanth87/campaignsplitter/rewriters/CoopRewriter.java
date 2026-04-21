@@ -25,6 +25,7 @@ import static net.xetanth87.campaignsplitter.util.XT87Utils.END_FUNCTION;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.END_IF;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.JASS_DELIM;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.LOCAL_DECLARATION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.STRING_PREFIX;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_PREFIX;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_VAR_REPLACE;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.putWithCount;
@@ -85,7 +86,6 @@ public class CoopRewriter extends ScriptRewriter {
 	// todo make sure count doesn't count the same variable twice
 	private static final String CACHE_COUNT_KEY = "count";
 
-
 	private static final int GH_BOOL_HAS_ABILITY = 0;
 	private static final int GH_BOOL_IS_PAUSED = 1;
 	private static final int GH_BOOL_IS_PAUSED_PLAYER = 2;
@@ -93,7 +93,8 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final int GH_BOOL_TIMER_PERIODIC = 4;
 
 	private static final int GH_STRING_DIALOG_BUTTON_TEXT = 0;
-	private static final int GH_INT_TIMER_CALLBACK = 1;
+	private static final int GH_STRING_TIMER_CALLBACK = 1;
+	private static final int GH_STRING_CAMPAIGN_BUTTON_NAME = 2;
 
 	private static final int GH_REAL_PAUSED_HP = 0;
 	private static final int GH_REAL_PAUSED_MP = 1;
@@ -182,12 +183,14 @@ public class CoopRewriter extends ScriptRewriter {
 	public List<Integer> allPlayerNumbers;
 	public List<String> dialogNames;
 	public Map<String, Integer> cacheFieldMap;
+	public int campaignKeyOffset;
 
-	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers) {
+	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers, int campaignKeyOffset) {
 		super(mi, "AS");
 		this.info = info;
 		this.mainPlayer = mainPlayer;
 		this.secondaryPlayers = secondaryPlayers;
+		this.campaignKeyOffset = campaignKeyOffset;
 		allPlayerNumbers = new ArrayList<>(1 + secondaryPlayers.size());
 		allPlayerNumbers.add(mainPlayer.getNum());
 		secondaryPlayers.forEach(x -> allPlayerNumbers.add(x.getNum()));
@@ -261,7 +264,7 @@ public class CoopRewriter extends ScriptRewriter {
 		addFunctionConfiguration("CBF", null, null,
 				"local timer t=GetExpiredTimer()" + JASS_DELIM +
 						"local integer h=GetHandleId(t)" + JASS_DELIM +
-						"local string c=LoadStr(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h)" + JASS_DELIM +
+						"local string c=LoadStr(" + GENERAL_HASHTABLE + "," + GH_STRING_TIMER_CALLBACK + ",h)" + JASS_DELIM +
 						"local real r" + JASS_DELIM +
 						"if c!=null then" + JASS_DELIM +
 						"call ExecuteFunc(c)" + JASS_DELIM +
@@ -284,9 +287,9 @@ public class CoopRewriter extends ScriptRewriter {
 						"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PAUSED + ",h,false)" + JASS_DELIM +
 						"call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_TIMER_PERIODIC + ",h,b)" + JASS_DELIM +
 						"if c!=null then" + JASS_DELIM +
-						"call SaveStr(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h,c)" + JASS_DELIM +
+						"call SaveStr(" + GENERAL_HASHTABLE + "," + GH_STRING_TIMER_CALLBACK + ",h,c)" + JASS_DELIM +
 						"else" + JASS_DELIM +
-						"call RemoveSavedString(" + GENERAL_HASHTABLE + "," + GH_INT_TIMER_CALLBACK + ",h)" + JASS_DELIM +
+						"call RemoveSavedString(" + GENERAL_HASHTABLE + "," + GH_STRING_TIMER_CALLBACK + ",h)" + JASS_DELIM +
 						END_IF + JASS_DELIM +
 						"call TimerStart(t,r,false,function " + ARCHON_PREFIX + "CBF)");
 		addFunctionConfiguration("TimerGetRemaining", "timer t", "real",
@@ -427,7 +430,11 @@ public class CoopRewriter extends ScriptRewriter {
 						"call " + ARCHON_PREFIX + "PUGL()" + JASS_DELIM +
 						END_IF);
 		addFunctionConfiguration("ChangeLevel", "string s, boolean b", null,
-				"call " + ARCHON_PREFIX + "HandleSLM(\"CREATE\",s,true)");
+				"local boolean h=HaveSavedString(" + GENERAL_HASHTABLE + "," + GH_STRING_CAMPAIGN_BUTTON_NAME + ",StringHash(s))" + JASS_DELIM +
+						"if h then" + JASS_DELIM +
+						"set s=GetLocalizedString(LoadStr(" + GENERAL_HASHTABLE + "," + GH_STRING_CAMPAIGN_BUTTON_NAME + ",StringHash(s)))" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "HandleSLM(\"CREATE\",s,true)");
 		addFunctionConfiguration("LoadGame", "string s, boolean b", null,
 				"call " + ARCHON_PREFIX + "HandleSLM(\"LOAD_GAME\",s,true)");
 		addFunctionConfiguration("SaveGame", "string s", null,
@@ -2063,6 +2070,11 @@ public class CoopRewriter extends ScriptRewriter {
 				"if GetLocalPlayer()!=" + toMainPlayerFunc() + " then" + JASS_DELIM +
 				"call SetReservedLocalHeroButtons(0)" + JASS_DELIM +
 				END_IF, sb);
+
+		for (String key : mi.cs.chapterNameKeysMap.keySet()) {
+			String value = STRING_PREFIX + (campaignKeyOffset + mi.cs.chapterNameKeysMap.get(key));
+			append("call SaveStr(" + GENERAL_HASHTABLE + "," + GH_STRING_CAMPAIGN_BUTTON_NAME + ",StringHash(\"" + key + "\"),\"" + value + "\")", sb);
+		}
 	}
 
 	@Override
@@ -2287,22 +2299,23 @@ public class CoopRewriter extends ScriptRewriter {
 						}
 					if (!pauseLockAdded && call.equals("TriggerSleepAction"))
 						append(PAUSE_LOCK_CODE, sb);
-				}
-				if (params != null) {
-					CoopCallAdjustments.AdjustmentDetails ad = CoopCallAdjustments.callParameters.get(call);
-					if (ad != null) {
-						appendLine = false;
 
-						if (ad.pointIndex != null) {
-							append("set " + TEMP_POINT_NAME + "=" + params[ad.pointIndex], sb);
-							params[ad.pointIndex] = TEMP_POINT_NAME;
-							line = toCallString(call, params);
+					if (params != null) {
+						CoopCallAdjustments.AdjustmentDetails ad = CoopCallAdjustments.callParameters.get(call);
+						if (ad != null) {
+							appendLine = false;
+
+							if (ad.pointIndex != null) {
+								append("set " + TEMP_POINT_NAME + "=" + params[ad.pointIndex], sb);
+								params[ad.pointIndex] = TEMP_POINT_NAME;
+								line = toCallString(call, params);
+							}
+
+							if (!ad.isLocal)
+								append(line, sb);
+
+							appendCallWithReplacement(call, params, ad, sb);
 						}
-
-						if (!ad.isLocal)
-							append(line, sb);
-
-						appendCallWithReplacement(call, params, ad, sb);
 					}
 				}
 			}

@@ -265,39 +265,38 @@ public class CampaignSplitter {
 				}
 				int mapTitleIndex;
 				String fullTitle;
-				W3I mapInfo = null;
-				WTS mapStrings = null;
-				if (!hasButton) {
-					mapInfo = W3I.ofMapFile(mapFile);
-					mapStrings = WTS.ofMapFile(mapFile);
-				}
+				W3I mapInfo = W3I.ofMapFile(mapFile);
+				WTS mapStrings = WTS.ofMapFile(mapFile);
 				String chapterTitle = null;
-				String mapTitle;
-				String titleKey = hasButton ? button.getChapterTitle() : mapInfo.getLoadingScreen().getTitle();
-				if (titleKey == null || !titleKey.contains(STRING_PREFIX)) {
-//					if (hasButton)
-//						throw new Exception("Invalid chapter title for map " + map.getMapPath() + ": \"" + titleKey + "\" (Broken campaign)");
-				} else {
-					int index = stringIndexToInt(titleKey);
-					chapterTitle = hasButton ? campStrings.getKeyedEntries().get(index) : mapStrings.getEntry(index);
+				String mapTitle = null;
+				String titleKey = hasButton ? button.getChapterTitle() : null;
+				if (titleKey != null && titleKey.contains(STRING_PREFIX))
+					chapterTitle = campStrings.getKeyedEntries().get(stringIndexToInt(titleKey));
+				if (chapterTitle == null) {
+					titleKey = mapInfo.getLoadingScreen().getTitle();
+					if (titleKey != null && titleKey.contains(STRING_PREFIX))
+						chapterTitle = mapStrings.getEntry(stringIndexToInt(titleKey));
 				}
 
-				if (hasButton)
-					titleKey = button.getMapTitle();
-				else {
-					titleKey = mapInfo.getLoadingScreen().getSubtitle();
-					if (titleKey == null || !titleKey.contains(STRING_PREFIX))
-						titleKey = mapInfo.getMapName();
-				}
-				if (titleKey == null || !titleKey.contains(STRING_PREFIX)) {
-//					throw new Exception("Invalid map title for map " + map.getMapPath() + ": \"" + titleKey + "\" (Broken campaign)");
-					mapTitle = "Unnamed";
-					mapTitleIndex = Collections.max(campStrings.getKeyedEntries().keySet()) + 1;
-				}
-				else {
+				titleKey = hasButton ? button.getMapTitle() : null;
+				if (titleKey != null && titleKey.contains(STRING_PREFIX)) {
 					int index = stringIndexToInt(titleKey);
-					mapTitle = hasButton ? campStrings.getKeyedEntries().get(index) : mapStrings.getEntry(index);
-					mapTitleIndex = hasButton ? index : Collections.max(campStrings.getKeyedEntries().keySet()) + 1;
+					mapTitle = campStrings.getKeyedEntries().get(index);
+					mapTitleIndex = index;
+				} else
+					mapTitleIndex = Collections.max(campStrings.getKeyedEntries().keySet()) + 1;
+				if (mapTitle == null) {
+					titleKey = mapInfo.getLoadingScreen().getSubtitle();
+					if (titleKey != null && titleKey.contains(STRING_PREFIX))
+						mapTitle = mapStrings.getEntry(stringIndexToInt(titleKey));
+				}
+				if (mapTitle == null) {
+					titleKey = mapInfo.getMapName();
+					if (titleKey != null && titleKey.contains(STRING_PREFIX))
+						mapTitle = mapStrings.getEntry(stringIndexToInt(titleKey));
+				}
+				if (mapTitle == null) {
+					mapTitle = fileName;
 				}
 
 				chapterTitle = chapterTitle == null ? "" : chapterTitle + ": ";
