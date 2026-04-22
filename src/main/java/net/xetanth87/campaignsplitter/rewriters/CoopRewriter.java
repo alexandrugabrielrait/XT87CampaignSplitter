@@ -427,6 +427,7 @@ public class CoopRewriter extends ScriptRewriter {
 		addFunctionConfiguration("HandleSLM", "string s, string l, boolean b", null,
 				"call DisplayTimedTextToPlayer(GetLocalPlayer(),0,0,0,GetLocalizedString(s)+\": |cffffcc00\"+l+\"|r\")" + JASS_DELIM +
 						"if b then" + JASS_DELIM +
+						"set " + ARCHON_PREFIX + "LRD=true" + JASS_DELIM +
 						"call " + ARCHON_PREFIX + "PUGL()" + JASS_DELIM +
 						END_IF);
 		addFunctionConfiguration("ChangeLevel", "string s, boolean b", null,
@@ -448,7 +449,12 @@ public class CoopRewriter extends ScriptRewriter {
 		addFunctionConfiguration("SaveAndLoadGameBJ", "string s, string l, boolean b", null,
 				"call " + ARCHON_PREFIX + "SaveGame(s)" + JASS_DELIM +
 						"call " + ARCHON_PREFIX + "LoadGame(l,b)");
-
+		addFunctionConfiguration("CopySaveGame", "string s, string d", "boolean",
+				"return true");
+		addFunctionConfiguration("SaveGameExists", "string s", "boolean",
+				"return false");
+		addFunctionConfiguration("CopySaveGameBJ", "string s, string d", "boolean",
+				"return true");
 	}
 
 	public static String getNewPath(String oldPath) {
@@ -1797,7 +1803,8 @@ public class CoopRewriter extends ScriptRewriter {
 		// endregion
 		// region game is loaded
 		append("function t_" + ARCHON_PREFIX + "GIL_Ac takes nothing returns nothing" + JASS_DELIM +
-				bCall("SetMapFlag", "MAP_RELOADED,true") + JASS_DELIM +
+				bCall("SetMapFlag", "MAP_RELOADED," + ARCHON_PREFIX + "LRD") + JASS_DELIM +
+				bSet(ARCHON_PREFIX + "LRD", "false") + JASS_DELIM +
 				bIf(ARCHON_PREFIX + "LUP",
 						bSet(ARCHON_PREFIX + "LUP", "false") + JASS_DELIM +
 								bCall(ARCHON_PREFIX + "PauseGame", "false")) + JASS_DELIM +
@@ -2139,7 +2146,10 @@ public class CoopRewriter extends ScriptRewriter {
 				"SaveGame",
 				"LoadGameBJ",
 				"SaveAndChangeLevelBJ",
-				"SaveAndLoadGameBJ"
+				"SaveAndLoadGameBJ",
+				"CopySaveGame",
+				"SaveGameExists",
+				"CopySaveGameBJ"
 		))
 			for (String prefix : Arrays.asList("(", " ", ",", "="))
 				for (String suffix : Arrays.asList("(", " ")) {
@@ -2368,6 +2378,7 @@ public class CoopRewriter extends ScriptRewriter {
 							"boolean " + ARCHON_PREFIX + "TDS=false" + JASS_DELIM + // time of day suspended
 							"boolean " + ARCHON_PREFIX + "DIP=false" + JASS_DELIM + // dialog is pausing
 							"boolean " + ARCHON_PREFIX + "LUP=false" + JASS_DELIM + // load unpauses
+							"boolean " + ARCHON_PREFIX + "LRD=false" + JASS_DELIM + // load reloads
 							"boolean " + ARCHON_PREFIX + "CIP=false" // cache is pausing
 					//"gamespeed " + ARCHON_PREFIX + "RGS=MAP_SPEED_NORMAL" // real game speed
 					, sb);
