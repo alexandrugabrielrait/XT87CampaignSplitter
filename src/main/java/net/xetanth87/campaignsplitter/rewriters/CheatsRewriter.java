@@ -47,9 +47,9 @@ public class CheatsRewriter extends ScriptRewriter {
 		addTriggerConfiguration("P", // pause
 				checkCheatMode + JASS_DELIM +
 						"set " + PauseVar + "=not " + PauseVar + JASS_DELIM +
-						"call " + rewriterPrefix + "E(" + PauseVar + ")",
-				"call PauseGame(" + PauseVar + ")" + JASS_DELIM +
-						"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xp\",true)");
+						"call " + rewriterPrefix + "E(" + PauseVar + ")" + JASS_DELIM +
+						"call PauseGame(" + PauseVar + ")",
+				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xp\",true)");
 		addTriggerConfiguration("I", // iseedeadpeople
 				checkCheatMode + JASS_DELIM +
 						"call " + rewriterPrefix + "E(" + FogVar + ")" + JASS_DELIM +
@@ -82,11 +82,11 @@ public class CheatsRewriter extends ScriptRewriter {
 						"endif",
 				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xw\",true)");
 		addTriggerConfiguration("GG", // greed gold
-						checkCheatMode + JASS_DELIM +
+				checkCheatMode + JASS_DELIM +
 						"call AdjustPlayerStateSimpleBJ(" + toMainPlayerFunc() + ",PLAYER_STATE_RESOURCE_GOLD,1000)",
 				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xg\",true)");
 		addTriggerConfiguration("GL", // greed lumber
-						checkCheatMode + JASS_DELIM +
+				checkCheatMode + JASS_DELIM +
 						"call AdjustPlayerStateSimpleBJ(" + toMainPlayerFunc() + ",PLAYER_STATE_RESOURCE_LUMBER,1000)",
 				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xl\",true)");
 	}
