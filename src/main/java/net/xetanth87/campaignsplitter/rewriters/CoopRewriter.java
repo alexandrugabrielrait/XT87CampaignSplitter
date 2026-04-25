@@ -439,7 +439,7 @@ public class CoopRewriter extends ScriptRewriter {
 		addFunctionConfiguration("LoadGame", "string s, boolean b", null,
 				"call " + ARCHON_PREFIX + "HandleSLM(\"LOAD_GAME\",s,true)");
 		addFunctionConfiguration("SaveGame", "string s", null,
-				"call EnableUserControl(true)" + JASS_DELIM +
+				"call CinematicModeExBJ(false," + FORCE_NAME + ",0)" + JASS_DELIM +
 						"call " + ARCHON_PREFIX + "HandleSLM(\"SAVE_GAME\",s,false)");
 		addFunctionConfiguration("LoadGameBJ", "string s, boolean b", null,
 				"call " + ARCHON_PREFIX + "LoadGame(s,b)");
