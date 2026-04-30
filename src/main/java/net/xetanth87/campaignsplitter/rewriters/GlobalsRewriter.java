@@ -52,7 +52,7 @@ public class GlobalsRewriter extends ScriptRewriter {
 	}
 
 	@Override
-	public void onMainAfterLocals(StringBuffer sb) {
+	public void onMainLocals(StringBuffer sb) {
 		for (String line : setList)
 			append(line, sb);
 	}

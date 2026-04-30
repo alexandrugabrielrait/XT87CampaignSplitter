@@ -4,6 +4,7 @@ import net.xetanth87.campaignsplitter.util.XT87Utils;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -243,9 +244,21 @@ public class SplitterFrame extends JFrame {
 					languageDropdown.setSelectedItem(variant);
 			});
 
+			JCheckBox darkModeCheckBox = new JCheckBox(getLocalizedString("pref_dark_mode_check"));
+			darkModeCheckBox.setSelected(DarkMode.darkModeEnabled);
+			darkModeCheckBox.setToolTipText(getLocalizedString("pref_dark_mode_check_tooltip"));
+
 			JPanel panel2 = new JPanel();
-			panel2.add(new JLabel(getLocalizedString("pref_language_dropdown")));
-			panel2.add(languageDropdown);
+			panel2.setLayout(new BoxLayout(panel2, BoxLayout.Y_AXIS));
+			
+			JPanel languagePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			languagePanel.add(new JLabel(getLocalizedString("pref_language_dropdown")));
+			languagePanel.add(languageDropdown);
+			panel2.add(languagePanel);
+			
+//			JPanel darkModePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+//			darkModePanel.add(darkModeCheckBox);
+//			panel2.add(darkModePanel);
 
 			int result = JOptionPane.showConfirmDialog(null, panel2, getLocalizedString("menu_item_preferences"),
 					JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -253,9 +266,20 @@ public class SplitterFrame extends JFrame {
 			if (result == JOptionPane.OK_OPTION) {
 				SplitterLanguage selectedLanguage = ((LanguageVariant) Objects.requireNonNull(languageDropdown.getSelectedItem())).language;
 				SplitterLanguage.selectedLanguage = selectedLanguage;
-				JOptionPane.showMessageDialog(null, getLocalizedString("pref_language_selected_message").formatted(selectedLanguage.getDisplayName()),
+				
+				boolean darkModeSelected = darkModeCheckBox.isSelected();
+				boolean darkModeChanged = darkModeSelected != DarkMode.darkModeEnabled;
+				DarkMode.darkModeEnabled = darkModeSelected;
+
+				StringBuilder message = new StringBuilder();
+				message.append(getLocalizedString("pref_language_selected_message").formatted(selectedLanguage.getDisplayName()));
+				message.append("\n");
+				message.append(getLocalizedString("pref_dark_mode_selected_message").formatted(darkModeSelected ? "On" : "Off"));
+				
+				JOptionPane.showMessageDialog(null, message.toString(),
 						getLocalizedString("pref_saved_title"), JOptionPane.INFORMATION_MESSAGE);
 				SplitterLanguage.saveLanguage(selectedLanguage);
+				DarkMode.saveDarkMode(darkModeSelected);
 				dispose();
 				startFrame();
 			}
@@ -570,6 +594,8 @@ public class SplitterFrame extends JFrame {
 
 	private static void startFrame() {
 		SplitterLanguage.loadLanguage();
+		DarkMode.loadDarkMode();
+		DarkMode.applyDarkMode();
 		SplitterFrame frame = new SplitterFrame();
 		PrintStream origOut = System.out;
 		PrintStream areaOut = new AreaPrintStream(origOut, frame, "");
@@ -582,7 +608,6 @@ public class SplitterFrame extends JFrame {
 	public static void main(String[] args) {
 		try {
 			ToolTipManager.sharedInstance().setDismissDelay(Integer.MAX_VALUE);
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}

@@ -64,8 +64,11 @@ public class VictoryRewriter extends ScriptRewriter {
 				insideInitGlobals = true;
 			} else if (line.contains(SET_LEVEL_CALL)) {
 				String mapPath = line.substring(line.indexOf("\"") + 1, line.lastIndexOf("\"")).toLowerCase(Locale.ROOT);
-				sb.append(JASS_DELIM +
-						"set XT87VN=GetLocalizedString(\"" + STRING_PREFIX + (campaignKeyOffset + mi.cs.chapterNameKeysMap.get(mapPath)) + "\")");
+				append(JASS_DELIM, sb);
+				if (mi.cs.chapterNameKeysMap.containsKey(mapPath))
+					append("set XT87VN=GetLocalizedString(\"" + STRING_PREFIX + (campaignKeyOffset + mi.cs.chapterNameKeysMap.get(mapPath)) + "\")", sb);
+				else
+					append("set XT87VN=\"" + mapPath + "\"", sb);
 			}
 	}
 }

@@ -98,7 +98,7 @@ public class TimerRewriter extends ScriptRewriter {
 	}
 
 	@Override
-	public void onMainAfterLocals(StringBuffer sb) {
+	public void onMainLocals(StringBuffer sb) {
 //		for (int i = 0; i < elapsedTimeIndices.size(); i++)
 //			append("    set " + ELAPSED_TIMER_PREFIX + i + "=CreateTimer()", sb);
 //		for (int i = 0; i < periodicTimeIndices.size(); i++)

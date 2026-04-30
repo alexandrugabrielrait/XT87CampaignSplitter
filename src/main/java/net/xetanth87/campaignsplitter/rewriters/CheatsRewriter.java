@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Scanner;
 
 import static net.xetanth87.campaignsplitter.util.XT87Utils.END_FUNCTION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.END_IF;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.JASS_DELIM;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_PREFIX;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_VAR_REPLACE;
@@ -89,6 +90,30 @@ public class CheatsRewriter extends ScriptRewriter {
 				checkCheatMode + JASS_DELIM +
 						"call AdjustPlayerStateSimpleBJ(" + toMainPlayerFunc() + ",PLAYER_STATE_RESOURCE_LUMBER,1000)",
 				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xl\",true)");
+		addTriggerConfiguration("B", // blink selected units to camera
+				"local real x" + JASS_DELIM +
+						"local real y" + JASS_DELIM +
+						"local group g=CreateGroup()" + JASS_DELIM +
+						"local unit u" + JASS_DELIM +
+						"local player p=GetTriggerPlayer()" + JASS_DELIM +
+						"if GetLocalPlayer()==p then" + JASS_DELIM +
+						"set x=GetCameraTargetPositionX()" + JASS_DELIM +
+						"set y=GetCameraTargetPositionY()" + JASS_DELIM +
+						"endif" + JASS_DELIM +
+						"set x=x+0.00" + JASS_DELIM +
+						"set y=y+0.00" + JASS_DELIM +
+						"call GroupEnumUnitsOfPlayer(g,p,null)" + JASS_DELIM +
+						"loop" + JASS_DELIM +
+						"set u=FirstOfGroup(g)" + JASS_DELIM +
+						"exitwhen u==null" + JASS_DELIM +
+						"call GroupRemoveUnit(g,u)" + JASS_DELIM +
+						"if IsUnitSelected(u,p) then" + JASS_DELIM +
+						"call SetUnitPosition(u,x,y)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						"call DestroyGroup(g)",
+				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xb\",true)"
+		);
 	}
 
 	public String toMainPlayerFunc() {
@@ -104,14 +129,6 @@ public class CheatsRewriter extends ScriptRewriter {
 		append("boolean " + CheatModeVar + "=false" + JASS_DELIM +
 				"boolean " + PauseVar + "=false" + JASS_DELIM +
 				"boolean " + FogVar + "=true", sb); // cheat mode
-	}
-
-	@Override
-	public void onExitGlobals(StringBuffer sb) {
-	}
-
-	@Override
-	public void onMainAfterLocals(StringBuffer sb) {
 	}
 
 	@Override
