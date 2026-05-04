@@ -2,6 +2,7 @@ package net.xetanth87.campaignsplitter.rewriters;
 
 import net.moonlightflower.wc3libs.bin.app.W3I;
 import net.xetanth87.campaignsplitter.MapInjector;
+import net.xetanth87.campaignsplitter.util.BlockUtils;
 import net.xetanth87.campaignsplitter.util.CoopCallAdjustments;
 import net.xetanth87.campaignsplitter.util.XT87Utils;
 import org.antlr.v4.runtime.misc.Pair;
@@ -52,6 +53,7 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final String ABILITY_ARRAY = ARCHON_PREFIX + "AbilityArray";
 	private static final String ABILITY_ARRAY_SIZE = ABILITY_ARRAY + "SIZE";
 	private static final String HASH_ARRAY = ARCHON_PREFIX + "HA";
+	private static final String SYNC_FUNC_NAME = ARCHON_PREFIX + "SyncX";
 
 	private static final int FILE_LIBRARY_ABILITY_COUNT = 10;
 	private static final int FILE_LIBRARY_PRELOAD_LIMIT = 200;
@@ -1011,17 +1013,28 @@ public class CoopRewriter extends ScriptRewriter {
 					END_FUNCTION, sb);
 
 			append("function " + ARCHON_PREFIX + "RdWt takes boolean b returns nothing" + JASS_DELIM +
+					"loop" + JASS_DELIM +
+					"exitwhen not XT87ASRdWaitLock" + JASS_DELIM +
+					"call TriggerSleepAction(0.01)" + JASS_DELIM +
+					"endloop" + JASS_DELIM +
+					"set " + ARCHON_PREFIX + "RdWaitLock=true" + JASS_DELIM +
 					"if b then" + JASS_DELIM +
 					"set " + ARCHON_PREFIX + "RdWait=" + ARCHON_PREFIX + "RdWait+1" + JASS_DELIM +
+					"set " + ARCHON_PREFIX + "RdWaitLock=false" + JASS_DELIM +
 					"if not " + ARCHON_PREFIX + "CIP then" + JASS_DELIM +
 					"set " + ARCHON_PREFIX + "CIP=true" + JASS_DELIM +
+					XT87Utils.fadeCall(true) + JASS_DELIM +
+					"if not " + ARCHON_PREFIX + "GIP then" + JASS_DELIM +
 					"call " + ARCHON_PREFIX + "PauseGame(true)" + JASS_DELIM +
+					END_IF + JASS_DELIM +
 					END_IF + JASS_DELIM +
 					"else" + JASS_DELIM +
 					"set " + ARCHON_PREFIX + "RdWait=" + ARCHON_PREFIX + "RdWait-1" + JASS_DELIM +
+					"set " + ARCHON_PREFIX + "RdWaitLock=false" + JASS_DELIM +
 					"if " + ARCHON_PREFIX + "RdWait==0 and " + ARCHON_PREFIX + "CIP then\n" +
 					"set " + ARCHON_PREFIX + "CIP=false\n" +
-					"call " + ARCHON_PREFIX + "PauseGame(false)\n" +
+					XT87Utils.fadeCall(false) + JASS_DELIM +
+					"call " + ARCHON_PREFIX + "PauseGame(false)" + JASS_DELIM +
 					END_IF + JASS_DELIM +
 					END_IF + JASS_DELIM +
 					END_FUNCTION, sb);
@@ -1031,19 +1044,21 @@ public class CoopRewriter extends ScriptRewriter {
 					new Triple<>("Boolean", ARCHON_PREFIX + "S2B", "false")
 			)) {
 				String type = o.a.toLowerCase(Locale.ROOT);
+				append(BlockUtils.bDef(SYNC_FUNC_NAME + o.a, type + " v", type,
+						"local string c=\"c\"" + JASS_DELIM +
+								"local string t=\"t\"" + JASS_DELIM +
+								"call Store" + o.a + "(" + SYNC_CACHE + ",c,t,v)" + JASS_DELIM +
+								"call TriggerSyncStart()" + JASS_DELIM +
+								"call SyncStored" + o.a + "(" + SYNC_CACHE + ",c,t)" + JASS_DELIM +
+								"call TriggerSyncReady()" + JASS_DELIM +
+								"return GetStored" + o.a + "(" + SYNC_CACHE + ",c,t)"), sb);
 				append("function " + ARCHON_PREFIX + "Read" + o.a + " takes string cn,string t,string fK returns " + type + JASS_DELIM +
 						"local " + type + " v" + JASS_DELIM +
 						"if GetPlayerSlotState(" + toMainPlayerFunc() + ")!=PLAYER_SLOT_STATE_PLAYING then" + JASS_DELIM +
 						"return " + o.c + JASS_DELIM +
 						END_IF + JASS_DELIM +
 						"call " + ARCHON_PREFIX + "RdWt(true)" + JASS_DELIM +
-						"if GetLocalPlayer()==" + toMainPlayerFunc() + " then" + JASS_DELIM +
-						"set v=" + o.b + "(" + ARCHON_PREFIX + "GetContent(cn,t,fK))" + JASS_DELIM +
-						"call Store" + o.a + "(" + SYNC_CACHE + ",cn,t,v)" + JASS_DELIM +
-						"call SyncStored" + o.a + "(" + SYNC_CACHE + ",cn,t)" + JASS_DELIM +
-						END_IF + JASS_DELIM +
-						"call TriggerSyncReady()" + JASS_DELIM +
-						"set v=GetStored" + o.a + "(" + SYNC_CACHE + ",cn,t)" + JASS_DELIM +
+						"set v=" + SYNC_FUNC_NAME + o.a + "(" + o.b + "(" + ARCHON_PREFIX + "GetContent(cn,t,fK)))" + JASS_DELIM +
 						"call " + ARCHON_PREFIX + "RdWt(false)" + JASS_DELIM +
 						"return v" + JASS_DELIM +
 						END_FUNCTION, sb);
@@ -1118,23 +1133,24 @@ public class CoopRewriter extends ScriptRewriter {
 			// region DoFlushIndex function
 			// uses m2 and flush prefixed k2
 			append("function " + ARCHON_PREFIX + "DoFlushIndex takes hashtable q,string cn,string m,string k,integer c returns integer" + JASS_DELIM +
-					"    local integer i=c" + JASS_DELIM +
-					"local integer mh=StringHash(m)" + JASS_DELIM +
-					"local integer kh=StringHash(k)" + JASS_DELIM +
-					"if HaveSavedInteger(q,mh,kh) then" + JASS_DELIM +
-					"    set i=LoadInteger(q,mh,kh)" + JASS_DELIM +
-					"    if c!=0 then" + JASS_DELIM +
-					"set i=i+c" + JASS_DELIM +
-					"call SaveInteger(q,mh,kh,i)" + JASS_DELIM +
-					END_IF + JASS_DELIM +
-					"return i" + JASS_DELIM +
-					END_IF + JASS_DELIM +
-					"set i=" + ARCHON_PREFIX + "ReadInteger(cn,m+\"\\\\\"+k,null)+c" + JASS_DELIM +
-					"call SaveInteger(q,mh,kh,i)" + JASS_DELIM +
+					"return 0" + JASS_DELIM +
+//					"    local integer i=c" + JASS_DELIM +
+//					"local integer mh=StringHash(m)" + JASS_DELIM +
+//					"local integer kh=StringHash(k)" + JASS_DELIM +
+//					"if HaveSavedInteger(q,mh,kh) then" + JASS_DELIM +
+//					"    set i=LoadInteger(q,mh,kh)" + JASS_DELIM +
+//					"    if c!=0 then" + JASS_DELIM +
+//					"set i=i+c" + JASS_DELIM +
+//					"call SaveInteger(q,mh,kh,i)" + JASS_DELIM +
+//					END_IF + JASS_DELIM +
+//					"return i" + JASS_DELIM +
+//					END_IF + JASS_DELIM +
+//					"set i=" + ARCHON_PREFIX + "ReadInteger(cn,m+\"\\\\\"+k,null)+c" + JASS_DELIM +
+//					"call SaveInteger(q,mh,kh,i)" + JASS_DELIM +
 					//"if i!=0 then" + JASS_DELIM +
 					//"    call " + ARCHON_PREFIX + "StoreReference(q,\"" + CACHE_INTEGER_KEY + "\",m2,k2)" + JASS_DELIM +
 					//END_IF + JASS_DELIM +
-					"return i" + JASS_DELIM +
+//					"return i" + JASS_DELIM +
 					END_FUNCTION, sb);
 			// endregion
 			// region StoreFlushIndex function
@@ -1571,9 +1587,9 @@ public class CoopRewriter extends ScriptRewriter {
 					"    local integer l" + JASS_DELIM +
 					"    local integer id" + JASS_DELIM +
 					"    local integer len" + JASS_DELIM +
-					"    local unit u" + JASS_DELIM +
+					"    local unit u=null" + JASS_DELIM +
 					"    local boolean h" + JASS_DELIM +
-					"    local boolean r" + JASS_DELIM +
+					"    local boolean r=true" + JASS_DELIM + // todo save unit to hashtable
 					"    local boolean d" + JASS_DELIM +
 					"    local string m2=\"" + CACHE_MISSION_PREFIX + "\"+m" + JASS_DELIM +
 					"    local string k2=\"" + CACHE_UNIT_PREFIX + "\"+k" + JASS_DELIM +
@@ -1599,7 +1615,8 @@ public class CoopRewriter extends ScriptRewriter {
 					END_IF + JASS_DELIM +
 
 					"call " + ARCHON_PREFIX + "RdWt(true)" + JASS_DELIM +
-					"if GetLocalPlayer()==" + toMainPlayerFunc() + " then" + JASS_DELIM +
+					//"call TriggerSyncStart()" + JASS_DELIM +
+					//"if GetLocalPlayer()==" + toMainPlayerFunc() + " then" + JASS_DELIM +
 					"set ct=" + ARCHON_PREFIX + "GetContent(cn,t," + FLUSH_KEY_CODE + ")" + JASS_DELIM +
 
 					"set len=StringLength(ct)" + JASS_DELIM +
@@ -1622,14 +1639,15 @@ public class CoopRewriter extends ScriptRewriter {
 					"        endloop" + JASS_DELIM +
 					"        set cl[j]=buffer" + JASS_DELIM +
 					"    endif" + JASS_DELIM +
-					"set id=" + ARCHON_PREFIX + "S62I(cl[0])" + JASS_DELIM +
+					"set id=" + SYNC_FUNC_NAME + "Integer(" + ARCHON_PREFIX + "S62I(cl[0]))" + JASS_DELIM +
 					"if id==0 then" + JASS_DELIM +
 					"set u=null" + JASS_DELIM +
 					"else" + JASS_DELIM +
 					"set j=0" + JASS_DELIM +
 					"set i=0" + JASS_DELIM +
 					END_IF + JASS_DELIM +
-					"set u=CreateUnit(p,id,x,y,facing)" + JASS_DELIM +
+					"set u=CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE),id,x,y,facing)" + JASS_DELIM +
+					"call ShowUnit(u,false)" + JASS_DELIM +
 					"set h=IsHeroUnitId(id)" + JASS_DELIM +
 					"if h then", sb); // if hero
 			for (String suffix : getBasicFields())
@@ -1637,21 +1655,42 @@ public class CoopRewriter extends ScriptRewriter {
 			append("set f[" + getCacheFieldIndex(CACHE_ARMOR_SUFFIX) + "]=StringHash(k2+\"" + CACHE_ARMOR_SUFFIX + "\")", sb);
 			append("set f[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "]=StringHash(k2+\"" + CACHE_ABILITY_COUNT_SUFFIX + "\")", sb);
 			append("if r then", sb); // if read
-			append("set fm=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[1])", sb);
+			//append("set fm=" + getSyncConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[1]))", sb); // flush mission?
 			int lineIndex = 2;
 			for (String suffix : getBasicFields())
-				append("set v[" + getCacheFieldIndex(suffix) + "]=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[" + (lineIndex++) + "])" + JASS_DELIM +
-						"call SaveInteger(q,mh,f[" + getCacheFieldIndex(suffix) + "],v[" + getCacheFieldIndex(suffix) + "])", sb);
-			append("set vr[" + getCacheFieldIndex(CACHE_ARMOR_SUFFIX) + "]=" + getConversionFunc(ConversionFunctionType.STRING_TO_REAL) + "(cl[" + (lineIndex++) + "])" + JASS_DELIM +
-					"call SaveReal(q,mh,f[" + getCacheFieldIndex(CACHE_ARMOR_SUFFIX) + "],vr[" + getCacheFieldIndex(CACHE_ARMOR_SUFFIX) + "])", sb);
-			append("set v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "]=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[" + (lineIndex++) + "])" + JASS_DELIM +
-					"call SaveInteger(q,mh,f[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "],v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "])", sb);
+				append("set v[" + getCacheFieldIndex(suffix) + "]=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[" + (lineIndex++) + "])", sb);
+			append("set vr[0]=" + getConversionFunc(ConversionFunctionType.STRING_TO_REAL) + "(cl[" + (lineIndex++) + "])", sb);
+			append("set v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "]=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[" + (lineIndex++) + "])", sb);
 			append("else", sb); // else not read
+			append("set i=0" + JASS_DELIM +
+					"loop" + JASS_DELIM +
+					"exitwhen i>=" + cacheFieldMap.size() + JASS_DELIM +
+					"call StoreInteger(" + SYNC_CACHE + ",\"v\",I2S(i),v[i])" + JASS_DELIM +
+					"endloop" + JASS_DELIM +
+					"call StoreReal(" + SYNC_CACHE + ",\"vr\",\"0\",vr[0])" + JASS_DELIM +
+					"set i=0" + JASS_DELIM +
+					"call TriggerSyncStart()" + JASS_DELIM +
+					"loop" + JASS_DELIM +
+					"exitwhen i>=" + cacheFieldMap.size() + JASS_DELIM +
+					"call SyncStoredInteger(" + SYNC_CACHE + ",\"v\",I2S(i))" + JASS_DELIM +
+					"endloop" + JASS_DELIM +
+					"call SyncStoredReal(" + SYNC_CACHE + ",\"vr\",\"0\")" + JASS_DELIM +
+					"call TriggerSyncReady()" + JASS_DELIM +
+					"set i=0" + JASS_DELIM +
+					"loop" + JASS_DELIM +
+					"exitwhen i>=" + cacheFieldMap.size() + JASS_DELIM +
+					"set v[i]=GetStoredInteger(" + SYNC_CACHE + ",\"v\",I2S(i))" + JASS_DELIM +
+					"endloop" + JASS_DELIM +
+					"set vr[0]=GetStoredReal(" + SYNC_CACHE + ",\"vr\",\"0\")" + JASS_DELIM +
+					"set i=0", sb); // endif read
+
 			for (String suffix : getBasicFields())
-				append("set v[" + getCacheFieldIndex(suffix) + "]=LoadInteger(q,mh,f[" + getCacheFieldIndex(suffix) + "])", sb);
-			append("set vr[" + getCacheFieldIndex(CACHE_ARMOR_SUFFIX) + "]=LoadReal(q,mh,f[" + getCacheFieldIndex(CACHE_ARMOR_SUFFIX) + "])", sb);
-			append("set v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "]=LoadInteger(q,mh,f[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "])", sb);
+				append("call SaveInteger(q,mh,f[" + getCacheFieldIndex(suffix) + "],v[" + getCacheFieldIndex(suffix) + "])", sb);
+			append("call SaveReal(q,mh,f[" + getCacheFieldIndex(CACHE_ARMOR_SUFFIX) + "],vr[0])", sb);
+			append("call SaveInteger(q,mh,f[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "],v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "])", sb);
+
 			append(END_IF, sb); // endif read
+
 			append("        call SetHeroXP(u,v[" + getCacheFieldIndex(CACHE_XP_SUFFIX) + "],false)" + JASS_DELIM +
 					"        call SetHeroStr(u,v[" + getCacheFieldIndex(CACHE_STR_SUFFIX) + "],true)" + JASS_DELIM +
 					"        call SetHeroAgi(u,v[" + getCacheFieldIndex(CACHE_AGI_SUFFIX) + "],true)" + JASS_DELIM +
@@ -1668,18 +1707,38 @@ public class CoopRewriter extends ScriptRewriter {
 					"        call ModifyHeroSkillPoints(u,bj_MODIFYMETHOD_SET,v[" + getCacheFieldIndex(CACHE_UNSPEND_POINTS_SUFFIX) + "])" + JASS_DELIM +
 					"        set i=0" + JASS_DELIM +
 					DebugOnly("call BJDebugMsg(\"AUX i \"+I2S(i)+\" c \"+I2S(c))" + JASS_DELIM) +
-					"        loop" + JASS_DELIM + // loop i = 0, i < ability_count
-					"            exitwhen i>=v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "]" + JASS_DELIM +
 					"if r then", sb); // if read
 			int lineIndexAfterAbilityCount = lineIndex;
-			append("set a=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[" + (lineIndex++) + "+2*i])" + JASS_DELIM +
+			append("loop" + JASS_DELIM + // loop i = 0, i < ability_count
+					"exitwhen i>=v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "]" + JASS_DELIM +
+					"set a=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[" + (lineIndex++) + "+2*i])" + JASS_DELIM +
 					"set l=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[" + (lineIndex++) + "+2*i])" + JASS_DELIM +
-					"call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ABILITY_ID_SUFFIX + "\"+I2S(i)),a)" + JASS_DELIM +
-					"call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ABILITY_LVL_SUFFIX + "\"+I2S(i)),l)" + JASS_DELIM +
-					"else" + JASS_DELIM + // else not read
+					"call StoreInteger(" + SYNC_CACHE + ",\"a\",I2S(i),a)" + JASS_DELIM +
+					"call StoreInteger(" + SYNC_CACHE + ",\"l\",I2S(i),l)" + JASS_DELIM +
+					"set i=i+1" + JASS_DELIM +
+					"endloop", sb);
+			append("set i=0" + JASS_DELIM +
+					"call TriggerSyncStart()" + JASS_DELIM +
+					"loop" + JASS_DELIM + // loop i = 0, i < ability_count
+					"exitwhen i>=v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "]" + JASS_DELIM +
+					"call SyncStoredInteger(" + SYNC_CACHE + ",\"a\",I2S(i))" + JASS_DELIM +
+					"call SyncStoredInteger(" + SYNC_CACHE + ",\"l\",I2S(i))" + JASS_DELIM +
+					"set i=i+1" + JASS_DELIM +
+					"endloop" + JASS_DELIM +
+					"call TriggerSyncReady()", sb);
+			append("set i=0" + JASS_DELIM +
+					"loop" + JASS_DELIM + // loop i = 0, i < ability_count
+					"exitwhen i>=v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "]" + JASS_DELIM +
+					"call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ABILITY_ID_SUFFIX + "\"+I2S(i)),GetStoredInteger(" + SYNC_CACHE + ",\"a\",I2S(i)))" + JASS_DELIM +
+					"call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ABILITY_LVL_SUFFIX + "\"+I2S(i)),GetStoredInteger(" + SYNC_CACHE + ",\"l\",I2S(i)))" + JASS_DELIM +
+					"set i=i+1" + JASS_DELIM +
+					"endloop", sb);
+			append(END_IF + JASS_DELIM + // end read
+					"set i=0" + JASS_DELIM +
+					"loop" + JASS_DELIM + // loop i = 0, i < ability_count
+					"exitwhen i>=v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "]" + JASS_DELIM +
 					"            set a=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_ABILITY_ID_SUFFIX + "\"+I2S(i)))" + JASS_DELIM +
 					"            set l=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_ABILITY_LVL_SUFFIX + "\"+I2S(i)))" + JASS_DELIM +
-					END_IF + JASS_DELIM + // endif read
 					"            call ModifyHeroSkillPoints(u,bj_MODIFYMETHOD_ADD,l)" + JASS_DELIM +
 					"            call " + ARCHON_PREFIX + "WatchSkill(a)" + JASS_DELIM +
 					DebugOnly("call BJDebugMsg(\"AUX i \"+I2S(i)+\" l \"+I2S(l))" + JASS_DELIM) +
@@ -1692,13 +1751,13 @@ public class CoopRewriter extends ScriptRewriter {
 					"                call SelectHeroSkill(u,a)" + JASS_DELIM +
 					"if j==0 and GetUnitAbilityLevel(u,a)<1 then" + JASS_DELIM +
 					"set d=true" + JASS_DELIM +
-					"call SetPlayerAbilityAvailable(p,a,true)" + JASS_DELIM +
+					"call SetPlayerAbilityAvailable(Player(PLAYER_NEUTRAL_PASSIVE),a,true)" + JASS_DELIM +
 					"call SelectHeroSkill(u,a)" + JASS_DELIM +
 					END_IF + JASS_DELIM +
 					"                set j=j+1" + JASS_DELIM +
-					"            endloop" + JASS_DELIM +
+					"endloop" + JASS_DELIM +
 					"if d then" + JASS_DELIM +
-					"call SetPlayerAbilityAvailable(p,a,false)" + JASS_DELIM +
+					"call SetPlayerAbilityAvailable(Player(PLAYER_NEUTRAL_PASSIVE),a,false)" + JASS_DELIM +
 					END_IF + JASS_DELIM +
 					"            set i=i+1" + JASS_DELIM +
 					"        endloop" + JASS_DELIM +
@@ -1707,36 +1766,40 @@ public class CoopRewriter extends ScriptRewriter {
 					"    set j=1" + JASS_DELIM +
 					END_IF + JASS_DELIM + // endif hero
 					"if r then" + JASS_DELIM + // if read
-					"set v[" + getCacheFieldIndex(CACHE_INVENTORY_SIZE_SUFFIX) + "]=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[j])" + JASS_DELIM +
+					"set v[" + getCacheFieldIndex(CACHE_INVENTORY_SIZE_SUFFIX) + "]=" + SYNC_FUNC_NAME + "Integer(" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[j]))" + JASS_DELIM +
 					"set j=j+1" + JASS_DELIM +
 					"call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_INVENTORY_SIZE_SUFFIX + "\"),v[" + getCacheFieldIndex(CACHE_INVENTORY_SIZE_SUFFIX) + "])" + JASS_DELIM +
-					"else" + JASS_DELIM + // else not read
-					"set v[" + getCacheFieldIndex(CACHE_INVENTORY_SIZE_SUFFIX) + "]=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_INVENTORY_SIZE_SUFFIX + "\"))" + JASS_DELIM +
 					END_IF + JASS_DELIM + // endif read
+					"set v[" + getCacheFieldIndex(CACHE_INVENTORY_SIZE_SUFFIX) + "]=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_INVENTORY_SIZE_SUFFIX + "\"))" + JASS_DELIM +
 					"set i=0" + JASS_DELIM +
 					"loop" + JASS_DELIM + // loop i = 0, i < inventory_size
 					"exitwhen i>=v[" + getCacheFieldIndex(CACHE_INVENTORY_SIZE_SUFFIX) + "]" + JASS_DELIM +
 					"if r then" + JASS_DELIM + // if read
-					"set c=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[j])" + JASS_DELIM +
+					"set c=" + SYNC_FUNC_NAME + "Integer(" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[j]))" + JASS_DELIM +
 					"set j=j+1" + JASS_DELIM +
 					"call SaveInteger(q,mh,StringHash(k2+\"" + CACHE_ITEM_ID_SUFFIX + "\"+I2S(i)),c)" + JASS_DELIM +
 					"if c!=0 then", sb); // if item exists
 			for (String suffix : Arrays.asList(CACHE_ITEM_CHARGE_SUFFIX, CACHE_ITEM_BITS_SUFFIX))
-				append("set v[" + getCacheFieldIndex(suffix) + "]=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[j])" + JASS_DELIM +
-						"set j=j+1" + JASS_DELIM +
-						"call SaveInteger(q,mh,StringHash(k2+\"" + suffix + "\"+I2S(i)),v[" + getCacheFieldIndex(suffix) + "])", sb);
+				append("call StoreInteger(" + SYNC_CACHE + ",\"v\",I2S(" + getCacheFieldIndex(suffix) + ")," +
+						getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[j]))" + JASS_DELIM +
+						"set j=j+1", sb);
+			append("call TriggerSyncStart()", sb);
+			for (String suffix : Arrays.asList(CACHE_ITEM_CHARGE_SUFFIX, CACHE_ITEM_BITS_SUFFIX))
+				append("call SyncStoredInteger(" + SYNC_CACHE + ",\"v\",I2S(" + getCacheFieldIndex(suffix) + "))", sb);
+			append("call TriggerSyncReady()", sb);
+			for (String suffix : Arrays.asList(CACHE_ITEM_CHARGE_SUFFIX, CACHE_ITEM_BITS_SUFFIX))
+				append("call SaveInteger(q,mh,StringHash(k2+\"" + suffix + "\"+I2S(i)),GetStoredInteger(" + SYNC_CACHE + ",\"v\",I2S(" + getCacheFieldIndex(suffix) + ")))", sb);
 			append(END_IF + JASS_DELIM + // endif item exists
-					"else" + JASS_DELIM + // else not read
+					END_IF + JASS_DELIM + // endif read
 					"set c=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_ITEM_ID_SUFFIX + "\"+I2S(i)))" + JASS_DELIM +
 					"if c!=0 then", sb); // if item exists
 			for (String suffix : Arrays.asList(CACHE_ITEM_CHARGE_SUFFIX, CACHE_ITEM_BITS_SUFFIX))
 				append("set v[" + getCacheFieldIndex(suffix) + "]=LoadInteger(q,mh,StringHash(k2+\"" + suffix + "\"+I2S(i)))", sb);
 			append(END_IF + JASS_DELIM + // endif item exists
-					END_IF + JASS_DELIM + // endif read
 					"if c!=0 then" + JASS_DELIM + // if item exists
 					"call UnitAddItemToSlotById(u,c,i)" + JASS_DELIM +
 					"set ti=UnitItemInSlot(u,i)" + JASS_DELIM +
-					"        call SetItemCharges(ti,v[" + getCacheFieldIndex(CACHE_ITEM_CHARGE_SUFFIX) + "])", sb);
+					"call SetItemCharges(ti,v[" + getCacheFieldIndex(CACHE_ITEM_CHARGE_SUFFIX) + "])", sb);
 			{
 				List<String> l = Arrays.asList(
 						"SetItemDropOnDeath(%s,%s)", // 1
@@ -1762,13 +1825,17 @@ public class CoopRewriter extends ScriptRewriter {
 					"        set i=i+1" + JASS_DELIM +
 					"    endloop" + JASS_DELIM +
 					END_IF + JASS_DELIM + // end unit id not 0
-					"call StoreUnit(" + SYNC_CACHE + ",cn,t,u)" + JASS_DELIM +
-					"call RemoveUnit(u)" + JASS_DELIM +
-					"call SyncStoredUnit(" + SYNC_CACHE + ",cn,t)" + JASS_DELIM +
-					END_IF + JASS_DELIM + // end local code
-					"call TriggerSyncReady()" + JASS_DELIM +
+					//END_IF + JASS_DELIM + // end local code
+					//"call StoreUnit(" + SYNC_CACHE + ",cn,t,u)" + JASS_DELIM +
+					//"call RemoveUnit(u)" + JASS_DELIM +
+					//"call TriggerSyncStart()" + JASS_DELIM +
+					//"call SyncStoredUnit(" + SYNC_CACHE + ",cn,t)" + JASS_DELIM +
+					//"call TriggerSyncReady()" + JASS_DELIM +
+					"call SetUnitOwner(u,p,true)" + JASS_DELIM +
+					"call ShowUnit(u,true)" + JASS_DELIM +
 					"call " + ARCHON_PREFIX + "RdWt(false)" + JASS_DELIM +
-					"return RestoreUnit(" + SYNC_CACHE + ",cn,t,p,x,y,facing)" + JASS_DELIM +
+					//"return RestoreUnit(" + SYNC_CACHE + ",cn,t,p,x,y,facing)" + JASS_DELIM +
+					"return u" + JASS_DELIM +
 					END_FUNCTION, sb);
 			// endregion
 			// region GetStored functions
@@ -2494,7 +2561,8 @@ public class CoopRewriter extends ScriptRewriter {
 								//"string array XT87ReadLines" + JASS_DELIM +
 								//"boolean XT87ReadLinesAreRead=false" + JASS_DELIM +
 								"boolean " + ARCHON_PREFIX + "RdLock=false" + JASS_DELIM + // Read lock
-								"integer " + ARCHON_PREFIX + "RdWait=0" // Read waiting count
+								"integer " + ARCHON_PREFIX + "RdWait=0" + JASS_DELIM + // Read waiting count
+								"boolean " + ARCHON_PREFIX + "RdWaitLock=false" // Read waiting count
 						, sb);
 		} else if (line.contains("SetForceAllianceStateBJ("))
 			append("call " + ENFORCE_ARCHON + "()", sb);

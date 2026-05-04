@@ -59,6 +59,11 @@ public class XT87Utils {
 	public static final String END_IF = "endif";
 	public static final String END_FUNCTION = "endfunction";
 
+	public static String fadeCall(boolean fadeOut) {
+		String fadeType = "bj_CINEFADETYPE_FADE" + (fadeOut ? "OUT" : "IN");
+		return "call CinematicFadeBJ(" + fadeType + ",0.00,\"ReplaceableTextures\\\\CameraMasks\\\\Black_mask.blp\",0,0,0,0)";
+	}
+
 	static {
 		assert BASE62_CHARS.length() == 62 && BASE62_CHARS.length() == BASE62_CHARS.chars().distinct().count();
 	}
@@ -294,10 +299,8 @@ public class XT87Utils {
 		}
 	}
 
-	public static String forceDefaultValue(String value, String defaultValue)
-	{
-		if (value == null || value.isBlank())
-		{
+	public static String forceDefaultValue(String value, String defaultValue) {
+		if (value == null || value.isBlank()) {
 			return defaultValue;
 		}
 

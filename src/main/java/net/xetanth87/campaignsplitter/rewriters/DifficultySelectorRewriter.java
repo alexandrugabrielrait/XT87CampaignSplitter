@@ -1,6 +1,7 @@
 package net.xetanth87.campaignsplitter.rewriters;
 
 import net.xetanth87.campaignsplitter.MapInjector;
+import net.xetanth87.campaignsplitter.util.XT87Utils;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,7 +61,7 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 						//"call DialogClear(" + rewriterPrefix + "DifDialog)" + JASS_DELIM +
 						//"call DialogDestroy(" + rewriterPrefix + "DifDialog)" + JASS_DELIM +
 						"call PauseGameOff()" + JASS_DELIM +
-						"call CinematicFadeBJ(bj_CINEFADETYPE_FADEIN,0.00,\"ReplaceableTextures\\\\CameraMasks\\\\Black_mask.blp\",0,0,0,0)" + JASS_DELIM +
+						XT87Utils.fadeCall(false) + JASS_DELIM +
 						"call StartTimerBJ(" + rewriterPrefix + MAP_INIT + ",false,0.00)",
 				"call TriggerRegisterDialogEvent(" + TRIGGER_VAR_REPLACE + "," + rewriterPrefix + DIALOG + ")");
 //			if (!elapsedTimeIndices.isEmpty() || !periodicTimeIndices.isEmpty())
@@ -137,7 +138,7 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 	@Override
 	protected void onMainEnd(StringBuffer sb) {
 		append(JASS_DELIM +
-				"call CinematicFadeBJ(bj_CINEFADETYPE_FADEOUT, 0.00, \"ReplaceableTextures\\\\CameraMasks\\\\Black_mask.blp\", 0, 0, 0, 0)", sb);
+				XT87Utils.fadeCall(true), sb);
 	}
 
 	@Override

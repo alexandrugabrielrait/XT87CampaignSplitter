@@ -25,6 +25,7 @@ import static net.xetanth87.campaignsplitter.util.XT87Utils.NATIVE_DECLARATION;
 public abstract class ScriptRewriter {
 	protected static final String PLAYER_FUNC = "Player(";
 	public static final String INIT_CALL = "call ConditionalTriggerExecute(";
+
 	private static final boolean IS_DEBUG = false;
 	private static final boolean REMOVE_USELESS = true;
 	public MapInjector mi;
