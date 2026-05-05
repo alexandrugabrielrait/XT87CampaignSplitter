@@ -136,7 +136,10 @@ public class CoopRewriter extends ScriptRewriter {
 	public static final String CACHE_HEALTH_MAX_SUFFIX = "hp";
 	public static final String CACHE_MANA_MAX_SUFFIX = "mp";
 	public static final String CACHE_ATTACK_DAMAGE_BASE_SUFFIX = "dB";
+	public static final String CACHE_ATTACK_DAMAGE_MIN_SUFFIX = CACHE_ATTACK_DAMAGE_BASE_SUFFIX + 0;
+	public static final String CACHE_ATTACK_DAMAGE_MAX_SUFFIX = CACHE_ATTACK_DAMAGE_BASE_SUFFIX + 1;
 	public static final String CACHE_ARMOR_SUFFIX = "ar";
+	public static final String CACHE_ARMOR_INDEX = "11";
 
 	public static final String CACHE_ABILITY_COUNT_SUFFIX = "C";
 	public static final String CACHE_ABILITY_ID_SUFFIX = "A";
@@ -149,7 +152,7 @@ public class CoopRewriter extends ScriptRewriter {
 
 	private static List<String> getBasicFields() {
 		return Arrays.asList(CACHE_XP_SUFFIX, CACHE_STR_SUFFIX, CACHE_AGI_SUFFIX, CACHE_INT_SUFFIX, CACHE_UNSPEND_POINTS_SUFFIX,
-				CACHE_HEALTH_MAX_SUFFIX, CACHE_MANA_MAX_SUFFIX, CACHE_ATTACK_DAMAGE_BASE_SUFFIX + 0, CACHE_ATTACK_DAMAGE_BASE_SUFFIX + 1);
+				CACHE_HEALTH_MAX_SUFFIX, CACHE_MANA_MAX_SUFFIX, CACHE_ATTACK_DAMAGE_MIN_SUFFIX, CACHE_ATTACK_DAMAGE_MAX_SUFFIX);
 	}
 
 	// common code
@@ -456,7 +459,30 @@ public class CoopRewriter extends ScriptRewriter {
 	}
 
 	private int getCacheFieldIndex(String key) {
-		return putWithCount(cacheFieldMap, key);
+		switch (key) {
+			case CACHE_XP_SUFFIX:
+				return 2;
+			case CACHE_STR_SUFFIX:
+				return 3;
+			case CACHE_AGI_SUFFIX:
+				return 4;
+			case CACHE_INT_SUFFIX:
+				return 5;
+			case CACHE_UNSPEND_POINTS_SUFFIX:
+				return 6;
+			case CACHE_HEALTH_MAX_SUFFIX:
+				return 7;
+			case CACHE_MANA_MAX_SUFFIX:
+				return 8;
+			case CACHE_ATTACK_DAMAGE_MIN_SUFFIX:
+				return 9;
+			case CACHE_ATTACK_DAMAGE_MAX_SUFFIX:
+				return 10;
+			case CACHE_ARMOR_SUFFIX:
+				return 11;
+			default:
+				return -1;
+		}
 	}
 
 	public String toMainPlayerFunc() {
@@ -1585,7 +1611,6 @@ public class CoopRewriter extends ScriptRewriter {
 					"    local integer c" + JASS_DELIM +
 					"    local integer fm" + JASS_DELIM +
 					"    local integer l" + JASS_DELIM +
-					"    local integer id" + JASS_DELIM +
 					"    local integer len" + JASS_DELIM +
 					"    local unit u=null" + JASS_DELIM +
 					"    local boolean h" + JASS_DELIM +
@@ -1595,16 +1620,15 @@ public class CoopRewriter extends ScriptRewriter {
 					"    local string k2=\"" + CACHE_UNIT_PREFIX + "\"+k" + JASS_DELIM +
 					"    local integer mh=StringHash(m2)" + JASS_DELIM +
 					"    local integer array f" + JASS_DELIM +
-					"    local integer array v" + JASS_DELIM +
-					"    local real array vr" + JASS_DELIM +
+					"    local integer array v" + JASS_DELIM + // ints from all lines
+					"    local real vr" + JASS_DELIM + // armor as real
 					"    local integer array z" + JASS_DELIM +
 					"    local item ti" + JASS_DELIM +
 					"local string ct" + JASS_DELIM + // content
 					"local string t=m2+\"\\\\\"+k2" + JASS_DELIM + // title
 					"    local string cn=" + getCacheNameFunc("q") + JASS_DELIM + // cache name
 					"    local string char" + JASS_DELIM +
-					"    local string buffer=\"\"" + JASS_DELIM +
-					"local string array cl" + JASS_DELIM + // content lines
+					"    local string bf=\"\"" + JASS_DELIM + // buffer
 					DebugOnly("call BJDebugMsg(\"RestoreUnit \"+cn+\"|\"+m+\"|\"+k+\" > \"+LoadStr(q,mh,StringHash(\"" + CACHE_STRING_PREFIX + "\"+k)))" + JASS_DELIM) +
 					"    set id=LoadInteger(q,mh,StringHash(k2+\"" + CACHE_ID_SUFFIX + "\"))" + JASS_DELIM +
 					"if id==0 then" + JASS_DELIM +
@@ -1622,33 +1646,67 @@ public class CoopRewriter extends ScriptRewriter {
 					"set len=StringLength(ct)" + JASS_DELIM +
 					"set j=0" + JASS_DELIM + // curr line
 					"set i=0" + JASS_DELIM +
-					"    if len<=0 then" + JASS_DELIM +
-					"        set cl[0]=null" + JASS_DELIM +
-					"    else" + JASS_DELIM +
+					"if len<=0 then" + JASS_DELIM +
+					"set v[0]=0" + JASS_DELIM +
+					"else" + JASS_DELIM + // has content
 					"        loop" + JASS_DELIM +
 					"            exitwhen i>len" + JASS_DELIM +
 					"            set char=SubString(ct,i,i+1)" + JASS_DELIM +
 					"            if char==\"\\n\" then" + JASS_DELIM +
-					"                set cl[j]=buffer" + JASS_DELIM +
-					"                set j=j+1" + JASS_DELIM +
-					"                set buffer=\"\"" + JASS_DELIM +
-					"            else" + JASS_DELIM +
-					"                set buffer=buffer+char" + JASS_DELIM +
-					"            endif" + JASS_DELIM +
-					"        set i=i+1" + JASS_DELIM +
-					"        endloop" + JASS_DELIM +
-					"        set cl[j]=buffer" + JASS_DELIM +
-					"    endif" + JASS_DELIM +
-					"set id=" + SYNC_FUNC_NAME + "Integer(" + ARCHON_PREFIX + "S62I(cl[0]))" + JASS_DELIM +
-					"if id==0 then" + JASS_DELIM +
+					"if j==" + CACHE_ARMOR_INDEX + " then" + JASS_DELIM +
+					"set vr=S2R(bf)" + JASS_DELIM +
+					"endif" + JASS_DELIM + // armor
+					"set v[j]=S2I(bf)" + JASS_DELIM +
+					"set j=j+1" + JASS_DELIM +
+					"set bf=\"\"" + JASS_DELIM +
+					"else" + JASS_DELIM + // not endline
+					"set bf=bf+char" + JASS_DELIM +
+					"endif" + JASS_DELIM + // endline
+					"set i=i+1" + JASS_DELIM +
+					"endloop" + JASS_DELIM +
+					"if j==" + CACHE_ARMOR_INDEX + " then" + JASS_DELIM +
+					"set vr=S2R(bf)" + JASS_DELIM +
+					"endif" + JASS_DELIM + // armor
+					"set v[j]=S2I(bf)" + JASS_DELIM +
+					END_IF, sb); // content
+			append("call StoreInteger(" + SYNC_CACHE + ",\"v\",\"l\",j)" + JASS_DELIM +
+					"call StoreInteger(" + SYNC_CACHE + ",\"v\",\"0\",v[0])" + JASS_DELIM +
+					"call TriggerSyncStart()" + JASS_DELIM +
+					"call SyncStoredInteger(" + SYNC_CACHE + ",\"v\",\"l\")" + JASS_DELIM +
+					"call SyncStoredInteger(" + SYNC_CACHE + ",\"v\",\"0\")" + JASS_DELIM +
+					"call TriggerSyncReady()" + JASS_DELIM +
+					// len is now vector length
+					"set len=GetStoredInteger(" + SYNC_CACHE + ",\"v\",\"0\")" + JASS_DELIM +
+					"set v[0]=GetStoredInteger(" + SYNC_CACHE + ",\"v\",\"0\")", sb);
+			append("if v[0]==0 then" + JASS_DELIM +
 					"set u=null" + JASS_DELIM +
-					"else" + JASS_DELIM +
-					"set j=0" + JASS_DELIM +
+					"else", sb); // has id
+			append("set i=1" + JASS_DELIM +
+					"loop" + JASS_DELIM +
+					"exitwhen i>=len" + JASS_DELIM +
+					"call StoreInteger(" + SYNC_CACHE + ",\"v\",I2S(i),v[i])" + JASS_DELIM +
+					"endloop" + JASS_DELIM +
+					"call StoreReal(" + SYNC_CACHE + ",\"r\",\"r\",vr)" + JASS_DELIM +
+					"set i=1" + JASS_DELIM +
+					"call TriggerSyncStart()" + JASS_DELIM +
+					"loop" + JASS_DELIM +
+					"exitwhen i>=len" + JASS_DELIM +
+					"call SyncStoredInteger(" + SYNC_CACHE + ",\"v\",I2S(i))" + JASS_DELIM +
+					"endloop" + JASS_DELIM +
+					"call SyncStoredReal(" + SYNC_CACHE + ",\"v\",\"r\")" + JASS_DELIM +
+					"call TriggerSyncReady()" + JASS_DELIM +
+					"set i=1" + JASS_DELIM +
+					"loop" + JASS_DELIM +
+					"exitwhen i>=len" + JASS_DELIM +
+					"set v[i]=GetStoredInteger(" + SYNC_CACHE + ",\"v\",I2S(i))" + JASS_DELIM +
+					"endloop" + JASS_DELIM +
+					"set vr=GetStoredReal(" + SYNC_CACHE + ",\"v\",\"r\")", sb);
+			append("set j=0" + JASS_DELIM +
 					"set i=0" + JASS_DELIM +
 					END_IF + JASS_DELIM +
-					"set u=CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE),id,x,y,facing)" + JASS_DELIM +
+					"set u=CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE),v[0],x,y,facing)" + JASS_DELIM +
 					"call ShowUnit(u,false)" + JASS_DELIM +
-					"set h=IsHeroUnitId(id)" + JASS_DELIM +
+					"set h=IsHeroUnitId(v[0])" + JASS_DELIM +
 					"if h then", sb); // if hero
 			for (String suffix : getBasicFields())
 				append("set f[" + getCacheFieldIndex(suffix) + "]=StringHash(k2+\"" + suffix + "\")", sb);
@@ -1657,38 +1715,14 @@ public class CoopRewriter extends ScriptRewriter {
 			append("if r then", sb); // if read
 			//append("set fm=" + getSyncConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[1]))", sb); // flush mission?
 			int lineIndex = 2;
-			for (String suffix : getBasicFields())
-				append("set v[" + getCacheFieldIndex(suffix) + "]=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[" + (lineIndex++) + "])", sb);
-			append("set vr[0]=" + getConversionFunc(ConversionFunctionType.STRING_TO_REAL) + "(cl[" + (lineIndex++) + "])", sb);
-			append("set v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "]=" + getConversionFunc(ConversionFunctionType.STRING_TO_INT) + "(cl[" + (lineIndex++) + "])", sb);
-			append("else", sb); // else not read
-			append("set i=0" + JASS_DELIM +
-					"loop" + JASS_DELIM +
-					"exitwhen i>=" + cacheFieldMap.size() + JASS_DELIM +
-					"call StoreInteger(" + SYNC_CACHE + ",\"v\",I2S(i),v[i])" + JASS_DELIM +
-					"endloop" + JASS_DELIM +
-					"call StoreReal(" + SYNC_CACHE + ",\"vr\",\"0\",vr[0])" + JASS_DELIM +
-					"set i=0" + JASS_DELIM +
-					"call TriggerSyncStart()" + JASS_DELIM +
-					"loop" + JASS_DELIM +
-					"exitwhen i>=" + cacheFieldMap.size() + JASS_DELIM +
-					"call SyncStoredInteger(" + SYNC_CACHE + ",\"v\",I2S(i))" + JASS_DELIM +
-					"endloop" + JASS_DELIM +
-					"call SyncStoredReal(" + SYNC_CACHE + ",\"vr\",\"0\")" + JASS_DELIM +
-					"call TriggerSyncReady()" + JASS_DELIM +
-					"set i=0" + JASS_DELIM +
-					"loop" + JASS_DELIM +
-					"exitwhen i>=" + cacheFieldMap.size() + JASS_DELIM +
-					"set v[i]=GetStoredInteger(" + SYNC_CACHE + ",\"v\",I2S(i))" + JASS_DELIM +
-					"endloop" + JASS_DELIM +
-					"set vr[0]=GetStoredReal(" + SYNC_CACHE + ",\"vr\",\"0\")" + JASS_DELIM +
-					"set i=0", sb); // endif read
 
 			for (String suffix : getBasicFields())
 				append("call SaveInteger(q,mh,f[" + getCacheFieldIndex(suffix) + "],v[" + getCacheFieldIndex(suffix) + "])", sb);
 			append("call SaveReal(q,mh,f[" + getCacheFieldIndex(CACHE_ARMOR_SUFFIX) + "],vr[0])", sb);
 			append("call SaveInteger(q,mh,f[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "],v[" + getCacheFieldIndex(CACHE_ABILITY_COUNT_SUFFIX) + "])", sb);
 
+			append("else", sb); // else not read
+			// todo load v from hashtable here for later caching
 			append(END_IF, sb); // endif read
 
 			append("        call SetHeroXP(u,v[" + getCacheFieldIndex(CACHE_XP_SUFFIX) + "],false)" + JASS_DELIM +
