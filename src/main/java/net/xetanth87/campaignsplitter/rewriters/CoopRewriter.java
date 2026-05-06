@@ -1352,6 +1352,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"    local string k2=\"" + CACHE_UNIT_PREFIX + "\"+k",
 					"    local item array ti",
 					"    local unit tu",
+					"    local ability z",
 					"    if (u==null) then",
 					"        return false",
 					"    endif",
@@ -1391,10 +1392,12 @@ public class CoopRewriter extends ScriptRewriter {
 					"        call StoreInteger(q,m2," + constSuffix(CACHE_UNSPEND_POINTS_INDEX) + ",GetHeroSkillPoints(u))");
 			append(sb, "set c=0",
 					"set i=0",
-					"        loop",
-					"            exitwhen i>" + ABILITY_ARRAY_SIZE,
-					"            set a=" + ABILITY_ARRAY + "[i]",
-					"            set l=GetUnitAbilityLevel(u,a)",
+					"loop",
+					"set z=BlzGetUnitAbilityByIndex(u,i)",
+					"exitwhen z==null",
+					"if BlzGetAbilityBooleanField(z, ABILITY_BF_HERO_ABILITY) then",
+					"set a=BlzGetAbilityId(z)",
+					"set l=GetUnitAbilityLevel(u,a)",
 					"if l>0 then",
 					"               call StoreInteger(q,m2,"
 							+ varSuffix((CACHE_ABILITY_COUNT_INDEX + 1) + "+2*c") + ",a)",
@@ -1415,12 +1418,12 @@ public class CoopRewriter extends ScriptRewriter {
 					"if d then", // if forced level
 					"call SetPlayerAbilityAvailable(Player(PLAYER_NEUTRAL_PASSIVE),a,false)",
 					END_IF, // endif forced level
-
 					"set c=c+1",
 					END_IF, // endif leveled
-					"            set i=i+1",
-					"        endloop",
-					"        call StoreInteger(q,m2," + constSuffix(CACHE_ABILITY_COUNT_INDEX) + ",c)");
+					END_IF, // endif hero abil
+					"set i=i+1",
+					"endloop",
+					"call StoreInteger(q,m2," + constSuffix(CACHE_ABILITY_COUNT_INDEX) + ",c)");
 			append(sb, "call StoreInteger(q,m2," + constSuffix(CACHE_HEALTH_MAX_INDEX) + ",BlzGetUnitMaxHP(u)-BlzGetUnitMaxHP(tu))",
 					"call StoreInteger(q,m2," + constSuffix(CACHE_MANA_MAX_INDEX) + ",BlzGetUnitMaxMana(u)-BlzGetUnitMaxMana(tu))");
 			for (int i = 0; i < 2; i++)
@@ -1953,7 +1956,7 @@ public class CoopRewriter extends ScriptRewriter {
 				END_FUNCTION,
 				"function it_" + ARCHON_PREFIX + "UnitShare takes nothing returns nothing",
 				"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare=CreateTrigger()",
-				"    call TriggerRegisterEnterRectSimple(" + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare,GetPlayableMapRect())",
+				"    call TriggerRegisterEnterRectSimple(" + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare,GetWorldBounds())",
 				"    call TriggerAddCondition(" + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare,Condition(function t_" + ARCHON_PREFIX + "UnitShare_Conditions))",
 				"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare,function t_" + ARCHON_PREFIX + "UnitShare_Ac)",
 				END_FUNCTION);
