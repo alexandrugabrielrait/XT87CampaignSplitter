@@ -1265,7 +1265,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"set uD=" + ARCHON_PREFIX + "IS62(id)+\"\\n" + UNIT_CACHE_FORMAT + "\"",
 					"set h=IsHeroUnitId(id)",
 					"set l=GetStoredInteger(q,m2," + constSuffix(1) + ")",
-					"set j=0",
+					"set j=2",
 					"loop",
 					"exitwhen j>l",
 					"if h and j==" + CACHE_ARMOR_INDEX + " then",
@@ -1273,6 +1273,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"else", // not hero armor
 					"set uD=uD+\"\\n\"+" + getConversionFunc(ConversionFunctionType.INT_TO_STRING) + "(GetStoredInteger(q,m2," + varSuffix("j") + "))",
 					END_IF, // hero armor
+					"set j=j+1",
 					"endloop", // endloop vector
 					"        call " + ARCHON_PREFIX + "WriteString(cn,m2+\"\\\\\"+k2,uD," + FLUSH_KEY_CODE + ")",
 					"endloop", // endloop units
@@ -1319,10 +1320,12 @@ public class CoopRewriter extends ScriptRewriter {
 			append(sb, "function " + ARCHON_PREFIX + "StoreUnit takes gamecache q,string m,string k,unit u returns boolean",
 					"    local integer i",
 					"    local integer j",
+					"    local integer a",
 					"    local integer id",
 					"    local integer c",
 					"    local integer l",
 					"    local integer is",
+					"    local boolean d",
 					"    local string m2=\"" + CACHE_MISSION_PREFIX + "\"+m",
 					"    local string k2=\"" + CACHE_UNIT_PREFIX + "\"+k",
 					"    local item array ti",
@@ -1363,14 +1366,45 @@ public class CoopRewriter extends ScriptRewriter {
 					"set c=GetHeroInt(u,false)",
 					"        call StoreInteger(q,m2," + constSuffix(CACHE_INT_INDEX) + ",c)",
 					"call SetHeroInt(tu,c,true)",
-					"        call StoreInteger(q,m2," + constSuffix(CACHE_UNSPEND_POINTS_INDEX) + ",GetHeroSkillPoints(u))",
-					"        call StoreInteger(q,m2," + constSuffix(CACHE_MANA_MAX_INDEX) + ",BlzGetUnitMaxHP(u)-BlzGetUnitMaxHP(tu))",
-					"        call StoreInteger(q,m2," + constSuffix(CACHE_HEALTH_MAX_INDEX) + ",BlzGetUnitMaxMana(u)-BlzGetUnitMaxMana(tu))");
+					"        call StoreInteger(q,m2," + constSuffix(CACHE_UNSPEND_POINTS_INDEX) + ",GetHeroSkillPoints(u))");
+			append(sb, "set c=0",
+					"set i=0",
+					"        loop",
+					"            exitwhen i>" + ABILITY_ARRAY_SIZE,
+					"            set a=" + ABILITY_ARRAY + "[i]",
+					"            set l=GetUnitAbilityLevel(u,a)",
+					"if l>0 then",
+					"               call StoreInteger(q,m2,"
+							+ varSuffix((CACHE_ABILITY_COUNT_INDEX + 1) + "+2*c") + ",a)",
+					"               call StoreInteger(q,m2,"
+							+ varSuffix((CACHE_ABILITY_COUNT_INDEX + 2) + "+2*c") + ",l)",
+					"call ModifyHeroSkillPoints(tu,bj_MODIFYMETHOD_ADD,l)",
+					"set j=0",
+					"loop", // loop levels
+					"exitwhen j>=l",
+					"call SelectHeroSkill(tu,j)",
+					"if j==0 and GetUnitAbilityLevel(tu,a)<1 then",
+					"set d=true",
+					"call SetPlayerAbilityAvailable(Player(PLAYER_NEUTRAL_PASSIVE),a,true)",
+					"call SelectHeroSkill(tu,a)",
+					END_IF, // force level
+					"set j=j+1",
+					"endloop", // level loop
+					"if d then", // if forced level
+					"call SetPlayerAbilityAvailable(Player(PLAYER_NEUTRAL_PASSIVE),a,false)",
+					END_IF, // endif forced level
+
+					"set c=c+1",
+					END_IF, // endif leveled
+					"            set i=i+1",
+					"        endloop",
+					"        call StoreInteger(q,m2," + constSuffix(CACHE_ABILITY_COUNT_INDEX) + ",c)");
+			append(sb, "call StoreInteger(q,m2," + constSuffix(CACHE_HEALTH_MAX_INDEX) + ",BlzGetUnitMaxHP(u)-BlzGetUnitMaxHP(tu))",
+					"call StoreInteger(q,m2," + constSuffix(CACHE_MANA_MAX_INDEX) + ",BlzGetUnitMaxMana(u)-BlzGetUnitMaxMana(tu))");
 			for (int i = 0; i < 2; i++)
-				append(sb, "        call StoreInteger(q,m2," + constSuffix(CACHE_ATTACK_DAMAGE_MIN_INDEX + i) + ",BlzGetUnitBaseDamage(u," + i + ")-BlzGetUnitBaseDamage(tu," + i + "))");
-			append(sb, "        call StoreReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ",BlzGetUnitArmor(u)-BlzGetUnitArmor(tu))",
+				append(sb, "call StoreInteger(q,m2," + constSuffix(CACHE_ATTACK_DAMAGE_MIN_INDEX + i) + ",BlzGetUnitBaseDamage(u," + i + ")-BlzGetUnitBaseDamage(tu," + i + "))");
+			append(sb, "call StoreReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ",BlzGetUnitArmor(u)-BlzGetUnitArmor(tu))",
 					"call RemoveUnit(tu)",
-					// region readd items
 					"set i=0",
 					"loop",
 					"exitwhen i>=is",
@@ -1388,25 +1422,8 @@ public class CoopRewriter extends ScriptRewriter {
 					"call RemoveItem(UnitItemInSlot(u,i))",
 					END_IF,
 					"set i=i+1",
-					"endloop",
-					// endregion
-					"        set c=0",
-					"        set i=0",
-					"        loop",
-					"            exitwhen i>" + ABILITY_ARRAY_SIZE,
-					"            set j=" + ABILITY_ARRAY + "[i]",
-					"            set l=GetUnitAbilityLevel(u,j)",
-					"if l>0 then",
-					"               call StoreInteger(q,m2,"
-							+ varSuffix((CACHE_ABILITY_COUNT_INDEX + 1) + "+2*i") + ",j)",
-					"               call StoreInteger(q,m2,"
-							+ varSuffix((CACHE_ABILITY_COUNT_INDEX + 2) + "+2*i") + ",l)",
-					"               set c=c+1",
-					END_IF, // endif leveled
-					"            set i=i+1",
-					"        endloop",
-					"        call StoreInteger(q,m2," + constSuffix(CACHE_ABILITY_COUNT_INDEX) + ",c)",
-					"set j=" + (CACHE_ABILITY_COUNT_INDEX + 1) + "+2*c",
+					"endloop");
+			append(sb, "set j=" + (CACHE_ABILITY_COUNT_INDEX + 1) + "+2*c",
 					"else", // not hero
 					"set j=2",
 					END_IF, // endif hero
