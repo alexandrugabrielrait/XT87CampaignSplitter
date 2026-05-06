@@ -1039,9 +1039,9 @@ public class CoopRewriter extends ScriptRewriter {
 					"else",
 					"set " + ARCHON_PREFIX + "RdWait=" + ARCHON_PREFIX + "RdWait-1",
 					"set " + ARCHON_PREFIX + "RdWaitLock=false",
-					"if " + ARCHON_PREFIX + "RdWait==0 and " + ARCHON_PREFIX + "CIP then\n" +
-							"set " + ARCHON_PREFIX + "CIP=false\n" +
-							XT87Utils.fadeCall(false),
+					"if " + ARCHON_PREFIX + "RdWait==0 and " + ARCHON_PREFIX + "CIP then",
+					"set " + ARCHON_PREFIX + "CIP=false",
+					XT87Utils.fadeCall(false),
 					"call " + ARCHON_PREFIX + "PauseGame(false)",
 					END_IF,
 					END_IF,
@@ -1699,7 +1699,6 @@ public class CoopRewriter extends ScriptRewriter {
 			for (int i = 0; i < 2; i++)
 				append(sb, "call BlzSetUnitBaseDamage(u,GetStoredInteger(q,m2," + constSuffix(CACHE_ATTACK_DAMAGE_MIN_INDEX + i) + ")+BlzGetUnitBaseDamage(u," + i + ")," + i + ")");
 			append(sb, "call BlzSetUnitArmor(u,GetStoredReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ")+BlzGetUnitArmor(u))",
-					"call ModifyHeroSkillPoints(u,bj_MODIFYMETHOD_SET,GetStoredInteger(q,m2," + constSuffix(CACHE_STR_INDEX) + "))",
 					"set i=0",
 					DebugOnly("call BJDebugMsg(\"AUX i \"+I2S(i)+\" c \"+I2S(c))" + JASS_DELIM) +
 							"set i=0",
@@ -1730,6 +1729,7 @@ public class CoopRewriter extends ScriptRewriter {
 					END_IF, // endif forced level
 					"set i=i+1",
 					"endloop",
+					"call ModifyHeroSkillPoints(u,bj_MODIFYMETHOD_SET,GetStoredInteger(q,m2," + constSuffix(CACHE_UNSPEND_POINTS_INDEX) + "))",
 					"set j=" + (CACHE_ABILITY_COUNT_INDEX + 1) + "+2*v[" + CACHE_ABILITY_COUNT_INDEX + "]",
 					"else", // not hero
 					"set j=2",
