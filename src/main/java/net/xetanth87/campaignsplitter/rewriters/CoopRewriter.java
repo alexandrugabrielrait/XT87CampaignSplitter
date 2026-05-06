@@ -427,6 +427,28 @@ public class CoopRewriter extends ScriptRewriter {
 				"return false");
 		addFunctionConfiguration("CopySaveGameBJ", "string s, string d", "boolean",
 				"return true");
+//		addFunctionConfiguration("WatchSkill", "integer a", "boolean",
+//				"    if not LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_HAS_ABILITY + ",a) then" + JASS_DELIM +
+//						"        set " + ABILITY_ARRAY + "[" + ABILITY_ARRAY_SIZE + "]=a" + JASS_DELIM +
+//						"        call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_HAS_ABILITY + ",a,true)" + JASS_DELIM +
+//						"        set " + ABILITY_ARRAY_SIZE + "=" + ABILITY_ARRAY_SIZE + "+1" + JASS_DELIM +
+//						"        return true" + JASS_DELIM +
+//						"else" + JASS_DELIM +
+//						"        return false" + JASS_DELIM +
+//						END_IF);
+//		addFunctionConfiguration("SelectHeroSkill", "unit u, integer a", null,
+//				"local integer i=GetUnitAbilityLevel(u,a)" + JASS_DELIM +
+//						"local boolean d" + JASS_DELIM +
+//						"call " + ARCHON_PREFIX + "WatchSkill(a)" + JASS_DELIM +
+//						"call SelectHeroSkill(u,a)" + JASS_DELIM +
+//						"if GetUnitAbilityLevel(u,a)<=i then" + JASS_DELIM +
+//						"call SetPlayerAbilityAvailable(GetOwningPlayer(u),a,true)" + JASS_DELIM +
+//						"call SelectHeroSkill(u,a)" + JASS_DELIM +
+//						"set d=GetUnitAbilityLevel(u,a)>i" + JASS_DELIM +
+//						END_IF + JASS_DELIM + // force level
+//						"if d then" + JASS_DELIM + // if forced level
+//						"call SetPlayerAbilityAvailable(GetOwningPlayer(u),a,false)" + JASS_DELIM +
+//						END_IF);
 	}
 
 	public static String getNewPath(String oldPath) {
@@ -1610,14 +1632,15 @@ public class CoopRewriter extends ScriptRewriter {
 					"    local string bf=\"\"", // buffer
 					DebugOnly("call BJDebugMsg(\"RestoreUnit \"+cn+\"|\"+m+\"|\"+k+\" > \"+GetStoredString(q,m2,\"" + CACHE_STRING_PREFIX + "\"+k))" + JASS_DELIM) +
 							"set v[0]=GetStoredInteger(q,m2," + constSuffix(0) + ")",
+					"call " + ARCHON_PREFIX + "RdWt(true)",
 					"if v[0]==0 then",
 					"set r=true",
 
 					"if GetPlayerSlotState(" + toMainPlayerFunc() + ")!=PLAYER_SLOT_STATE_PLAYING then",
+					"call " + ARCHON_PREFIX + "RdWt(false)",
 					"return null",
 					END_IF,
 
-					"call " + ARCHON_PREFIX + "RdWt(true)",
 					"set ct=" + ARCHON_PREFIX + "GetContent(cn,t," + FLUSH_KEY_CODE + ")",
 
 					"set len=StringLength(ct)",
@@ -1659,9 +1682,11 @@ public class CoopRewriter extends ScriptRewriter {
 					// len is now vector length
 					"set v[0]=GetStoredInteger(q,m2," + constSuffix(0) + ")",
 					"set v[1]=GetStoredInteger(q,m2," + constSuffix(1) + ")",
+					END_IF,
 					"if v[0]==0 then",
-					"set u=null",
-					"else", // has id
+					"call " + ARCHON_PREFIX + "RdWt(false)",
+					"return null",
+					"endif", // no id
 					"if r then",
 					"set i=2",
 					"loop", // loop i = 2, i <= len
@@ -1679,8 +1704,6 @@ public class CoopRewriter extends ScriptRewriter {
 					"endloop",
 					"call SyncStoredReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ")");
 			append(sb, "call TriggerSyncReady()");
-			append(sb, "else", // not read
-					"set v[0]=GetStoredInteger(q,m2," + constSuffix(0) + ")");
 			append(sb, END_IF); // endif read
 
 			append(sb, "set u=CreateUnit(p,v[0],x,y,f)");
@@ -1772,8 +1795,6 @@ public class CoopRewriter extends ScriptRewriter {
 			append(sb, END_IF, // end item exists
 					"set i=i+1",
 					"endloop",
-					END_IF, // end read
-					END_IF, // end unit id not 0
 					"call SetUnitOwner(u,p,true)",
 					"call ShowUnit(u,true)",
 					"call " + ARCHON_PREFIX + "RdWt(false)",
