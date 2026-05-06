@@ -46,16 +46,16 @@ public class VictoryRewriter extends ScriptRewriter {
 			//append(//VICTORY_CALL + words[0] + ", true," + words[2] +  ")"
 			//		VICTORY_CALL + words.get(0) + ", true,true)", sb);
 			if (addNextLevelMessage)
-				append(VICTORY_CALL + words.get(0) + ",true,true)" + JASS_DELIM +
+				append(sb, VICTORY_CALL + words.get(0) + ",true,true)" + JASS_DELIM +
 						"if XT87VN!=\"\" then" + JASS_DELIM +
 						"call DisplayTimedTextToPlayer(" + words.get(0) + ",0,0,0,GetLocalizedString(\"CONTINUE_PLAYING\")+\":\\n|cffffcc00\"+XT87VN+\"|r\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\")" + JASS_DELIM +
-						END_IF, sb);
+						END_IF);
 			else
 				// force scorescreens
-				append(VICTORY_CALL + words.get(0) + "," + words.get(0) +  ",true)", sb);
+				append(sb, VICTORY_CALL + words.get(0) + "," + words.get(0) +  ",true)");
 			return;
 		}
-		append(line, sb);
+		append(sb, line);
 		if (addNextLevelMessage)
 			if (line.equals("globals")) {
 				sb.append(JASS_DELIM +
@@ -64,11 +64,11 @@ public class VictoryRewriter extends ScriptRewriter {
 				insideInitGlobals = true;
 			} else if (line.contains(SET_LEVEL_CALL)) {
 				String mapPath = line.substring(line.indexOf("\"") + 1, line.lastIndexOf("\"")).toLowerCase(Locale.ROOT);
-				append(JASS_DELIM, sb);
+				append(sb, JASS_DELIM);
 				if (mi.cs.chapterNameKeysMap.containsKey(mapPath))
-					append("set XT87VN=GetLocalizedString(\"" + STRING_PREFIX + (campaignKeyOffset + mi.cs.chapterNameKeysMap.get(mapPath)) + "\")", sb);
+					append(sb, "set XT87VN=GetLocalizedString(\"" + STRING_PREFIX + (campaignKeyOffset + mi.cs.chapterNameKeysMap.get(mapPath)) + "\")");
 				else
-					append("set XT87VN=\"" + mapPath + "\"", sb);
+					append(sb, "set XT87VN=\"" + mapPath + "\"");
 			}
 	}
 }

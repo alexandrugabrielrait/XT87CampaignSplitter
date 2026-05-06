@@ -22,6 +22,6 @@ public class NeutralPlayerRewriter extends ScriptRewriter {
 				.replaceAll("([\\s(=])ConvertedPlayer\\((14|\\$E)\\)", "$1Player(GetBJPlayerNeutralVictim())")
 				.replaceAll("([\\s(=])ConvertedPlayer\\((15|\\$F)\\)", "$1Player(GetBJPlayerNeutralExtra())")
 				.replaceAll("([\\s(=])ConvertedPlayer\\((16|\\$10)\\)", "$1Player(PLAYER_NEUTRAL_PASSIVE)");
-		append(line, sb);
+		append(sb, line);
 	}
 }

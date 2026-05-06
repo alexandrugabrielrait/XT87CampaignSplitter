@@ -124,9 +124,8 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 
 	@Override
 	protected void onMainLocals(StringBuffer sb) {
-		append(JASS_DELIM +
-				"set " + rewriterPrefix + DIALOG + "=DialogCreate()" + JASS_DELIM +
-				"set " + rewriterPrefix + MAP_INIT + "=CreateTimer()", sb);
+		append(sb, "set " + rewriterPrefix + DIALOG + "=DialogCreate()",
+				"set " + rewriterPrefix + MAP_INIT + "=CreateTimer()");
 //				for (int i = 0; i < elapsedTimeIndices.size(); i++)
 //					append(JASS_DELIM +
 //							"set " + ELAPSED_TIMER_PREFIX + i + "=CreateTimer()", sb);
@@ -137,8 +136,7 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 
 	@Override
 	protected void onMainEnd(StringBuffer sb) {
-		append(JASS_DELIM +
-				XT87Utils.fadeCall(true), sb);
+		append(sb, XT87Utils.fadeCall(true));
 	}
 
 	@Override
@@ -177,14 +175,13 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 		else if (!triggersAdded && line.contains("function Trig")) {
 			triggersAdded = true;
 		}
-		append(line, sb);
+		append(sb, line);
 		if (line.equals("globals")) {
-			append(JASS_DELIM +
-					"dialog " + rewriterPrefix + DIALOG + JASS_DELIM +
+			append(sb,"dialog " + rewriterPrefix + DIALOG + JASS_DELIM +
 					"button " + rewriterPrefix + BUTTON_EASY + JASS_DELIM +
 					"button " + rewriterPrefix + BUTTON_NORMAL + JASS_DELIM +
 					"button " + rewriterPrefix + BUTTON_HARD + JASS_DELIM +
-					"timer " + rewriterPrefix + MAP_INIT, sb);
+					"timer " + rewriterPrefix + MAP_INIT);
 //			for (int i = 0; i < elapsedTimeIndices.size(); i++)
 //				append(JASS_DELIM +
 //						"timer " + ELAPSED_TIMER_PREFIX + i, sb);
@@ -198,8 +195,8 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 		} else {
 			for (String trigger : initializationTriggers) {
 				if (line.contains("set " + trigger + "=") || line.contains("set " + trigger + " ")) {
-					append(JASS_DELIM +
-							"call TriggerRegisterTimerExpireEventBJ(" + trigger + ", " + rewriterPrefix + MAP_INIT + ")", sb);
+					append(sb, JASS_DELIM +
+							"call TriggerRegisterTimerExpireEventBJ(" + trigger + ", " + rewriterPrefix + MAP_INIT + ")");
 					initializationTriggers.remove(trigger);
 					break;
 				}

@@ -110,20 +110,22 @@ public abstract class ScriptRewriter {
 	protected void onMainEnd(StringBuffer sb) {
 	}
 
-	public void append(String block, StringBuffer sb) {
-		if (block == null)
+	public void append(StringBuffer sb, String... blocks) {
+		if (blocks == null)
 			return;
-		for (String line : block.split(JASS_DELIM)) {
-			if (REMOVE_USELESS) {
-				line = line.trim();
-				if (line.isEmpty() || line.startsWith("//"))
-					continue;
+		for (String block : blocks) {
+			for (String line : block.split(JASS_DELIM)) {
+				if (REMOVE_USELESS) {
+					line = line.trim();
+					if (line.isEmpty() || line.startsWith("//"))
+						continue;
+				}
+				if (first)
+					first = false;
+				else
+					sb.append(JASS_DELIM);
+				sb.append(line);
 			}
-			if (first)
-				first = false;
-			else
-				sb.append(JASS_DELIM);
-			sb.append(line);
 		}
 	}
 
@@ -173,7 +175,7 @@ public abstract class ScriptRewriter {
 			line = line.trim();
 			if (doGlobals) {
 				for (var configuration : triggerConfig) {
-					append(configuration.getDeclaration(), sb);
+					append(sb, configuration.getDeclaration());
 				}
 				onEnterGlobals(sb);
 				doGlobals = false;
@@ -197,7 +199,7 @@ public abstract class ScriptRewriter {
 					if (insideMain) {
 						onMainLocals(sb);
 						for (var configuration : triggerConfig)
-							append(configuration.getInitCall(), sb);
+							append(sb, configuration.getInitCall());
 					}
 					else
 						onFunctionLocals(sb);
@@ -213,11 +215,11 @@ public abstract class ScriptRewriter {
 
 			if (doExitGlobals == 1 && !line.startsWith(NATIVE_DECLARATION)) {
 				for (var configuration : functionConfig) {
-					append(configuration.getDefinitionCode(), sb);
+					append(sb, configuration.getDefinitionCode());
 				}
 				onExitGlobals(sb);
 				for (var configuration : triggerConfig) {
-					append(configuration.getDefinitionCode(), sb);
+					append(sb, configuration.getDefinitionCode());
 				}
 				doExitGlobals = 2;
 			}

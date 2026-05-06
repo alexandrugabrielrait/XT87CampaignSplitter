@@ -21,10 +21,10 @@ public class BlockUtils {
 		return bFunc(functionName, null);
 	}
 
-	public static String bDef(String functionName, String functionParams, String functionReturn, String functionCode) {
+	public static String bDef(String functionName, String functionParams, String functionReturn, String... functionCode) {
 		return "function " + functionName + " takes " + forceDefaultValue(functionParams, nothing)
 				+ " returns " + forceDefaultValue(functionReturn, nothing) + JASS_DELIM
-				+ functionCode + JASS_DELIM
+				+ String.join(JASS_DELIM, functionCode) + JASS_DELIM
 				+ END_FUNCTION;
 	}
 

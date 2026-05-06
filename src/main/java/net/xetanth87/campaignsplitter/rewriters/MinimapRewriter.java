@@ -25,8 +25,8 @@ public class MinimapRewriter extends ScriptRewriter {
 	public void onReadLine(String line, StringBuffer sb) {
 		if ("main".equals(insideFunction))
 			if (line.equals(END_FUNCTION))
-				append("    call BlzChangeMinimapTerrainTex(\"" + getNewPath(oldPath) + "\")", sb);
+				append(sb, "call BlzChangeMinimapTerrainTex(\"" + getNewPath(oldPath) + "\")");
 		// replaces the path to the original image with its new path
-		append(line.replace(oldPath, getNewPath(oldPath)), sb);
+		append(sb, line.replace(oldPath, getNewPath(oldPath)));
 	}
 }

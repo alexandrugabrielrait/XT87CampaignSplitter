@@ -126,13 +126,13 @@ public class CheatsRewriter extends ScriptRewriter {
 
 	@Override
 	public void onEnterGlobals(StringBuffer sb) {
-		append("boolean " + CheatModeVar + "=false" + JASS_DELIM +
-				"boolean " + PauseVar + "=false" + JASS_DELIM +
-				"boolean " + FogVar + "=true", sb); // cheat mode
+		append(sb, "boolean " + CheatModeVar + "=false",
+				"boolean " + PauseVar + "=false",
+				"boolean " + FogVar + "=true"); // cheat mode
 	}
 
 	@Override
 	public void onReadLine(String line, StringBuffer sb) {
-		append(line, sb);
+		append(sb, line);
 	}
 }
