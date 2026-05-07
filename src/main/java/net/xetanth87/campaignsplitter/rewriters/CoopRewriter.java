@@ -51,7 +51,7 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final String SELECTION_HASHTABLE = ARCHON_PREFIX + "FXT";
 	private static final String ABILITY_ARRAY = ARCHON_PREFIX + "AbilityArray";
 	private static final String ABILITY_ARRAY_SIZE = ABILITY_ARRAY + "SIZE";
-	private static final String SYNC_FUNC_NAME = ARCHON_PREFIX + "SyncX";
+	private static final String SYNC_FUNC_NAME = "SyncX";
 
 	private static final int FILE_LIBRARY_ABILITY_COUNT = 10;
 	private static final int FILE_LIBRARY_PRELOAD_LIMIT = 200;
@@ -202,20 +202,6 @@ public class CoopRewriter extends ScriptRewriter {
 							END_IF,
 					"call TriggerRegisterEnterRectSimple(" + TRIGGER_VAR_REPLACE + ", GetPlayableMapRect())");
 			// endregion
-			// region watch learned skill
-			addTriggerConfiguration("WatchLearnedSkill",
-					"    local integer i=0" + JASS_DELIM +
-							"    local integer a=GetLearnedSkill()" + JASS_DELIM +
-							"    if " + ARCHON_PREFIX + "WatchSkill(a)==true then" + JASS_DELIM +
-							DebugOnly("call BJDebugMsg(I2S(i)+\"] \"+I2S(a)+\" _\"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
-							"        loop" + JASS_DELIM +
-							"            exitwhen i>=" + ABILITY_ARRAY_SIZE + JASS_DELIM +
-							DebugOnly("call BJDebugMsg(I2S(i)+\") \"+I2S(" + ABILITY_ARRAY + "[i])+\" \"+I2S(" + ABILITY_ARRAY_SIZE + " - 1))" + JASS_DELIM) +
-							"            set i=i+1" + JASS_DELIM +
-							"        endloop" + JASS_DELIM +
-							"    " + END_IF,
-					"call TriggerRegisterAnyUnitEventBJ(" + TRIGGER_VAR_REPLACE + ", EVENT_PLAYER_HERO_SKILL)");
-			// endregion
 			// region sync data
 			addTriggerConfiguration("SyncData",
 					"set " + ARCHON_PREFIX + "Content=BlzGetTriggerSyncData()" + JASS_DELIM +
@@ -223,7 +209,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"    local integer i=0",
 					"    loop" + JASS_DELIM +
 							"        exitwhen i>=bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
-							"        call BlzTriggerRegisterPlayerSyncEvent(" + TRIGGER_VAR_REPLACE + ",Player(i),\"XTContents\",false)" + JASS_DELIM +
+							"        call BlzTriggerRegisterPlayerSyncEvent(" + TRIGGER_VAR_REPLACE + ",Player(i),\"XT87Contents\",false)" + JASS_DELIM +
 							"        set i=i+1" + JASS_DELIM +
 							"    endloop");
 			// endregion
@@ -415,40 +401,85 @@ public class CoopRewriter extends ScriptRewriter {
 						"call " + ARCHON_PREFIX + "HandleSLM(\"SAVE_GAME\",s,false)");
 		addFunctionConfiguration("LoadGameBJ", "string s, boolean b", null,
 				"call " + ARCHON_PREFIX + "LoadGame(s,b)");
-		addFunctionConfiguration("SaveAndChangeLevelBJ", "string s, string l, boolean b", null,
+		addFunctionConfiguration("SaveAndChangeLevelBJ", "string s,string l,boolean b", null,
 				"call " + ARCHON_PREFIX + "SaveGame(s)" + JASS_DELIM +
 						"call " + ARCHON_PREFIX + "ChangeLevel(l,b)");
-		addFunctionConfiguration("SaveAndLoadGameBJ", "string s, string l, boolean b", null,
+		addFunctionConfiguration("SaveAndLoadGameBJ", "string s,string l,boolean b", null,
 				"call " + ARCHON_PREFIX + "SaveGame(s)" + JASS_DELIM +
 						"call " + ARCHON_PREFIX + "LoadGame(l,b)");
-		addFunctionConfiguration("CopySaveGame", "string s, string d", "boolean",
+		addFunctionConfiguration("CopySaveGame", "string s,string d", "boolean",
 				"return true");
 		addFunctionConfiguration("SaveGameExists", "string s", "boolean",
 				"return false");
-		addFunctionConfiguration("CopySaveGameBJ", "string s, string d", "boolean",
+		addFunctionConfiguration("CopySaveGameBJ", "string s,string d", "boolean",
 				"return true");
-//		addFunctionConfiguration("WatchSkill", "integer a", "boolean",
-//				"    if not LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_HAS_ABILITY + ",a) then" + JASS_DELIM +
-//						"        set " + ABILITY_ARRAY + "[" + ABILITY_ARRAY_SIZE + "]=a" + JASS_DELIM +
-//						"        call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_HAS_ABILITY + ",a,true)" + JASS_DELIM +
-//						"        set " + ABILITY_ARRAY_SIZE + "=" + ABILITY_ARRAY_SIZE + "+1" + JASS_DELIM +
-//						"        return true" + JASS_DELIM +
-//						"else" + JASS_DELIM +
-//						"        return false" + JASS_DELIM +
-//						END_IF);
-//		addFunctionConfiguration("SelectHeroSkill", "unit u, integer a", null,
-//				"local integer i=GetUnitAbilityLevel(u,a)" + JASS_DELIM +
-//						"local boolean d" + JASS_DELIM +
-//						"call " + ARCHON_PREFIX + "WatchSkill(a)" + JASS_DELIM +
-//						"call SelectHeroSkill(u,a)" + JASS_DELIM +
-//						"if GetUnitAbilityLevel(u,a)<=i then" + JASS_DELIM +
-//						"call SetPlayerAbilityAvailable(GetOwningPlayer(u),a,true)" + JASS_DELIM +
-//						"call SelectHeroSkill(u,a)" + JASS_DELIM +
-//						"set d=GetUnitAbilityLevel(u,a)>i" + JASS_DELIM +
-//						END_IF + JASS_DELIM + // force level
-//						"if d then" + JASS_DELIM + // if forced level
-//						"call SetPlayerAbilityAvailable(GetOwningPlayer(u),a,false)" + JASS_DELIM +
-//						END_IF);
+		for (String t : Arrays.asList(
+				"Integer",
+				"Real",
+				"Boolean"
+		)) {
+			String type = t.toLowerCase(Locale.ROOT);
+			addFunctionConfiguration(SYNC_FUNC_NAME + t, type + " v", type,
+					"local string c=\"c\"" + JASS_DELIM +
+							"local string t=\"t\"" + JASS_DELIM +
+							"call Store" + t + "(" + SYNC_CACHE + ",c,t,v)" + JASS_DELIM +
+							"call TriggerSyncStart()" + JASS_DELIM +
+							"call SyncStored" + t + "(" + SYNC_CACHE + ",c,t)" + JASS_DELIM +
+							"call TriggerSyncReady()" + JASS_DELIM +
+							"return GetStored" + t + "(" + SYNC_CACHE + ",c,t)");
+		}
+		addFunctionConfiguration("GetCameraTargetPositionX", null, "real",
+				"return " + ARCHON_PREFIX + SYNC_FUNC_NAME + "Real(GetCameraTargetPositionX())");
+		addFunctionConfiguration("GetCameraTargetPositionY", null, "real",
+				"return " + ARCHON_PREFIX + SYNC_FUNC_NAME + "Real(GetCameraTargetPositionY())");
+		addFunctionConfiguration("SelectHeroSkill", "unit u,integer a", null,
+				"local integer i=GetUnitAbilityLevel(u,a)" + JASS_DELIM +
+						"call SelectHeroSkill(u,a)" + JASS_DELIM +
+						"if GetUnitAbilityLevel(u,a)<=i then" + JASS_DELIM +
+						"call SetPlayerAbilityAvailable(GetOwningPlayer(u),a,true)" + JASS_DELIM +
+						"call SelectHeroSkill(u,a)" + JASS_DELIM +
+						"if GetUnitAbilityLevel(u,a)>i then" + JASS_DELIM +
+						"call SetPlayerAbilityAvailable(GetOwningPlayer(u),a,false)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						END_IF);
+		addFunctionConfiguration("SetPlayerColor", "player p, playercolor c", null,
+				"local integer i=GetPlayerId(p)" + JASS_DELIM +
+						"if " +
+						secondaryPlayers.stream()
+								.map(player -> "i==" + player.getNum())
+								.collect(java.util.stream.Collectors.joining(" or ")) +
+						" then" + JASS_DELIM +
+						"return" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"call SetPlayerColor(p,c)" + JASS_DELIM +
+						"if i==" + mainPlayer.getNum() + " then" + JASS_DELIM +
+						secondaryPlayers.stream()
+								.map(player ->
+										"if ConvertPlayerColor(" + player.getNum() + ")==c then" + JASS_DELIM +
+												"call SetPlayerColor(Player(" + player.getNum() + "),ConvertPlayerColor(" + mainPlayer.getNum() + "))" + JASS_DELIM +
+												"else" + JASS_DELIM +
+												"call SetPlayerColor(Player(" + player.getNum() + "),ConvertPlayerColor(" + player.getNum() + "))" + JASS_DELIM +
+												END_IF)
+								.collect(java.util.stream.Collectors.joining(JASS_DELIM)) + JASS_DELIM +
+						END_IF);
+		addFunctionConfiguration("SetPlayerColorBJ", "player p, playercolor c,boolean b", null,
+				"local integer i=GetPlayerId(p)" + JASS_DELIM +
+						"local group g" + JASS_DELIM +
+						"if " +
+						secondaryPlayers.stream()
+								.map(player -> "i==" + player.getNum())
+								.collect(java.util.stream.Collectors.joining(" or ")) +
+						" then" + JASS_DELIM +
+						"return" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"call SetPlayerColor(p,c)" + JASS_DELIM +
+						"if b then" + JASS_DELIM +
+						"set bj_setPlayerTargetColor=c" + JASS_DELIM +
+						"set g=CreateGroup()\n" + JASS_DELIM +
+						"call GroupEnumUnitsOfPlayer(g,p,null)" + JASS_DELIM +
+						"call ForGroup(g,function SetPlayerColorBJEnum)" + JASS_DELIM +
+						"call DestroyGroup(g)" + JASS_DELIM +
+						END_IF);
 	}
 
 	public static String getNewPath(String oldPath) {
@@ -804,13 +835,13 @@ public class CoopRewriter extends ScriptRewriter {
 					"call " + ARCHON_PREFIX + "EnableUserControl(false)",
 					END_IF,
 					END_FUNCTION);
-			append(sb, "function " + ARCHON_PREFIX + "CinematicModeExBJ takes boolean b, force f, real t returns nothing",
+			append(sb, "function " + ARCHON_PREFIX + "CinematicModeExBJ takes boolean b,force f,real t returns nothing",
 					"if IsPlayerInForce(" + toMainPlayerFunc() + ",f) then",
 					"call " + ARCHON_PREFIX + "ShowSelection(not b)",
 					END_IF,
 					"call CinematicModeExBJ(b,f,t)",
 					END_FUNCTION);
-			append(sb, "function " + ARCHON_PREFIX + "CinematicModeBJ takes boolean b, force f returns nothing",
+			append(sb, "function " + ARCHON_PREFIX + "CinematicModeBJ takes boolean b,force f returns nothing",
 					"call " + ARCHON_PREFIX + "CinematicModeExBJ(b,f,bj_CINEMODE_INTERFACEFADE)",
 					END_FUNCTION);
 			append(sb, "function " + ARCHON_PREFIX + "PauseGameOn takes nothing returns nothing",
@@ -843,17 +874,7 @@ public class CoopRewriter extends ScriptRewriter {
 					END_FUNCTION);
 			// endregion
 			// region custom functions
-			append(sb, "function " + ARCHON_PREFIX + "WatchSkill takes integer a returns boolean",
-					"    if not LoadBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_HAS_ABILITY + ",a) then",
-					"        set " + ABILITY_ARRAY + "[" + ABILITY_ARRAY_SIZE + "]=a",
-					"        call SaveBoolean(" + GENERAL_HASHTABLE + "," + GH_BOOL_HAS_ABILITY + ",a,true)",
-					"        set " + ABILITY_ARRAY_SIZE + "=" + ABILITY_ARRAY_SIZE + "+1",
-					"        return true",
-					"    else",
-					"        return false",
-					END_IF,
-					END_FUNCTION,
-					"function " + ARCHON_PREFIX + "S2B takes string s returns boolean",
+			append(sb, "function " + ARCHON_PREFIX + "S2B takes string s returns boolean",
 					"    if s==\"t\" then",
 					"        return true",
 					"    endif",
@@ -1074,38 +1095,37 @@ public class CoopRewriter extends ScriptRewriter {
 					new Triple<>("Boolean", ARCHON_PREFIX + "S2B", "false")
 			)) {
 				String type = o.a.toLowerCase(Locale.ROOT);
-				append(sb, BlockUtils.bDef(SYNC_FUNC_NAME + o.a, type + " v", type,
-						"local string c=\"c\"",
-						"local string t=\"t\"",
-						"call Store" + o.a + "(" + SYNC_CACHE + ",c,t,v)",
-						"call TriggerSyncStart()",
-						"call SyncStored" + o.a + "(" + SYNC_CACHE + ",c,t)",
-						"call TriggerSyncReady()",
-						"return GetStored" + o.a + "(" + SYNC_CACHE + ",c,t)"));
 				append(sb, "function " + ARCHON_PREFIX + "Read" + o.a + " takes string cn,string t,string fK returns " + type,
 						"local " + type + " v",
-						"if GetPlayerSlotState(" + toMainPlayerFunc() + ")!=PLAYER_SLOT_STATE_PLAYING then",
-						"return " + o.c,
-						END_IF,
 						"call " + ARCHON_PREFIX + "RdWt(true)",
-						"set v=" + SYNC_FUNC_NAME + o.a + "(" + o.b + "(" + ARCHON_PREFIX + "GetContent(cn,t,fK)))",
+						"set v=" + ARCHON_PREFIX + SYNC_FUNC_NAME + o.a + "(" + o.b + "(" + ARCHON_PREFIX + "GetContent(cn,t,fK)))",
 						"call " + ARCHON_PREFIX + "RdWt(false)",
 						"return v",
 						END_FUNCTION);
 			}
+			append(sb, "function " + ARCHON_PREFIX + "ReadStringP takes nothing returns nothing",
+					"local player p=GetEnumPlayer()",
+					"if " + ARCHON_PREFIX + "PP==null and GetPlayerSlotState(p)==PLAYER_SLOT_STATE_PLAYING then",
+					"set " + ARCHON_PREFIX + "PP=p",
+					END_IF,
+					END_FUNCTION);
 			append(sb, "function " + ARCHON_PREFIX + "ReadString takes string cn,string t,string fK returns string",
 					"local string s",
-					"    if GetPlayerSlotState(" + toMainPlayerFunc() + ")!=PLAYER_SLOT_STATE_PLAYING then",
-					"        return null",
-					END_IF,
+					"local player p=null",
+					"set " + ARCHON_PREFIX + "PP=null",
+					"call ForForce(" + ARCHON_PREFIX + "Force,function " + ARCHON_PREFIX + "ReadStringP)",
+					"set p=" + ARCHON_PREFIX + "PP",
+					"if p==null then",
+					"return null",
+					"endif",
 					"call " + ARCHON_PREFIX + "RdWt(true)",
 					"set " + ARCHON_PREFIX + "ContentRead=false",
-					"if GetLocalPlayer()==" + toMainPlayerFunc() + " then",
+					"if GetLocalPlayer()==p then",
 					"set s=" + ARCHON_PREFIX + "S62S(" + ARCHON_PREFIX + "GetContent(cn,t,fK))",
 					"if s==null then",
 					"set s=\"\"",
 					END_IF,
-					"call BlzSendSyncData(\"XTContents\",s)",
+					"call BlzSendSyncData(\"XT87Contents\",s)",
 					END_IF,
 					"loop",
 					"exitwhen " + ARCHON_PREFIX + "ContentRead",
@@ -1156,7 +1176,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"call " + ARCHON_PREFIX + "PauseGame(b)",
 					END_IF,
 					END_FUNCTION);
-			append(sb, "function " + ARCHON_PREFIX + "DialogDisplayBJ takes boolean b, dialog d, player p returns nothing",
+			append(sb, "function " + ARCHON_PREFIX + "DialogDisplayBJ takes boolean b,dialog d,player p returns nothing",
 					"call " + ARCHON_PREFIX + "DialogDisplay(p,d,b)",
 					END_FUNCTION);
 			// endregion
@@ -1347,7 +1367,6 @@ public class CoopRewriter extends ScriptRewriter {
 					"    local integer c",
 					"    local integer l",
 					"    local integer is",
-					"    local boolean d",
 					"    local string m2=\"" + CACHE_MISSION_PREFIX + "\"+m",
 					"    local string k2=\"" + CACHE_UNIT_PREFIX + "\"+k",
 					"    local item array ti",
@@ -1407,17 +1426,9 @@ public class CoopRewriter extends ScriptRewriter {
 					"set j=0",
 					"loop", // loop levels
 					"exitwhen j>=l",
-					"call SelectHeroSkill(tu,j)",
-					"if j==0 and GetUnitAbilityLevel(tu,a)<1 then",
-					"set d=true",
-					"call SetPlayerAbilityAvailable(Player(PLAYER_NEUTRAL_PASSIVE),a,true)",
-					"call SelectHeroSkill(tu,a)",
-					END_IF, // force level
+					"call " + ARCHON_PREFIX + "SelectHeroSkill(tu,a)",
 					"set j=j+1",
 					"endloop", // level loop
-					"if d then", // if forced level
-					"call SetPlayerAbilityAvailable(Player(PLAYER_NEUTRAL_PASSIVE),a,false)",
-					END_IF, // endif forced level
 					"set c=c+1",
 					END_IF, // endif leveled
 					END_IF, // endif hero abil
@@ -1621,7 +1632,6 @@ public class CoopRewriter extends ScriptRewriter {
 					"    local integer len",
 					"    local unit u=null",
 					"    local boolean r",
-					"    local boolean d",
 					"    local string m2=\"" + CACHE_MISSION_PREFIX + "\"+m",
 					"    local string k2=\"" + CACHE_UNIT_PREFIX + "\"+k",
 					"    local integer array v", // ints from all lines
@@ -1638,14 +1648,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"call " + ARCHON_PREFIX + "RdWt(true)",
 					"if v[0]==0 then",
 					"set r=true",
-
-					"if GetPlayerSlotState(" + toMainPlayerFunc() + ")!=PLAYER_SLOT_STATE_PLAYING then",
-					"call " + ARCHON_PREFIX + "RdWt(false)",
-					"return null",
-					END_IF,
-
 					"set ct=" + ARCHON_PREFIX + "GetContent(cn,t," + FLUSH_KEY_CODE + ")",
-
 					"set len=StringLength(ct)",
 					"set j=0", // curr line
 					"set i=0",
@@ -1734,25 +1737,15 @@ public class CoopRewriter extends ScriptRewriter {
 					"set a=GetStoredInteger(q,m2," + varSuffix((CACHE_ABILITY_COUNT_INDEX + 1) + "+2*i") + ")",
 					"set l=GetStoredInteger(q,m2," + varSuffix((CACHE_ABILITY_COUNT_INDEX + 2) + "+2*i") + ")",
 					"call ModifyHeroSkillPoints(u,bj_MODIFYMETHOD_ADD,l)",
-					"call " + ARCHON_PREFIX + "WatchSkill(a)",
 					DebugOnly("call BJDebugMsg(\"AUX i \"+I2S(i)+\" l \"+I2S(l))" + JASS_DELIM) +
 							"            set j=0",
-					"set d=false",
 					"loop", // loop levels
 					"exitwhen j>=l",
 					DebugOnly("call BJDebugMsg(\"AUX i \"+I2S(i)+\" j \"+I2S(j))" + JASS_DELIM) +
 							DebugOnly("call BJDebugMsg(\"AUX i \"+I2S(i)+\" a \"+I2S(a))" + JASS_DELIM) +
-							"call SelectHeroSkill(u,a)",
-					"if j==0 and GetUnitAbilityLevel(u,a)<1 then",
-					"set d=true",
-					"call SetPlayerAbilityAvailable(Player(PLAYER_NEUTRAL_PASSIVE),a,true)",
-					"call SelectHeroSkill(u,a)",
-					END_IF, // force level
+							"call " + ARCHON_PREFIX + "SelectHeroSkill(u,a)",
 					"set j=j+1",
 					"endloop", // level loop
-					"if d then", // if forced level
-					"call SetPlayerAbilityAvailable(Player(PLAYER_NEUTRAL_PASSIVE),a,false)",
-					END_IF, // endif forced level
 					"set i=i+1",
 					"endloop",
 					"call ModifyHeroSkillPoints(u,bj_MODIFYMETHOD_SET,GetStoredInteger(q,m2," + constSuffix(CACHE_UNSPEND_POINTS_INDEX) + "))",
@@ -2272,7 +2265,12 @@ public class CoopRewriter extends ScriptRewriter {
 				"SaveAndLoadGameBJ",
 				"CopySaveGame",
 				"SaveGameExists",
-				"CopySaveGameBJ"
+				"CopySaveGameBJ",
+				"GetCameraTargetPositionX",
+				"GetCameraTargetPositionY",
+				"SelectHeroSkill",
+				"SetPlayerColor",
+				"SetPlayerColorBJ"
 		))
 			for (String prefix : Arrays.asList("(", " ", ",", "="))
 				for (String suffix : Arrays.asList("(", " ")) {
@@ -2371,14 +2369,6 @@ public class CoopRewriter extends ScriptRewriter {
 					for (String suffix : Arrays.asList("(", " "))
 						line = line.replace(prefix + function + suffix, prefix + ARCHON_PREFIX + "SyncStoredUnused" + suffix);
 			// endregion
-			String call = getTrimmedCallFromLine(line);
-			if (call != null) {
-				String[] params = getParamsFromLine(line);
-				if (call.equals("SelectHeroSkill")) {
-					assert params != null;
-					append(sb, "    call " + ARCHON_PREFIX + "WatchSkill(" + params[1] + ")");
-				}
-			}
 		}
 
 		// variable declarations
@@ -2501,7 +2491,8 @@ public class CoopRewriter extends ScriptRewriter {
 					"boolean " + ARCHON_PREFIX + "DIP=false", // dialog is pausing
 					"boolean " + ARCHON_PREFIX + "LUP=false", // load unpauses
 					"boolean " + ARCHON_PREFIX + "LRD=false", // load reloads
-					"boolean " + ARCHON_PREFIX + "CIP=false" // cache is pausing
+					"boolean " + ARCHON_PREFIX + "CIP=false", // cache is pausing
+					"player " + ARCHON_PREFIX + "PP=null" // read string picked player
 					//"gamespeed " + ARCHON_PREFIX + "RGS=MAP_SPEED_NORMAL" // real game speed
 			);
 			append(sb, "trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "GIL");
