@@ -34,7 +34,6 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final String SETPLAYERCOLOR = "call SetPlayerColor(";
 	private static final String DEFINE_START_LOC = "call DefineStartLocation(";
 	private static final String SETPLAYERCOLORBJ = "call SetPlayerColorBJ(";
-	private static final String CONVERTPLAYERCOLOR = "ConvertPlayerColor(";
 	private static final String ARCHON_PREFIX_BASE = "XT87A";
 	private static final String ARCHON_PREFIX = ARCHON_PREFIX_BASE + "S";
 	private static final String FILE_IO_PREFIX = ARCHON_PREFIX_BASE + "I";
@@ -472,7 +471,7 @@ public class CoopRewriter extends ScriptRewriter {
 						" then" + JASS_DELIM +
 						"return" + JASS_DELIM +
 						END_IF + JASS_DELIM +
-						"call SetPlayerColor(p,c)" + JASS_DELIM +
+						"call " + ARCHON_PREFIX + "SetPlayerColor(p,c)" + JASS_DELIM +
 						"if b then" + JASS_DELIM +
 						"set bj_setPlayerTargetColor=c" + JASS_DELIM +
 						"set g=CreateGroup()\n" + JASS_DELIM +
@@ -2169,7 +2168,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"set " + PLAYER_INDEX_ARRAY + "[" + playerNum + "]=" + index);
 			index++;
 		}
-		append(sb, "    " + SETPLAYERCOLORBJ + toMainPlayerFunc() + "," + CONVERTPLAYERCOLOR + mainPlayer.getNum() + "),true)");
+		append(sb, SETPLAYERCOLORBJ + toMainPlayerFunc() + ",ConvertPlayerColor(" + mainPlayer.getNum() + "),true)");
 		//if (line.contains(END_FUNCTION)) {
 		for (String resourceName : getAllResourceNames())
 			append(sb, "call it_" + ARCHON_PREFIX + resourceName + "Sync()");
@@ -2188,7 +2187,7 @@ public class CoopRewriter extends ScriptRewriter {
 			append(sb, "    call ForceAddPlayer(" + FORCE_NAME + "," + toPlayerFunc(playerNumber) + ")");
 		for (W3I.Player player : secondaryPlayers) {
 			String playerFunc = toPlayerFunc(player.getNum());
-			append(sb, SETPLAYERCOLOR + playerFunc + "," + CONVERTPLAYERCOLOR + player.getNum() + "))",
+			append(sb, SETPLAYERCOLOR + playerFunc + ",ConvertPlayerColor(" + player.getNum() + "))",
 					"call SetPlayerOnScoreScreen(" + playerFunc + ",false)");
 		}
 		append(sb, "call " + ENFORCE_ARCHON + "()",
@@ -2209,6 +2208,14 @@ public class CoopRewriter extends ScriptRewriter {
 	@Override
 	public void onMainEnd(StringBuffer sb) {
 		append(sb, "call it_" + ARCHON_PREFIX + "DS()");
+	}
+
+	@Override
+	public void onConfigEnd(StringBuffer sb) {
+		append(sb, "call SetPlayerColor(" + toMainPlayerFunc() + ",ConvertPlayerColor(1))");
+		for (W3I.Player player : secondaryPlayers) {
+			append(sb, "call SetPlayerColor(" + toPlayerFunc(player.getNum()) + ",ConvertPlayerColor(4))");
+		}
 	}
 
 	@Override
@@ -2388,27 +2395,6 @@ public class CoopRewriter extends ScriptRewriter {
 					dialogNames.add(declaredObject);
 			}
 		}
-
-		// Lobby configuration
-		if (Arrays.asList("config", "InitCustomPlayerSlots").contains(insideFunction)) {
-			if (line.contains(SETPLAYERCOLOR)) {
-				String[] params = getParamsFromLine(line);
-				if (params != null && params.length == 2 && params[0].equals(toMainPlayerFunc())) {
-					// recolor players to blue and yellow
-					assert params != null;
-					append(sb, line.replace(params[1], CONVERTPLAYERCOLOR + "1)"));
-					String secondaryColorLine = line.replace(params[1], CONVERTPLAYERCOLOR + "4)");
-					for (W3I.Player player : secondaryPlayers) {
-						append(sb, secondaryColorLine.replace(toMainPlayerFunc(), toPlayerFunc(player.getNum())));
-					}
-				}
-				return;
-			}
-		}
-		//if (!triggersAdded && line.contains("function Trig")) {
-		// define functions
-		//triggersAdded = true;
-		//}
 
 		boolean appendLine = true;
 

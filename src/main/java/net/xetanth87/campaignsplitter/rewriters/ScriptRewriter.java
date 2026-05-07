@@ -29,7 +29,7 @@ public abstract class ScriptRewriter {
 	private static final boolean IS_DEBUG = false;
 	private static final boolean REMOVE_USELESS = true;
 	public MapInjector mi;
-	public boolean first = true, insideGlobals, insideMain, isReading;
+	public boolean first = true, insideGlobals, insideMain, insideConfig, isReading;
 	public String insideFunction;
 	public String rewriterPrefix;
 	private final List<FunctionConfiguration> functionConfig = new ArrayList<>();
@@ -110,6 +110,15 @@ public abstract class ScriptRewriter {
 	protected void onMainEnd(StringBuffer sb) {
 	}
 
+	protected void onConfigStart(StringBuffer sb) {
+	}
+
+	protected void onConfigLocals(StringBuffer sb) {
+	}
+
+	protected void onConfigEnd(StringBuffer sb) {
+	}
+
 	public void append(StringBuffer sb, String... blocks) {
 		if (blocks == null)
 			return;
@@ -187,8 +196,11 @@ public abstract class ScriptRewriter {
 				insideFunction = insideFunction.substring(0, insideFunction.indexOf(' '));
 				afterLocals = false;
 				insideMain = "main".equals(insideFunction);
+				insideConfig = "config".equals(insideFunction);
 				if (insideMain)
 					onMainStart(sb);
+				else if (insideConfig)
+					onConfigStart(sb);
 				else
 					onFunctionStart(sb);
 			}
@@ -201,6 +213,8 @@ public abstract class ScriptRewriter {
 						for (var configuration : triggerConfig)
 							append(sb, configuration.getInitCall());
 					}
+					else if (insideConfig)
+						onFunctionLocals(sb);
 					else
 						onFunctionLocals(sb);
 				}
@@ -208,6 +222,8 @@ public abstract class ScriptRewriter {
 				{
 					if (insideMain)
 						onMainEnd(sb);
+					else if (insideConfig)
+						onConfigEnd(sb);
 					else
 						onFunctionEnd(sb);
 				}
@@ -231,6 +247,7 @@ public abstract class ScriptRewriter {
 			else if (line.equals(END_FUNCTION)) {
 				insideFunction = null;
 				insideMain = false;
+				insideConfig = false;
 			}
 			else if (doExitGlobals == 0 && line.equals("endglobals"))
 				doExitGlobals = 1;
