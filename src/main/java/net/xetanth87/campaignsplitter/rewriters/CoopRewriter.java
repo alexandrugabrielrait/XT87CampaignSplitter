@@ -173,13 +173,15 @@ public class CoopRewriter extends ScriptRewriter {
 	public List<String> dialogNames;
 	public Map<String, Integer> cacheFieldMap;
 	public int campaignKeyOffset;
+	public boolean selectionArrows;
 
-	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers, int campaignKeyOffset) {
+	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers, int campaignKeyOffset, boolean selectionArrows) {
 		super(mi, "AS");
 		this.info = info;
 		this.mainPlayer = mainPlayer;
 		this.secondaryPlayers = secondaryPlayers;
 		this.campaignKeyOffset = campaignKeyOffset;
+		this.selectionArrows = selectionArrows;
 		allPlayerNumbers = new ArrayList<>(1 + secondaryPlayers.size());
 		allPlayerNumbers.add(mainPlayer.getNum());
 		secondaryPlayers.forEach(x -> allPlayerNumbers.add(x.getNum()));
@@ -214,6 +216,80 @@ public class CoopRewriter extends ScriptRewriter {
 			// endregion
 		}
 		// endregion
+		// endregion
+		addFunctionConfiguration("SyncWorkersFlt", null, "boolean",
+				"local unit u=GetFilterUnit()" + JASS_DELIM +
+						"return IsUnitType(u,UNIT_TYPE_PEON)and GetUnitCurrentOrder(u)==0");
+		addFunctionConfiguration("SyncWorkers", null, null,
+				"local integer i=1",
+				"local integer j",
+				"local integer d", // worker unit type id
+				"local integer c", // worker unit count for main player
+				"local integer k", // worker unit count for secondary player
+				"local real x",
+				"local real y",
+				"local unit u",
+				"local group g",
+				"if " + ARCHON_PREFIX + "GIP then",
+				"return",
+				END_IF,
+				"set g=CreateGroup()",
+				"call GroupEnumUnitsOfPlayer(g," + toMainPlayerFunc() + ",Filter(function " + ARCHON_PREFIX + "SyncWorkersFlt))",
+				"set u=FirstOfGroup(g)",
+				"set d=GetUnitTypeId(u)",
+				"set x=GetUnitX(u)",
+				"set y=GetUnitY(u)",
+				"set bj_groupCountUnits=0" + JASS_DELIM +
+						"call ForGroup(g,function CountUnitsInGroupEnum)",
+				"call DestroyGroup(g)",
+				"set c=bj_groupCountUnits",
+				loopOverPlayers("i", "set g=CreateGroup()",
+						"call GroupEnumUnitsOfPlayer(g,Player(" + PLAYER_ID_ARRAY + "[i]),Filter(function " + ARCHON_PREFIX + "SyncWorkersFlt))",
+						"set bj_groupCountUnits=0",
+						"call ForGroup(g,function CountUnitsInGroupEnum)",
+						"set k=bj_groupCountUnits",
+						// if more units than main player, remove
+						"if c<k then",
+						"set j=c",
+						"loop",
+						"exitwhen j>=k",
+						"set u=FirstOfGroup(g)",
+						"call GroupRemoveUnit(g,u)",
+						"call GroupRemoveUnit(" + ARCHON_PREFIX + "UNT,u)",
+						"call RemoveUnit(u)",
+						"set j=j+1",
+						"endloop",
+						// if less units than main player, create
+						"elseif c>k then",
+						"set j=k",
+						"loop",
+						"exitwhen j>=c",
+						"set u=CreateUnit(Player(" + PLAYER_ID_ARRAY + "[i]),d,x,y,0)",
+						"call GroupAddUnit(" + ARCHON_PREFIX + "UNT,u)",
+						"call SetUnitInvulnerable(u,true)",
+						"call SetUnitPathing(u,false)",
+						"call SetUnitVertexColor(u,0,0,0,0)",
+						"call SetUnitScalePercent(u,0,0,0)",
+						"call UnitAddAbility(u,'Aloc')",
+						"call BlzSetUnitIntegerField(u,ConvertUnitIntegerField('usid'),0)",
+						"call BlzSetUnitIntegerField(u,ConvertUnitIntegerField('usin'),0)",
+						"call BlzSetUnitRealField(u,UNIT_RF_SIGHT_RADIUS,0)",
+						"call BlzSetUnitStringField(u,UNIT_SF_SHADOW_IMAGE_UNIT,\"\")",
+						"call BlzSetUnitBaseDamage(u,0,0)",
+						"call BlzSetUnitBaseDamage(u,0,1)",
+						"call BlzSetUnitDiceNumber(u,0,0)",
+						"call BlzSetUnitDiceNumber(u,0,1)",
+						"call BlzSetUnitDiceSides(u,0,0)",
+						"call BlzSetUnitDiceSides(u,0,1)",
+						"call BlzSetUnitAttackCooldown(u,0,0)",
+						"call BlzSetUnitAttackCooldown(u,0,1)",
+						"call SetUnitPropWindow(u,0)",
+						"call BlzSetUnitMaxMana(u,0)",
+						"set j=j+1",
+						"endloop",
+						END_IF,
+						"call DestroyGroup(g)")
+		);
 		addFunctionConfiguration("CBF", null, null,
 				"local timer t=GetExpiredTimer()" + JASS_DELIM +
 						"local integer h=GetHandleId(t)" + JASS_DELIM +
@@ -392,7 +468,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"if h then" + JASS_DELIM +
 						"set s=GetLocalizedString(LoadStr(" + GENERAL_HASHTABLE + "," + GH_STRING_CAMPAIGN_BUTTON_NAME + ",StringHash(s)))" + JASS_DELIM +
 						END_IF + JASS_DELIM +
-						"call " + ARCHON_PREFIX + "HandleSLM(\"CREATE\",s,true)");
+						"call " + ARCHON_PREFIX + "HandleSLM(GetLocalizedString(\"CREATE\")+\"/\"+GetLocalizedString(\"LOAD_GAME\"),s,true)");
 		addFunctionConfiguration("LoadGame", "string s, boolean b", null,
 				"call " + ARCHON_PREFIX + "HandleSLM(\"LOAD_GAME\",s,true)");
 		addFunctionConfiguration("SaveGame", "string s", null,
@@ -412,25 +488,32 @@ public class CoopRewriter extends ScriptRewriter {
 				"return false");
 		addFunctionConfiguration("CopySaveGameBJ", "string s,string d", "boolean",
 				"return true");
+		addFunctionConfiguration("SyncS", null, null,
+				"set " + ARCHON_PREFIX + "ScWait=" + ARCHON_PREFIX + "ScWait+1",
+				"if " + ARCHON_PREFIX + "ScWait==1 then",
+				"call TriggerSyncStart()",
+				END_IF);
+		addFunctionConfiguration("SyncR", null, null,
+				"call TriggerSyncReady()",
+				"set " + ARCHON_PREFIX + "ScWait=" + ARCHON_PREFIX + "ScWait-1");
 		for (String t : Arrays.asList(
 				"Integer",
 				"Real",
 				"Boolean"
 		)) {
 			String type = t.toLowerCase(Locale.ROOT);
-			addFunctionConfiguration(SYNC_FUNC_NAME + t, type + " v", type,
-					"local string c=\"c\"" + JASS_DELIM +
-							"local string t=\"t\"" + JASS_DELIM +
+			addFunctionConfiguration(SYNC_FUNC_NAME + t, type + " v, string t", type,
+					"local string c=\"sync\"" + JASS_DELIM +
 							"call Store" + t + "(" + SYNC_CACHE + ",c,t,v)" + JASS_DELIM +
-							"call TriggerSyncStart()" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "SyncS()" + JASS_DELIM +
 							"call SyncStored" + t + "(" + SYNC_CACHE + ",c,t)" + JASS_DELIM +
-							"call TriggerSyncReady()" + JASS_DELIM +
+							"call " + ARCHON_PREFIX + "SyncR()" + JASS_DELIM +
 							"return GetStored" + t + "(" + SYNC_CACHE + ",c,t)");
 		}
 		addFunctionConfiguration("GetCameraTargetPositionX", null, "real",
-				"return " + ARCHON_PREFIX + SYNC_FUNC_NAME + "Real(GetCameraTargetPositionX())");
+				"return " + ARCHON_PREFIX + SYNC_FUNC_NAME + "Real(GetCameraTargetPositionX(),\"cam_x\")");
 		addFunctionConfiguration("GetCameraTargetPositionY", null, "real",
-				"return " + ARCHON_PREFIX + SYNC_FUNC_NAME + "Real(GetCameraTargetPositionY())");
+				"return " + ARCHON_PREFIX + SYNC_FUNC_NAME + "Real(GetCameraTargetPositionY(),\"cam_y\")");
 		addFunctionConfiguration("SelectHeroSkill", "unit u,integer a", null,
 				"local integer i=GetUnitAbilityLevel(u,a)" + JASS_DELIM +
 						"call SelectHeroSkill(u,a)" + JASS_DELIM +
@@ -443,6 +526,7 @@ public class CoopRewriter extends ScriptRewriter {
 						END_IF);
 		addFunctionConfiguration("SetPlayerColor", "player p, playercolor c", null,
 				"local integer i=GetPlayerId(p)" + JASS_DELIM +
+						"local integer j" + JASS_DELIM +
 						"if " +
 						secondaryPlayers.stream()
 								.map(player -> "i==" + player.getNum())
@@ -452,15 +536,13 @@ public class CoopRewriter extends ScriptRewriter {
 						END_IF + JASS_DELIM +
 						"call SetPlayerColor(p,c)" + JASS_DELIM +
 						"if i==" + mainPlayer.getNum() + " then" + JASS_DELIM +
-						secondaryPlayers.stream()
-								.map(player ->
-										"if ConvertPlayerColor(" + player.getNum() + ")==c then" + JASS_DELIM +
-												"call SetPlayerColor(Player(" + player.getNum() + "),ConvertPlayerColor(" + mainPlayer.getNum() + "))" + JASS_DELIM +
-												"else" + JASS_DELIM +
-												"call SetPlayerColor(Player(" + player.getNum() + "),ConvertPlayerColor(" + player.getNum() + "))" + JASS_DELIM +
-												END_IF)
-								.collect(java.util.stream.Collectors.joining(JASS_DELIM)) + JASS_DELIM +
-						END_IF);
+						"set j=1" + JASS_DELIM +
+						loopOverPlayers("j", "if ConvertPlayerColor(" + PLAYER_ID_ARRAY + "[j])==c then" + JASS_DELIM +
+								"call SetPlayerColor(Player(" + PLAYER_ID_ARRAY + "[j]),ConvertPlayerColor(" + mainPlayer.getNum() + "))" + JASS_DELIM +
+								"else" + JASS_DELIM +
+								"call SetPlayerColor(Player(" + PLAYER_ID_ARRAY + "[j]),ConvertPlayerColor(" + PLAYER_ID_ARRAY + "[j]))" + JASS_DELIM +
+								END_IF),
+				END_IF);
 		addFunctionConfiguration("SetPlayerColorBJ", "player p, playercolor c,boolean b", null,
 				"local integer i=GetPlayerId(p)" + JASS_DELIM +
 						"local group g" + JASS_DELIM +
@@ -474,7 +556,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"call " + ARCHON_PREFIX + "SetPlayerColor(p,c)" + JASS_DELIM +
 						"if b then" + JASS_DELIM +
 						"set bj_setPlayerTargetColor=c" + JASS_DELIM +
-						"set g=CreateGroup()\n" + JASS_DELIM +
+						"set g=CreateGroup()" + JASS_DELIM +
 						"call GroupEnumUnitsOfPlayer(g,p,null)" + JASS_DELIM +
 						"call ForGroup(g,function SetPlayerColorBJEnum)" + JASS_DELIM +
 						"call DestroyGroup(g)" + JASS_DELIM +
@@ -1063,27 +1145,33 @@ public class CoopRewriter extends ScriptRewriter {
 					END_FUNCTION);
 
 			append(sb, "function " + ARCHON_PREFIX + "RdWt takes boolean b returns nothing",
-					"loop",
-					"exitwhen not XT87ASRdWaitLock",
-					"call TriggerSleepAction(0.01)",
-					"endloop",
-					"set " + ARCHON_PREFIX + "RdWaitLock=true",
 					"if b then",
 					"set " + ARCHON_PREFIX + "RdWait=" + ARCHON_PREFIX + "RdWait+1",
-					"set " + ARCHON_PREFIX + "RdWaitLock=false",
 					"if not " + ARCHON_PREFIX + "CIP then",
 					"set " + ARCHON_PREFIX + "CIP=true",
-					XT87Utils.fadeCall(true),
+					//XT87Utils.fadeCall(true),
 					"if not " + ARCHON_PREFIX + "GIP then",
 					"call " + ARCHON_PREFIX + "PauseGame(true)",
 					END_IF,
 					END_IF,
+//					"loop",
+//					"exitwhen not XT87ASRdWaitLock",
+//					"call TriggerSleepAction(0.01)",
+//					"endloop",
+//					"set " + ARCHON_PREFIX + "RdWaitLock=true",
+//					"set " + ARCHON_PREFIX + "RdWait=" + ARCHON_PREFIX + "RdWait+1",
+//					"set " + ARCHON_PREFIX + "RdWaitLock=false",
 					"else",
+//					"loop",
+//					"exitwhen not XT87ASRdWaitLock",
+//					"call TriggerSleepAction(0.01)",
+//					"endloop",
+//					"set " + ARCHON_PREFIX + "RdWaitLock=true",
 					"set " + ARCHON_PREFIX + "RdWait=" + ARCHON_PREFIX + "RdWait-1",
-					"set " + ARCHON_PREFIX + "RdWaitLock=false",
+//					"set " + ARCHON_PREFIX + "RdWaitLock=false",
 					"if " + ARCHON_PREFIX + "RdWait==0 and " + ARCHON_PREFIX + "CIP then",
 					"set " + ARCHON_PREFIX + "CIP=false",
-					XT87Utils.fadeCall(false),
+					//XT87Utils.fadeCall(false),
 					"call " + ARCHON_PREFIX + "PauseGame(false)",
 					END_IF,
 					END_IF,
@@ -1094,10 +1182,16 @@ public class CoopRewriter extends ScriptRewriter {
 					new Triple<>("Boolean", ARCHON_PREFIX + "S2B", "false")
 			)) {
 				String type = o.a.toLowerCase(Locale.ROOT);
-				append(sb, "function " + ARCHON_PREFIX + "Read" + o.a + " takes string cn,string t,string fK returns " + type,
+				append(sb, "function " + ARCHON_PREFIX + "Read" + o.a + " takes gamecache q,string m,string k,string fK returns " + type,
 						"local " + type + " v",
+						"local string cn=" + getCacheNameFunc("q"),
+						"local string t=m+\"\\\\\"+k",
 						"call " + ARCHON_PREFIX + "RdWt(true)",
-						"set v=" + ARCHON_PREFIX + SYNC_FUNC_NAME + o.a + "(" + o.b + "(" + ARCHON_PREFIX + "GetContent(cn,t,fK)))",
+						"set v=" + o.b + "(" + ARCHON_PREFIX + "GetContent(cn,t,fK))",
+						"call Store" + o.a + "(q,m,k,v)",
+						"call " + ARCHON_PREFIX + "SyncS()" + JASS_DELIM +
+						"call SyncStored" + o.a + "(q,m,k)",
+						"call " + ARCHON_PREFIX + "SyncR()" + JASS_DELIM +
 						"call " + ARCHON_PREFIX + "RdWt(false)",
 						"return v",
 						END_FUNCTION);
@@ -1108,8 +1202,10 @@ public class CoopRewriter extends ScriptRewriter {
 					"set " + ARCHON_PREFIX + "PP=p",
 					END_IF,
 					END_FUNCTION);
-			append(sb, "function " + ARCHON_PREFIX + "ReadString takes string cn,string t,string fK returns string",
+			append(sb, "function " + ARCHON_PREFIX + "ReadString takes gamecache q,string m,string k,string fK returns string",
 					"local string s",
+					"local string cn=" + getCacheNameFunc("q"),
+					"local string t=m+\"\\\\\"+k",
 					"local player p=null",
 					"set " + ARCHON_PREFIX + "PP=null",
 					"call ForForce(" + ARCHON_PREFIX + "Force,function " + ARCHON_PREFIX + "ReadStringP)",
@@ -1376,9 +1472,9 @@ public class CoopRewriter extends ScriptRewriter {
 					"    endif",
 					DebugOnly("call BJDebugMsg(\"StoreUnit \"+GetStoredString(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")+\"|\"+m+\"|\"+k +\" > \"+GetUnitName(u))" + JASS_DELIM) +
 							"set id=GetUnitTypeId(u)",
-					"set tu=CreateUnit(Player(PLAYER_NEUTRAL_PASSIVE),id,0,0,0)");
-			//"call ShowUnit(tu,false)",
-			append(sb, "    call StoreInteger(q,m2," + constSuffix(0) + ",id)",
+					"set tu=CreateUnit(GetOwningPlayer(u),id,GetUnitX(u),GetUnitY(u),GetUnitFacing(u))",
+					"call ShowUnit(tu,false)");
+			append(sb, "call StoreInteger(q,m2," + constSuffix(0) + ",id)",
 					"set is=UnitInventorySize(u)",
 					// region save item
 					"set i=0",
@@ -1525,18 +1621,36 @@ public class CoopRewriter extends ScriptRewriter {
 				append(sb, "function " + ARCHON_PREFIX + "HaveStored" + o.a + " takes gamecache q,string m,string k returns boolean",
 						"    local string m2=\"" + CACHE_MISSION_PREFIX + "\"+m",
 						"    local string k2=\"" + o.b + "\"+k",
-						"    local " + o.a.toLowerCase(Locale.ROOT) + " v",
 						"    local string cn=" + getCacheNameFunc("q"),
+						"    local " + o.a.toLowerCase(Locale.ROOT) + " v",
 						"if HaveStored" + o.a + "(q,m2,k2) then",
 						"    return true",
 						END_IF,
-						"set v=" + ARCHON_PREFIX + "Read" + o.a + "(cn,m2+\"\\\\\"+k2," + FLUSH_KEY_CODE + ")",
+						"set v=" + ARCHON_PREFIX + "Read" + o.a + "(q,m2,k2," + FLUSH_KEY_CODE + ")",
 						"if v==" + o.c + " then",
 						"return false",
 						END_IF,
 						"call Store" + o.a + "(q,m2,k2,v)",
 						"return true",
 						END_FUNCTION);
+//			for (Triple<String, String, String> o : Arrays.asList(
+//					new Triple<>("String", CACHE_STRING_PREFIX, "null")
+//			))
+//				append(sb, "function " + ARCHON_PREFIX + "HaveStored" + o.a + " takes gamecache q,string m,string k returns boolean",
+//						"    local string m2=\"" + CACHE_MISSION_PREFIX + "\"+m",
+//						"    local string k2=\"" + o.b + "\"+k",
+//						"    local " + o.a.toLowerCase(Locale.ROOT) + " v",
+//						"    local string cn=" + getCacheNameFunc("q"),
+//						"if HaveStored" + o.a + "(q,m2,k2) then",
+//						"    return true",
+//						END_IF,
+//						"set v=" + ARCHON_PREFIX + "Read" + o.a + "(cn,m2+\"\\\\\"+k2," + FLUSH_KEY_CODE + ")",
+//						"if v==" + o.c + " then",
+//						"return false",
+//						END_IF,
+//						"call Store" + o.a + "(q,m2,k2,v)",
+//						"return true",
+//						END_FUNCTION);
 			// endregion
 			// region HaveStoredUnit native
 			append(sb, "function " + ARCHON_PREFIX + "HaveStoredUnit takes gamecache q,string m,string k returns boolean",
@@ -1546,7 +1660,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"if GetStoredInteger(q,m2," + constSuffix(0) + ")!=0 then",
 					"    return true",
 					END_IF,
-					"return " + ARCHON_PREFIX + "ReadString(cn,m2+\"\\\\\"+k2," + FLUSH_KEY_CODE + ")!=null",
+					"return " + ARCHON_PREFIX + "ReadString(q,m2,k2," + FLUSH_KEY_CODE + ")!=null",
 					END_FUNCTION);
 			// endregion
 			// region HaveStoredValue function
@@ -1680,10 +1794,10 @@ public class CoopRewriter extends ScriptRewriter {
 					END_IF); // content
 			append(sb, "call StoreInteger(q,m2," + constSuffix(0) + ",v[0])",
 					"call StoreInteger(q,m2," + constSuffix(1) + ",j)",
-					"call TriggerSyncStart()",
+					"call " + ARCHON_PREFIX + "SyncS()" + JASS_DELIM +
 					"call SyncStoredInteger(q,m2," + constSuffix(0) + ")",
 					"call SyncStoredInteger(q,m2," + constSuffix(1) + ")",
-					"call TriggerSyncReady()",
+					"call " + ARCHON_PREFIX + "SyncR()" + JASS_DELIM +
 					// len is now vector length
 					"set v[0]=GetStoredInteger(q,m2," + constSuffix(0) + ")",
 					"set v[1]=GetStoredInteger(q,m2," + constSuffix(1) + ")",
@@ -1699,20 +1813,18 @@ public class CoopRewriter extends ScriptRewriter {
 					"call StoreInteger(q,m2," + varSuffix("i") + ",v[i])",
 					"set i=i+1",
 					"endloop",
-					"call StoreReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ",vr)");
-			append(sb, "call TriggerSyncStart()");
+					"call StoreReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ",vr)",
+					"call " + ARCHON_PREFIX + "SyncS()");
 			append(sb, "set i=2",
 					"loop", // loop i = 2, i <= len
 					"exitwhen i>=v[1]",
 					"call SyncStoredInteger(q,m2," + varSuffix("i") + ")",
 					"set i=i+1",
 					"endloop",
-					"call SyncStoredReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ")");
-			append(sb, "call TriggerSyncReady()");
+					"call SyncStoredReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ")",
+					"call " + ARCHON_PREFIX + "SyncR()");
 			append(sb, END_IF); // endif read
-
 			append(sb, "set u=CreateUnit(p,v[0],x,y,f)");
-
 			append(sb, "if IsHeroUnitId(v[0]) then",
 					"call SetHeroXP(u,GetStoredInteger(q,m2," + constSuffix(CACHE_XP_INDEX) + "),false)",
 					"call SetHeroStr(u,GetStoredInteger(q,m2," + constSuffix(CACHE_STR_INDEX) + "),true)",
@@ -1790,8 +1902,8 @@ public class CoopRewriter extends ScriptRewriter {
 			append(sb, END_IF, // end item exists
 					"set i=i+1",
 					"endloop",
-					"call SetUnitOwner(u,p,true)",
-					"call ShowUnit(u,true)",
+//					"call SetUnitOwner(u,p,true)",
+//					"call ShowUnit(u,true)",
 					"call " + ARCHON_PREFIX + "RdWt(false)",
 					"return u",
 					END_FUNCTION);
@@ -1944,7 +2056,10 @@ public class CoopRewriter extends ScriptRewriter {
 		append(sb, "    return false",
 				END_FUNCTION,
 				"function t_" + ARCHON_PREFIX + "UnitShare_Ac takes nothing returns nothing",
-				"    call SetUnitOwner(GetEnteringUnit()," + toMainPlayerFunc() + ",true)",
+				"local unit u=GetEnteringUnit()",
+				"if not IsUnitInGroup(u," + ARCHON_PREFIX + "UNT) then",
+				"call SetUnitOwner(u," + toMainPlayerFunc() + ",true)",
+				END_IF,
 				END_FUNCTION,
 				"function it_" + ARCHON_PREFIX + "UnitShare takes nothing returns nothing",
 				"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare=CreateTrigger()",
@@ -2207,7 +2322,8 @@ public class CoopRewriter extends ScriptRewriter {
 
 	@Override
 	public void onMainEnd(StringBuffer sb) {
-		append(sb, "call it_" + ARCHON_PREFIX + "DS()");
+		append(sb, "call it_" + ARCHON_PREFIX + "DS()",
+				"call TimerStart(CreateTimer(),0.5,true,function " + ARCHON_PREFIX + "SyncWorkers)");
 	}
 
 	@Override
@@ -2478,7 +2594,8 @@ public class CoopRewriter extends ScriptRewriter {
 					"boolean " + ARCHON_PREFIX + "LUP=false", // load unpauses
 					"boolean " + ARCHON_PREFIX + "LRD=false", // load reloads
 					"boolean " + ARCHON_PREFIX + "CIP=false", // cache is pausing
-					"player " + ARCHON_PREFIX + "PP=null" // read string picked player
+					"player " + ARCHON_PREFIX + "PP=null", // read string picked player
+					"group " + ARCHON_PREFIX + "UNT=CreateGroup()" // untouchable archon units
 					//"gamespeed " + ARCHON_PREFIX + "RGS=MAP_SPEED_NORMAL" // real game speed
 			);
 			append(sb, "trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "GIL");
@@ -2499,7 +2616,8 @@ public class CoopRewriter extends ScriptRewriter {
 						//"boolean XT87ReadLinesAreRead=false",
 						"boolean " + ARCHON_PREFIX + "RdLock=false", // Read lock
 						"integer " + ARCHON_PREFIX + "RdWait=0", // Read waiting count
-						"boolean " + ARCHON_PREFIX + "RdWaitLock=false" // Read waiting count
+						"boolean " + ARCHON_PREFIX + "RdWaitLock=false", // Read waiting lock
+						"integer " + ARCHON_PREFIX + "ScWait=0" // Sync waiting count
 				);
 		} else if (line.contains("SetForceAllianceStateBJ("))
 			append(sb, "call " + ENFORCE_ARCHON + "()");

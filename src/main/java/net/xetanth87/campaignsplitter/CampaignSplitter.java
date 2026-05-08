@@ -50,7 +50,7 @@ public class CampaignSplitter {
 	public int buttonCount, totalMapCount, archonModeAddedSlots, archonModeRealAddedSlots;
 	public XT87Utils.TriOption difficultySelectorOption = XT87Utils.TriOption.SMART;
 	public boolean withDifficultySelector = false, withCampaignPreview = false, withUpkeepRemoval = false,
-			withLegacyAssetsSD = true, withLegacyAssetsHD = true, withNextLevel = true, hasSkins = false, toDownloadFolder = false;
+			withLegacyAssetsSD = true, withLegacyAssetsHD = true, withNextLevel = true, hasSkins = false, toDownloadFolder = false, archonArrows = true;
 	public W3F campaignData;
 	protected boolean initializedProgressBar = false;
 	public WTS campStrings = null;

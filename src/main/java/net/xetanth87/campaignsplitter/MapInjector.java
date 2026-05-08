@@ -612,7 +612,7 @@ public class MapInjector {
 			if (addedCoopPlayers > 0) {
 				System.out.println("Adding coop support to map \"" + mapFile.getName() + "\".");
 				new CallbackRewriter(this).modifyScript();
-				new CoopRewriter(this, mapInfo.info, mapInfo.mainPlayer, mapInfo.secondaryPlayers, offsets.campaignKeyOffset).modifyScript();
+				new CoopRewriter(this, mapInfo.info, mapInfo.mainPlayer, mapInfo.secondaryPlayers, offsets.campaignKeyOffset, cs.archonArrows).modifyScript();
 				System.out.println("Finished adding coop support to map \"" + mapFile.getName() + "\".");
 				cs.IncrementValueProgressBar(1);
 			}

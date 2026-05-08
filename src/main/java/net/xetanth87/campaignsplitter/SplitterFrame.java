@@ -4,7 +4,6 @@ import net.xetanth87.campaignsplitter.util.XT87Utils;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -46,8 +45,11 @@ public class SplitterFrame extends JFrame {
 	private final JCheckBox legacyAssetsHDCheck = new JCheckBox();
 	private final JCheckBox upkeepRemovalCheck = new JCheckBox();
 	private final JCheckBox toDownloadFolderCheck = new JCheckBox();
+	private final JCheckBox archonsArrowCheck = new JCheckBox();
 	private final JComboBox<ArchonModeAddedSlotsVariant> archonModeAddedSlotsDropdown = new JComboBox<>();
-	private final List<? extends JComponent> componentList = Arrays.asList(openButton, campaignPreviewCheck, nextLevelCheck, legacyAssetsSDCheck, legacyAssetsHDCheck, upkeepRemovalCheck, toDownloadFolderCheck);
+	private final List<? extends JComponent> componentList
+			= Arrays.asList(openButton, campaignPreviewCheck, nextLevelCheck, legacyAssetsSDCheck, legacyAssetsHDCheck,
+			upkeepRemovalCheck, toDownloadFolderCheck, archonsArrowCheck);
 
 	private static class ArchonModeAddedSlotsVariant {
 		private final int value;
@@ -160,10 +162,11 @@ public class SplitterFrame extends JFrame {
 		for (int i = 0; i < 24; i++)
 			archonModeAddedSlotsDropdown.addItem(new ArchonModeAddedSlotsVariant(i));
 		archonModeAddedSlotsDropdown.addItemListener(e -> {
-			enableDisableToDownloadFolderCheck();
+			enableDisableArchonModeFields();
 		});
 		JLabel toDownloadFolderLabel = addLabelAndComponent(panel, "to_download_folder_check", toDownloadFolderCheck);
-		enableDisableToDownloadFolderCheck();
+		JLabel archonArrowLabel = addLabelAndComponent(panel, "archon_arrow_check", archonsArrowCheck);
+		enableDisableArchonModeFields();
 
 		openButton.addActionListener(this::openAction);
 		splitButton.addActionListener(this::splitAction);
@@ -311,6 +314,7 @@ public class SplitterFrame extends JFrame {
 			legacyAssetsHDCheck.setSelected(false);
 			upkeepRemovalCheck.setSelected(false);
 			archonModeAddedSlotsDropdown.setSelectedIndex(0);
+			toDownloadFolderCheck.setSelected(false);
 			toDownloadFolderCheck.setSelected(false);
 		});
 		menu.add(menuItem);
@@ -516,12 +520,16 @@ public class SplitterFrame extends JFrame {
 		return ((ArchonModeAddedSlotsVariant) Objects.requireNonNull(archonModeAddedSlotsDropdown.getSelectedItem())).getValue();
 	}
 
-	private void enableDisableToDownloadFolderCheck() {
-		if (getArchonModeAddedSlotsVariant() > 0)
+	private void enableDisableArchonModeFields() {
+		if (getArchonModeAddedSlotsVariant() > 0) {
 			toDownloadFolderCheck.setEnabled(!running);
+			archonsArrowCheck.setEnabled(!running);
+		}
 		else {
 			toDownloadFolderCheck.setEnabled(false);
 			toDownloadFolderCheck.setSelected(false);
+			archonsArrowCheck.setEnabled(false);
+			archonsArrowCheck.setSelected(true);
 		}
 	}
 
@@ -544,6 +552,7 @@ public class SplitterFrame extends JFrame {
 				cs.withLegacyAssetsHD = legacyAssetsHDCheck.isSelected();
 				cs.archonModeAddedSlots = getArchonModeAddedSlotsVariant();
 				cs.toDownloadFolder = toDownloadFolderCheck.isSelected() && cs.archonModeAddedSlots > 0;
+				cs.archonArrows = archonsArrowCheck.isSelected() && cs.archonModeAddedSlots > 0;
 				cs.splitCampaign();
 				String timeSpan = formatDuration(Duration.between(startTime, Instant.now()));
 				JOptionPane.showMessageDialog(null, getLocalizedString("message_campaign_split_success").formatted(file.getName()) + " (" + timeSpan + ")", APP_TITLE + " - " + getLocalizedString("title_success"), JOptionPane.INFORMATION_MESSAGE);

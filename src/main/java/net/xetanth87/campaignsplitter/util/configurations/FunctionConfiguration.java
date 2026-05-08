@@ -13,11 +13,11 @@ public class FunctionConfiguration implements IFunctionConfiguration {
 	private final String functionCode;
 	private static final String defaultValue = "nothing";
 
-	public FunctionConfiguration(String functionName, String functionParams, String functionReturn, String functionCode) {
+	public FunctionConfiguration(String functionName, String functionParams, String functionReturn, String... functionCode) {
 		this.functionName = functionName;
 		this.functionParams = functionParams;
 		this.functionReturn = functionReturn;
-		this.functionCode = functionCode;
+		this.functionCode = String.join(JASS_DELIM, functionCode);
 	}
 
 	@Override

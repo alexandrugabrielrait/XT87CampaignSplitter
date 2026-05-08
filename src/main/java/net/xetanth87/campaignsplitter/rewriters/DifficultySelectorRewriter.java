@@ -3,16 +3,13 @@ package net.xetanth87.campaignsplitter.rewriters;
 import net.xetanth87.campaignsplitter.MapInjector;
 import net.xetanth87.campaignsplitter.util.XT87Utils;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 
 import static net.xetanth87.campaignsplitter.util.XT87Utils.END_FUNCTION;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.END_IF;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.JASS_DELIM;
-import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_PREFIX;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_VAR_REPLACE;
 
 public class DifficultySelectorRewriter extends ScriptRewriter {
@@ -20,7 +17,7 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 	public Set<String> initializationTriggers = null;//, periodicTimeTriggers = null;
 	//	public Map<String, Integer> elapsedTimeIndices = null, periodicTimeIndices = null;
 	public boolean triggersAdded, insideInitialization, insideInitGlobals;
-	private final String MAP_INIT = "M";
+	//private final String MAP_INIT = "M";
 	private final String DIALOG = "D";
 	private final String BUTTON_EASY = "BE";
 	private final String BUTTON_NORMAL = "BN";
@@ -46,24 +43,6 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 						"set " + rewriterPrefix + BUTTON_HARD + "=DialogAddButton(" + rewriterPrefix + DIALOG + ",\"|cffff0000\"+GetLocalizedString(\"HARD\")+\"|r\",0)" + JASS_DELIM +
 						"call DialogDisplay(Player(" + playerId + ")," + rewriterPrefix + DIALOG + ",true)",
 				"call TriggerRegisterTimerEventSingle(" + TRIGGER_VAR_REPLACE + ",0.01)");
-
-		addTriggerConfiguration("C", // clicked
-				"local button b=GetClickedButton()" + JASS_DELIM +
-						"if b==" + rewriterPrefix + BUTTON_EASY + " then" + JASS_DELIM +
-						"call SetGameDifficulty(MAP_DIFFICULTY_EASY)" + JASS_DELIM +
-						"elseif b==" + rewriterPrefix + BUTTON_NORMAL + " then" + JASS_DELIM +
-						"call SetGameDifficulty(MAP_DIFFICULTY_NORMAL)" + JASS_DELIM +
-						"elseif b==" + rewriterPrefix + BUTTON_HARD + " then" + JASS_DELIM +
-						"call SetGameDifficulty(MAP_DIFFICULTY_HARD)" + JASS_DELIM +
-						"else" + JASS_DELIM +
-						"call SetGameDifficulty(MAP_DIFFICULTY_INSANE)" + JASS_DELIM +
-						"endif" + JASS_DELIM +
-						//"call DialogClear(" + rewriterPrefix + "DifDialog)" + JASS_DELIM +
-						//"call DialogDestroy(" + rewriterPrefix + "DifDialog)" + JASS_DELIM +
-						"call PauseGameOff()" + JASS_DELIM +
-						XT87Utils.fadeCall(false) + JASS_DELIM +
-						"call StartTimerBJ(" + rewriterPrefix + MAP_INIT + ",false,0.00)",
-				"call TriggerRegisterDialogEvent(" + TRIGGER_VAR_REPLACE + "," + rewriterPrefix + DIALOG + ")");
 //			if (!elapsedTimeIndices.isEmpty() || !periodicTimeIndices.isEmpty())
 //				append(JASS_DELIM +
 //						"call TriggerSleepAction( 0.01 )", sb);
@@ -90,7 +69,7 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 			if (insideInitialization) {
 				if (line.equals(END_FUNCTION))
 					insideInitialization = false;
-				else if (line.contains(INIT_CALL))
+				else if (line.contains(TRIGGER_EXECUTE))
 					initializationTriggers.add(initializationTriggerFromCall(line));
 			} else if (isInitFunction(line))
 				insideInitialization = true;
@@ -124,8 +103,8 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 
 	@Override
 	protected void onMainLocals(StringBuffer sb) {
-		append(sb, "set " + rewriterPrefix + DIALOG + "=DialogCreate()",
-				"set " + rewriterPrefix + MAP_INIT + "=CreateTimer()");
+		append(sb, "set " + rewriterPrefix + DIALOG + "=DialogCreate()");
+				//"set " + rewriterPrefix + MAP_INIT + "=CreateTimer()");
 //				for (int i = 0; i < elapsedTimeIndices.size(); i++)
 //					append(JASS_DELIM +
 //							"set " + ELAPSED_TIMER_PREFIX + i + "=CreateTimer()", sb);
@@ -142,6 +121,28 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 	@Override
 	public void onStartRead(String text, StringBuffer sb) {
 		findInitializationTriggers(text);
+
+		addTriggerConfiguration("C", // clicked
+				"local button b=GetClickedButton()" + JASS_DELIM +
+						"if b==" + rewriterPrefix + BUTTON_EASY + " then" + JASS_DELIM +
+						"call SetGameDifficulty(MAP_DIFFICULTY_EASY)" + JASS_DELIM +
+						"elseif b==" + rewriterPrefix + BUTTON_NORMAL + " then" + JASS_DELIM +
+						"call SetGameDifficulty(MAP_DIFFICULTY_NORMAL)" + JASS_DELIM +
+						"elseif b==" + rewriterPrefix + BUTTON_HARD + " then" + JASS_DELIM +
+						"call SetGameDifficulty(MAP_DIFFICULTY_HARD)" + JASS_DELIM +
+						"else" + JASS_DELIM +
+						"call SetGameDifficulty(MAP_DIFFICULTY_INSANE)" + JASS_DELIM +
+						"endif" + JASS_DELIM +
+						//"call DialogClear(" + rewriterPrefix + "DifDialog)" + JASS_DELIM +
+						//"call DialogDestroy(" + rewriterPrefix + "DifDialog)" + JASS_DELIM +
+						"call PauseGameOff()" + JASS_DELIM +
+						XT87Utils.fadeCall(false) + JASS_DELIM +
+						//"call StartTimerBJ(" + rewriterPrefix + MAP_INIT + ",false,0.00)",
+						initializationTriggers.stream()
+								.map(trigger -> "call ConditionalTriggerExecute(" + trigger + ")")
+								.collect(java.util.stream.Collectors.joining(JASS_DELIM)),
+				"call TriggerRegisterDialogEvent(" + TRIGGER_VAR_REPLACE + "," + rewriterPrefix + DIALOG + ")");
+
 		triggersAdded = false;
 		insideInitialization = false;
 		insideInitGlobals = false;
@@ -152,7 +153,7 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 		if (insideInitialization) {
 			if (line.contains(END_FUNCTION)) {
 				insideInitialization = false;
-			} else if (line.contains(INIT_CALL))
+			} else if (line.contains(TRIGGER_EXECUTE))
 				return;
 		} else if (insideInitGlobals) {
 			if (line.contains(END_FUNCTION)) {
@@ -177,11 +178,11 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 		}
 		append(sb, line);
 		if (line.equals("globals")) {
-			append(sb,"dialog " + rewriterPrefix + DIALOG + JASS_DELIM +
-					"button " + rewriterPrefix + BUTTON_EASY + JASS_DELIM +
-					"button " + rewriterPrefix + BUTTON_NORMAL + JASS_DELIM +
-					"button " + rewriterPrefix + BUTTON_HARD + JASS_DELIM +
-					"timer " + rewriterPrefix + MAP_INIT);
+			append(sb,"dialog " + rewriterPrefix + DIALOG,
+					"button " + rewriterPrefix + BUTTON_EASY,
+					"button " + rewriterPrefix + BUTTON_NORMAL,
+					"button " + rewriterPrefix + BUTTON_HARD);
+					//"timer " + rewriterPrefix + MAP_INIT);
 //			for (int i = 0; i < elapsedTimeIndices.size(); i++)
 //				append(JASS_DELIM +
 //						"timer " + ELAPSED_TIMER_PREFIX + i, sb);
@@ -193,14 +194,14 @@ public class DifficultySelectorRewriter extends ScriptRewriter {
 		} else if (line.contains("function RunInitializationTriggers takes") || line.contains("function main takes")) {
 			insideInitialization = true;
 		} else {
-			for (String trigger : initializationTriggers) {
-				if (line.contains("set " + trigger + "=") || line.contains("set " + trigger + " ")) {
-					append(sb, JASS_DELIM +
-							"call TriggerRegisterTimerExpireEventBJ(" + trigger + ", " + rewriterPrefix + MAP_INIT + ")");
-					initializationTriggers.remove(trigger);
-					break;
-				}
-			}
+//			for (String trigger : initializationTriggers) {
+//				if (line.contains("set " + trigger + "=") || line.contains("set " + trigger + " ")) {
+//					append(sb, JASS_DELIM +
+//							"call TriggerRegisterTimerExpireEventBJ(" + trigger + ", " + rewriterPrefix + MAP_INIT + ")");
+//					initializationTriggers.remove(trigger);
+//					break;
+//				}
+//			}
 		}
 	}
 }

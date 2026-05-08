@@ -1,9 +1,6 @@
 package net.xetanth87.campaignsplitter.rewriters;
 
-import net.moonlightflower.wc3libs.antlr.JassLexer;
-import net.moonlightflower.wc3libs.antlr.JassParser;
 import net.moonlightflower.wc3libs.txt.app.jass.Jass;
-import net.moonlightflower.wc3libs.txt.app.jass.JassScript;
 import net.xetanth87.campaignsplitter.MapInjector;
 import net.xetanth87.campaignsplitter.util.configurations.FunctionConfiguration;
 import net.xetanth87.campaignsplitter.util.configurations.TriggerConfiguration;
@@ -24,7 +21,7 @@ import static net.xetanth87.campaignsplitter.util.XT87Utils.NATIVE_DECLARATION;
 
 public abstract class ScriptRewriter {
 	protected static final String PLAYER_FUNC = "Player(";
-	public static final String INIT_CALL = "call ConditionalTriggerExecute(";
+	public static final String TRIGGER_EXECUTE = "call ConditionalTriggerExecute(";
 
 	private static final boolean IS_DEBUG = false;
 	private static final boolean REMOVE_USELESS = true;
@@ -40,7 +37,7 @@ public abstract class ScriptRewriter {
 		this.rewriterPrefix = "XT87" + rewriterPrefix;
 	}
 
-	public void addFunctionConfiguration(String functionName, String functionParams, String functionReturn, String functionCode) {
+	public void addFunctionConfiguration(String functionName, String functionParams, String functionReturn, String... functionCode) {
 		functionConfig.add(new FunctionConfiguration(rewriterPrefix + functionName, functionParams, functionReturn, functionCode));
 	}
 
@@ -63,7 +60,7 @@ public abstract class ScriptRewriter {
 	}
 
 	public String initializationTriggerFromCall(String line) {
-		String s = line.trim().replace(INIT_CALL, "");
+		String s = line.trim().replace(TRIGGER_EXECUTE, "");
 		s = s.substring(0, s.indexOf(')')).trim();
 		return s;
 	}
