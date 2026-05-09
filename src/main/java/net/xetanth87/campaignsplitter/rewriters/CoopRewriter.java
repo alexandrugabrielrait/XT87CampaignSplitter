@@ -2,7 +2,6 @@ package net.xetanth87.campaignsplitter.rewriters;
 
 import net.moonlightflower.wc3libs.bin.app.W3I;
 import net.xetanth87.campaignsplitter.MapInjector;
-import net.xetanth87.campaignsplitter.util.BlockUtils;
 import net.xetanth87.campaignsplitter.util.CoopCallAdjustments;
 import net.xetanth87.campaignsplitter.util.XT87Utils;
 import org.antlr.v4.runtime.misc.Pair;
@@ -174,6 +173,7 @@ public class CoopRewriter extends ScriptRewriter {
 	public Map<String, Integer> cacheFieldMap;
 	public int campaignKeyOffset;
 	public boolean selectionArrows;
+	public String cacheDataFilePath;
 
 	public CoopRewriter(MapInjector mi, W3I info, W3I.Player mainPlayer, List<W3I.Player> secondaryPlayers, int campaignKeyOffset, boolean selectionArrows) {
 		super(mi, "AS");
@@ -186,6 +186,7 @@ public class CoopRewriter extends ScriptRewriter {
 		allPlayerNumbers.add(mainPlayer.getNum());
 		secondaryPlayers.forEach(x -> allPlayerNumbers.add(x.getNum()));
 		dialogNames = new ArrayList<>();
+		cacheDataFilePath = "Xetanth87CampaignSplitter\\\\" + mi.cs.campFile.getName();
 
 		// region trigger config
 		if (WITH_CUSTOM_GAMECACHE) {
@@ -204,19 +205,29 @@ public class CoopRewriter extends ScriptRewriter {
 					"call TriggerRegisterEnterRectSimple(" + TRIGGER_VAR_REPLACE + ", GetPlayableMapRect())");
 			// endregion
 			// region sync data
-			addTriggerConfiguration("SyncData",
-					"set " + ARCHON_PREFIX + "Content=BlzGetTriggerSyncData()" + JASS_DELIM +
-							"set " + ARCHON_PREFIX + "ContentRead=true",
-					"    local integer i=0",
-					"    loop" + JASS_DELIM +
-							"        exitwhen i>=bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
-							"        call BlzTriggerRegisterPlayerSyncEvent(" + TRIGGER_VAR_REPLACE + ",Player(i),\"XT87Contents\",false)" + JASS_DELIM +
-							"        set i=i+1" + JASS_DELIM +
-							"    endloop");
+//			addTriggerConfiguration("SyncData",
+//					"set " + ARCHON_PREFIX + "Content=BlzGetTriggerSyncData()" + JASS_DELIM +
+//							"set " + ARCHON_PREFIX + "ContentRead=true",
+//					"    local integer i=0",
+//					"    loop" + JASS_DELIM +
+//							"        exitwhen i>=bj_MAX_PLAYER_SLOTS" + JASS_DELIM +
+//							"        call BlzTriggerRegisterPlayerSyncEvent(" + TRIGGER_VAR_REPLACE + ",Player(i),\"XT87Contents\",false)" + JASS_DELIM +
+//							"        set i=i+1" + JASS_DELIM +
+//							"    endloop");
 			// endregion
 		}
 		// endregion
 		// endregion
+		addTriggerConfiguration("SyncWorkersOrd",
+				"    local unit u=GetOrderedUnit()" + JASS_DELIM +
+						"if GetIssuedOrderId()!=OrderId(\"stop\") and IsUnitInGroup(u," + ARCHON_PREFIX + "UNT) then" + JASS_DELIM +
+						"call IssueImmediateOrder(u,\"stop\")" + JASS_DELIM +
+						END_IF,
+				"local integer i=1",
+				loopOverPlayers("i",
+						"call TriggerRegisterPlayerUnitEvent(" + TRIGGER_VAR_REPLACE + ",Player(" + PLAYER_ID_ARRAY + "[i]),EVENT_PLAYER_UNIT_ISSUED_ORDER,null)" + JASS_DELIM +
+								"call TriggerRegisterPlayerUnitEvent(" + TRIGGER_VAR_REPLACE + ",Player(" + PLAYER_ID_ARRAY + "[i]),EVENT_PLAYER_UNIT_ISSUED_POINT_ORDER,null)" + JASS_DELIM +
+								"call TriggerRegisterPlayerUnitEvent(" + TRIGGER_VAR_REPLACE + ",Player(" + PLAYER_ID_ARRAY + "[i]),EVENT_PLAYER_UNIT_ISSUED_TARGET_ORDER,null)"));
 		addFunctionConfiguration("SyncWorkersFlt", null, "boolean",
 				"local unit u=GetFilterUnit()" + JASS_DELIM +
 						"return IsUnitType(u,UNIT_TYPE_PEON)and GetUnitCurrentOrder(u)==0");
@@ -285,6 +296,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"call BlzSetUnitAttackCooldown(u,0,1)",
 						"call SetUnitPropWindow(u,0)",
 						"call BlzSetUnitMaxMana(u,0)",
+						"call SetUnitPosition(u,-99999,-99999)",
 						"set j=j+1",
 						"endloop",
 						END_IF,
@@ -1050,7 +1062,7 @@ public class CoopRewriter extends ScriptRewriter {
 						"    return 0.000",
 						END_FUNCTION);
 			append(sb, "function " + ARCHON_PREFIX + "WriteString takes string cn,string title,string v,string fK returns nothing",
-					"local string p=\"XT87CampaignSplitter\\\\\"+cn+\"\\\\\"+title+\".pld\"",
+					"local string p=\"" + cacheDataFilePath + "\\\\\"+cn+\"\\\\\"+title+\".pld\"",
 					"    call " + FILE_IO_PREFIX + "Write(p,v+\"\\n\"+" + ARCHON_PREFIX + "IS62(StringHash(v+\"|\"+p+\"|\"+fK)))",
 					END_FUNCTION);
 			// remove last line
@@ -1072,7 +1084,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"    local string content",
 					"    local string char",
 					"    local string buffer=\"\"",
-					"local string p=\"XT87CampaignSplitter\\\\\"+cn+\"\\\\\"+title+\".pld\"",
+					"local string p=\"" + cacheDataFilePath + "\\\\\"+cn+\"\\\\\"+title+\".pld\"",
 					"    local unit u",
 					"    loop",
 					"        exitwhen not " + ARCHON_PREFIX + "RdLock",
@@ -1144,38 +1156,38 @@ public class CoopRewriter extends ScriptRewriter {
 //					"    endloop",
 					END_FUNCTION);
 
-			append(sb, "function " + ARCHON_PREFIX + "RdWt takes boolean b returns nothing",
-					"if b then",
-					"set " + ARCHON_PREFIX + "RdWait=" + ARCHON_PREFIX + "RdWait+1",
-					"if not " + ARCHON_PREFIX + "CIP then",
-					"set " + ARCHON_PREFIX + "CIP=true",
-					//XT87Utils.fadeCall(true),
-					"if not " + ARCHON_PREFIX + "GIP then",
-					"call " + ARCHON_PREFIX + "PauseGame(true)",
-					END_IF,
-					END_IF,
-//					"loop",
-//					"exitwhen not XT87ASRdWaitLock",
-//					"call TriggerSleepAction(0.01)",
-//					"endloop",
-//					"set " + ARCHON_PREFIX + "RdWaitLock=true",
+//			append(sb, "function " + ARCHON_PREFIX + "RdWt takes boolean b returns nothing",
+//					"if b then",
 //					"set " + ARCHON_PREFIX + "RdWait=" + ARCHON_PREFIX + "RdWait+1",
-//					"set " + ARCHON_PREFIX + "RdWaitLock=false",
-					"else",
-//					"loop",
-//					"exitwhen not XT87ASRdWaitLock",
-//					"call TriggerSleepAction(0.01)",
-//					"endloop",
-//					"set " + ARCHON_PREFIX + "RdWaitLock=true",
-					"set " + ARCHON_PREFIX + "RdWait=" + ARCHON_PREFIX + "RdWait-1",
-//					"set " + ARCHON_PREFIX + "RdWaitLock=false",
-					"if " + ARCHON_PREFIX + "RdWait==0 and " + ARCHON_PREFIX + "CIP then",
-					"set " + ARCHON_PREFIX + "CIP=false",
-					//XT87Utils.fadeCall(false),
-					"call " + ARCHON_PREFIX + "PauseGame(false)",
-					END_IF,
-					END_IF,
-					END_FUNCTION);
+//					"if not " + ARCHON_PREFIX + "CIP then",
+//					"set " + ARCHON_PREFIX + "CIP=true",
+//					//XT87Utils.fadeCall(true),
+//					"if not " + ARCHON_PREFIX + "GIP then",
+//					"call " + ARCHON_PREFIX + "PauseGame(true)",
+//					END_IF,
+//					END_IF,
+////					"loop",
+////					"exitwhen not XT87ASRdWaitLock",
+////					"call TriggerSleepAction(0.01)",
+////					"endloop",
+////					"set " + ARCHON_PREFIX + "RdWaitLock=true",
+////					"set " + ARCHON_PREFIX + "RdWait=" + ARCHON_PREFIX + "RdWait+1",
+////					"set " + ARCHON_PREFIX + "RdWaitLock=false",
+//					"else",
+////					"loop",
+////					"exitwhen not XT87ASRdWaitLock",
+////					"call TriggerSleepAction(0.01)",
+////					"endloop",
+////					"set " + ARCHON_PREFIX + "RdWaitLock=true",
+//					"set " + ARCHON_PREFIX + "RdWait=" + ARCHON_PREFIX + "RdWait-1",
+////					"set " + ARCHON_PREFIX + "RdWaitLock=false",
+//					"if " + ARCHON_PREFIX + "RdWait==0 and " + ARCHON_PREFIX + "CIP then",
+//					"set " + ARCHON_PREFIX + "CIP=false",
+//					//XT87Utils.fadeCall(false),
+//					"call " + ARCHON_PREFIX + "PauseGame(false)",
+//					END_IF,
+//					END_IF,
+//					END_FUNCTION);
 			for (Triple<String, String, String> o : Arrays.asList(
 					new Triple<>("Integer", getConversionFunc(ConversionFunctionType.STRING_TO_INT), "0"),
 					new Triple<>("Real", getConversionFunc(ConversionFunctionType.STRING_TO_REAL), "0"),
@@ -1186,54 +1198,54 @@ public class CoopRewriter extends ScriptRewriter {
 						"local " + type + " v",
 						"local string cn=" + getCacheNameFunc("q"),
 						"local string t=m+\"\\\\\"+k",
-						"call " + ARCHON_PREFIX + "RdWt(true)",
+						//		"call " + ARCHON_PREFIX + "RdWt(true)",
 						"set v=" + o.b + "(" + ARCHON_PREFIX + "GetContent(cn,t,fK))",
 						"call Store" + o.a + "(q,m,k,v)",
-						"call " + ARCHON_PREFIX + "SyncS()" + JASS_DELIM +
-						"call SyncStored" + o.a + "(q,m,k)",
-						"call " + ARCHON_PREFIX + "SyncR()" + JASS_DELIM +
-						"call " + ARCHON_PREFIX + "RdWt(false)",
+//						"call " + ARCHON_PREFIX + "SyncS()" + JASS_DELIM +
+//						"call SyncStored" + o.a + "(q,m,k)",
+//						"call " + ARCHON_PREFIX + "SyncR()" + JASS_DELIM +
+						//			"call " + ARCHON_PREFIX + "RdWt(false)",
 						"return v",
 						END_FUNCTION);
 			}
-			append(sb, "function " + ARCHON_PREFIX + "ReadStringP takes nothing returns nothing",
-					"local player p=GetEnumPlayer()",
-					"if " + ARCHON_PREFIX + "PP==null and GetPlayerSlotState(p)==PLAYER_SLOT_STATE_PLAYING then",
-					"set " + ARCHON_PREFIX + "PP=p",
-					END_IF,
-					END_FUNCTION);
+//			append(sb, "function " + ARCHON_PREFIX + "ReadStringP takes nothing returns nothing",
+//					"local player p=GetEnumPlayer()",
+//					"if " + ARCHON_PREFIX + "PP==null and GetPlayerSlotState(p)==PLAYER_SLOT_STATE_PLAYING then",
+//					"set " + ARCHON_PREFIX + "PP=p",
+//					END_IF,
+//					END_FUNCTION);
 			append(sb, "function " + ARCHON_PREFIX + "ReadString takes gamecache q,string m,string k,string fK returns string",
 					"local string s",
 					"local string cn=" + getCacheNameFunc("q"),
 					"local string t=m+\"\\\\\"+k",
 					"local player p=null",
-					"set " + ARCHON_PREFIX + "PP=null",
-					"call ForForce(" + ARCHON_PREFIX + "Force,function " + ARCHON_PREFIX + "ReadStringP)",
-					"set p=" + ARCHON_PREFIX + "PP",
-					"if p==null then",
-					"return null",
-					"endif",
-					"call " + ARCHON_PREFIX + "RdWt(true)",
-					"set " + ARCHON_PREFIX + "ContentRead=false",
-					"if GetLocalPlayer()==p then",
+					//"set " + ARCHON_PREFIX + "PP=null",
+					//"call ForForce(" + ARCHON_PREFIX + "Force,function " + ARCHON_PREFIX + "ReadStringP)",
+					//"set p=" + ARCHON_PREFIX + "PP",
+					//"if p==null then",
+					//"return null",
+					//"endif",
+					//	"call " + ARCHON_PREFIX + "RdWt(true)",
+					//"set " + ARCHON_PREFIX + "ContentRead=false",
+//					"if GetLocalPlayer()==p then",
 					"set s=" + ARCHON_PREFIX + "S62S(" + ARCHON_PREFIX + "GetContent(cn,t,fK))",
 					"if s==null then",
 					"set s=\"\"",
 					END_IF,
-					"call BlzSendSyncData(\"XT87Contents\",s)",
-					END_IF,
-					"loop",
-					"exitwhen " + ARCHON_PREFIX + "ContentRead",
-					"call TriggerSleepAction(0.01)",
-					"endloop",
+//					"call BlzSendSyncData(\"XT87Contents\",s)",
+//					END_IF,
+//					"loop",
+//					"exitwhen " + ARCHON_PREFIX + "ContentRead",
+//					"call TriggerSleepAction(0.01)",
+//					"endloop",
 					//"set XT87ReadLinesLock=false",
 					//"set XT87ReadLinesWaiting=XT87ReadLinesWaiting-1",
 //					"if XT87ReadLinesWaiting==0 and " + ARCHON_PREFIX + "CIP then",
 //					"set " + ARCHON_PREFIX + "CIP=false",
 //					"call " + ARCHON_PREFIX + "PauseGame(false)",
 //					END_IF,
-					"set s=" + ARCHON_PREFIX + "Content",
-					"call " + ARCHON_PREFIX + "RdWt(false)",
+//					"set s=" + ARCHON_PREFIX + "Content",
+//					"call " + ARCHON_PREFIX + "RdWt(false)",
 					"return s",
 					END_FUNCTION);
 			// endregion
@@ -1758,7 +1770,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"    local string bf=\"\"", // buffer
 					DebugOnly("call BJDebugMsg(\"RestoreUnit \"+cn+\"|\"+m+\"|\"+k+\" > \"+GetStoredString(q,m2,\"" + CACHE_STRING_PREFIX + "\"+k))" + JASS_DELIM) +
 							"set v[0]=GetStoredInteger(q,m2," + constSuffix(0) + ")",
-					"call " + ARCHON_PREFIX + "RdWt(true)",
+					//"call " + ARCHON_PREFIX + "RdWt(true)",
 					"if v[0]==0 then",
 					"set r=true",
 					"set ct=" + ARCHON_PREFIX + "GetContent(cn,t," + FLUSH_KEY_CODE + ")",
@@ -1794,16 +1806,16 @@ public class CoopRewriter extends ScriptRewriter {
 					END_IF); // content
 			append(sb, "call StoreInteger(q,m2," + constSuffix(0) + ",v[0])",
 					"call StoreInteger(q,m2," + constSuffix(1) + ",j)",
-					"call " + ARCHON_PREFIX + "SyncS()" + JASS_DELIM +
-					"call SyncStoredInteger(q,m2," + constSuffix(0) + ")",
-					"call SyncStoredInteger(q,m2," + constSuffix(1) + ")",
-					"call " + ARCHON_PREFIX + "SyncR()" + JASS_DELIM +
+//					"call " + ARCHON_PREFIX + "SyncS()" + JASS_DELIM +
+//					"call SyncStoredInteger(q,m2," + constSuffix(0) + ")",
+//					"call SyncStoredInteger(q,m2," + constSuffix(1) + ")",
+//					"call " + ARCHON_PREFIX + "SyncR()" + JASS_DELIM +
 					// len is now vector length
 					"set v[0]=GetStoredInteger(q,m2," + constSuffix(0) + ")",
 					"set v[1]=GetStoredInteger(q,m2," + constSuffix(1) + ")",
 					END_IF,
 					"if v[0]==0 then",
-					"call " + ARCHON_PREFIX + "RdWt(false)",
+					//"call " + ARCHON_PREFIX + "RdWt(false)",
 					"return null",
 					"endif", // no id
 					"if r then",
@@ -1813,16 +1825,16 @@ public class CoopRewriter extends ScriptRewriter {
 					"call StoreInteger(q,m2," + varSuffix("i") + ",v[i])",
 					"set i=i+1",
 					"endloop",
-					"call StoreReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ",vr)",
-					"call " + ARCHON_PREFIX + "SyncS()");
-			append(sb, "set i=2",
-					"loop", // loop i = 2, i <= len
-					"exitwhen i>=v[1]",
-					"call SyncStoredInteger(q,m2," + varSuffix("i") + ")",
-					"set i=i+1",
-					"endloop",
-					"call SyncStoredReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ")",
-					"call " + ARCHON_PREFIX + "SyncR()");
+					"call StoreReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ",vr)");
+//			append(sb, "call " + ARCHON_PREFIX + "SyncS()",
+//					"set i=2",
+//					"loop", // loop i = 2, i <= len
+//					"exitwhen i>=v[1]",
+//					"call SyncStoredInteger(q,m2," + varSuffix("i") + ")",
+//					"set i=i+1",
+//					"endloop",
+//					"call SyncStoredReal(q,m2," + constSuffix(CACHE_ARMOR_INDEX) + ")",
+//					"call " + ARCHON_PREFIX + "SyncR()");
 			append(sb, END_IF); // endif read
 			append(sb, "set u=CreateUnit(p,v[0],x,y,f)");
 			append(sb, "if IsHeroUnitId(v[0]) then",
@@ -1904,7 +1916,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"endloop",
 //					"call SetUnitOwner(u,p,true)",
 //					"call ShowUnit(u,true)",
-					"call " + ARCHON_PREFIX + "RdWt(false)",
+					//"call " + ARCHON_PREFIX + "RdWt(false)",
 					"return u",
 					END_FUNCTION);
 			// endregion
@@ -2593,8 +2605,8 @@ public class CoopRewriter extends ScriptRewriter {
 					"boolean " + ARCHON_PREFIX + "DIP=false", // dialog is pausing
 					"boolean " + ARCHON_PREFIX + "LUP=false", // load unpauses
 					"boolean " + ARCHON_PREFIX + "LRD=false", // load reloads
-					"boolean " + ARCHON_PREFIX + "CIP=false", // cache is pausing
-					"player " + ARCHON_PREFIX + "PP=null", // read string picked player
+					//"boolean " + ARCHON_PREFIX + "CIP=false", // cache is pausing
+					//"player " + ARCHON_PREFIX + "PP=null", // read string picked player
 					"group " + ARCHON_PREFIX + "UNT=CreateGroup()" // untouchable archon units
 					//"gamespeed " + ARCHON_PREFIX + "RGS=MAP_SPEED_NORMAL" // real game speed
 			);
