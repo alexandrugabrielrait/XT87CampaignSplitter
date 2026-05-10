@@ -573,6 +573,19 @@ public class CoopRewriter extends ScriptRewriter {
 						"call ForGroup(g,function SetPlayerColorBJEnum)" + JASS_DELIM +
 						"call DestroyGroup(g)" + JASS_DELIM +
 						END_IF);
+		addFunctionConfiguration("SetMapFlag", "mapflag m,boolean b", null,
+				"if m==MAP_RELOADED then",
+				"set " + ARCHON_PREFIX + "LRD=b",
+				END_IF,
+				"call SetMapFlag(m,b)");
+		addFunctionConfiguration("IsMapFlagSet", "mapflag m", "boolean",
+				"if m==MAP_RELOADED then",
+				"return " + ARCHON_PREFIX + "LRD",
+				END_IF,
+				"return IsMapFlagSet(m)");
+		addFunctionConfiguration("ResetLRD", null, null,
+				"set " + ARCHON_PREFIX + "LRD=false",
+				"call DestroyTimer(GetExpiredTimer())");
 	}
 
 	public static String getNewPath(String oldPath) {
@@ -1333,7 +1346,8 @@ public class CoopRewriter extends ScriptRewriter {
 			// region GameCache functions
 			// region game cache basics natives
 			append(sb, "function " + ARCHON_PREFIX + "InitGameCache takes string f returns gamecache",
-					"    local gamecache q=InitGameCache(\"xt87\"+f)",
+					"    local gamecache q=InitGameCache(\"xt87\"+I2S(" + ARCHON_PREFIX + "GCC)+f)",
+					"set " + ARCHON_PREFIX + "GCC=" + ARCHON_PREFIX + "GCC+1",
 					DebugOnly("call BJDebugMsg(\"InitGameCache \"+f)" + JASS_DELIM) +
 							"    call StoreString(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ",f)",
 //		todo replace first mission key CACHE_CAMPAIGNFILE_KEY with CACHE_CAMPAIGN_MKEY
@@ -1716,7 +1730,9 @@ public class CoopRewriter extends ScriptRewriter {
 					END_FUNCTION);
 			append(sb, "function " + ARCHON_PREFIX + "FlushGameCache takes gamecache q returns nothing",
 					// todo add entry to hashtable that tells it to overwrite file upon saving
+					"local string f=GetStoredString(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ")",
 					"call FlushGameCache(q)",
+					"call StoreString(q," + getCommonHashFunc(CACHE_CAMPAIGN_MKEY) + "," + getCommonHashFunc(CACHE_CAMPAIGNFILE_KEY) + ",f)",
 					END_FUNCTION);
 			append(sb, "function " + ARCHON_PREFIX + "FlushStoredMission takes gamecache q,string m returns nothing",
 					"local string m2=\"" + CACHE_MISSION_PREFIX + "\"+m",
@@ -2044,11 +2060,10 @@ public class CoopRewriter extends ScriptRewriter {
 		// endregion
 		// region game is loaded
 		append(sb, "function t_" + ARCHON_PREFIX + "GIL_Ac takes nothing returns nothing",
-				bCall("SetMapFlag", "MAP_RELOADED," + ARCHON_PREFIX + "LRD"),
-				bSet(ARCHON_PREFIX + "LRD", "false"),
 				bIf(ARCHON_PREFIX + "LUP",
-						bSet(ARCHON_PREFIX + "LUP", "false"),
-						bCall(ARCHON_PREFIX + "PauseGame", "false")),
+						bSet(ARCHON_PREFIX + "LUP", "false") + JASS_DELIM +
+								bCall(ARCHON_PREFIX + "PauseGame", "false")),
+				"call TimerStart(CreateTimer(),0.5,false,function " + ARCHON_PREFIX + "ResetLRD)",
 				END_FUNCTION,
 				"function it_" + ARCHON_PREFIX + "GIL takes nothing returns nothing",
 				"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "GIL=CreateTrigger()",
@@ -2405,7 +2420,9 @@ public class CoopRewriter extends ScriptRewriter {
 				"GetCameraTargetPositionY",
 				"SelectHeroSkill",
 				"SetPlayerColor",
-				"SetPlayerColorBJ"
+				"SetPlayerColorBJ",
+				"SetMapFlag",
+				"IsMapFlagSet"
 		))
 			for (String prefix : Arrays.asList("(", " ", ",", "="))
 				for (String suffix : Arrays.asList("(", " ")) {
@@ -2601,6 +2618,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PLG", // player left game
 					"boolean " + ARCHON_PREFIX + "GIP=false", // game is paused
 					"integer " + ARCHON_PREFIX + "GCS=0", // game cache is saving (count)
+					"integer " + ARCHON_PREFIX + "GCC=0", // game cache init counter
 					"boolean " + ARCHON_PREFIX + "TDS=false", // time of day suspended
 					"boolean " + ARCHON_PREFIX + "DIP=false", // dialog is pausing
 					"boolean " + ARCHON_PREFIX + "LUP=false", // load unpauses
