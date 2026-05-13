@@ -50,6 +50,7 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final String ABILITY_ARRAY = ARCHON_PREFIX + "AbilityArray";
 	private static final String ABILITY_ARRAY_SIZE = ABILITY_ARRAY + "SIZE";
 	private static final String SYNC_FUNC_NAME = "SyncX";
+	public static final String KEEP_LINE = "//" +  ARCHON_PREFIX + "KL";
 
 	private static final int FILE_LIBRARY_ABILITY_COUNT = 10;
 	private static final int FILE_LIBRARY_PRELOAD_LIMIT = 200;
@@ -169,7 +170,6 @@ public class CoopRewriter extends ScriptRewriter {
 	public W3I.Player mainPlayer;
 	public List<W3I.Player> secondaryPlayers;
 	public List<Integer> allPlayerNumbers;
-	public List<String> dialogNames;
 	public Map<String, Integer> cacheFieldMap;
 	public int campaignKeyOffset;
 	public boolean selectionArrows;
@@ -185,7 +185,6 @@ public class CoopRewriter extends ScriptRewriter {
 		allPlayerNumbers = new ArrayList<>(1 + secondaryPlayers.size());
 		allPlayerNumbers.add(mainPlayer.getNum());
 		secondaryPlayers.forEach(x -> allPlayerNumbers.add(x.getNum()));
-		dialogNames = new ArrayList<>();
 		cacheDataFilePath = "Xetanth87CampaignSplitter\\\\" + mi.cs.campFile.getName();
 
 		// region trigger config
@@ -508,24 +507,20 @@ public class CoopRewriter extends ScriptRewriter {
 		addFunctionConfiguration("SyncR", null, null,
 				"call TriggerSyncReady()",
 				"set " + ARCHON_PREFIX + "ScWait=" + ARCHON_PREFIX + "ScWait-1");
-		for (String t : Arrays.asList(
-				"Integer",
-				"Real",
-				"Boolean"
-		)) {
-			String type = t.toLowerCase(Locale.ROOT);
-			addFunctionConfiguration(SYNC_FUNC_NAME + t, type + " v, string t", type,
-					"local string c=\"sync\"" + JASS_DELIM +
-							"call Store" + t + "(" + SYNC_CACHE + ",c,t,v)" + JASS_DELIM +
-							"call " + ARCHON_PREFIX + "SyncS()" + JASS_DELIM +
-							"call SyncStored" + t + "(" + SYNC_CACHE + ",c,t)" + JASS_DELIM +
-							"call " + ARCHON_PREFIX + "SyncR()" + JASS_DELIM +
-							"return GetStored" + t + "(" + SYNC_CACHE + ",c,t)");
-		}
-		addFunctionConfiguration("GetCameraTargetPositionX", null, "real",
-				"return " + ARCHON_PREFIX + SYNC_FUNC_NAME + "Real(GetCameraTargetPositionX(),\"cam_x\")");
-		addFunctionConfiguration("GetCameraTargetPositionY", null, "real",
-				"return " + ARCHON_PREFIX + SYNC_FUNC_NAME + "Real(GetCameraTargetPositionY(),\"cam_y\")");
+//		for (String t : Arrays.asList(
+//				"Integer",
+//				"Real",
+//				"Boolean"
+//		)) {
+//			String type = t.toLowerCase(Locale.ROOT);
+//			addFunctionConfiguration(SYNC_FUNC_NAME + t, type + " v, string t", type,
+//					"local string c=\"sync\"" + JASS_DELIM +
+//							"call Store" + t + "(" + SYNC_CACHE + ",c,t,v)" + JASS_DELIM +
+//							"call " + ARCHON_PREFIX + "SyncS()" + JASS_DELIM +
+//							"call SyncStored" + t + "(" + SYNC_CACHE + ",c,t)" + JASS_DELIM +
+//							"call " + ARCHON_PREFIX + "SyncR()" + JASS_DELIM +
+//							"return GetStored" + t + "(" + SYNC_CACHE + ",c,t)");
+//		}
 		addFunctionConfiguration("SelectHeroSkill", "unit u,integer a", null,
 				"local integer i=GetUnitAbilityLevel(u,a)" + JASS_DELIM +
 						"call SelectHeroSkill(u,a)" + JASS_DELIM +
@@ -586,6 +581,10 @@ public class CoopRewriter extends ScriptRewriter {
 		addFunctionConfiguration("ResetLRD", null, null,
 				"set " + ARCHON_PREFIX + "LRD=false",
 				"call DestroyTimer(GetExpiredTimer())");
+		addFunctionConfiguration("DialogCreate", null, "dialog",
+				"local dialog d=DialogCreate()",
+				"call TriggerRegisterDialogEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DS,d)",
+				"return d");
 	}
 
 	public static String getNewPath(String oldPath) {
@@ -2293,10 +2292,7 @@ public class CoopRewriter extends ScriptRewriter {
 				"set " + ARCHON_PREFIX + "DIP=false",
 				END_IF,
 				END_FUNCTION,
-				"function it_" + ARCHON_PREFIX + "DS takes nothing returns nothing",
-				"set " + TRIGGER_PREFIX + ARCHON_PREFIX + "DS=CreateTrigger()");
-		for (String dialogName : dialogNames)
-			append(sb, "    call TriggerRegisterDialogEvent(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DS," + dialogName + ")");
+				"function it_" + ARCHON_PREFIX + "DS takes nothing returns nothing");
 		append(sb, "    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "DS,function t_" + ARCHON_PREFIX + "DS_Ac)",
 				END_FUNCTION);
 		// endregion
@@ -2366,69 +2362,74 @@ public class CoopRewriter extends ScriptRewriter {
 		line = line.replace("bj_FORCE_PLAYER[" + mainPlayer.getNum() + "]", FORCE_NAME);
 		line = line.replace("call SetSoundDuration(", "//call SetSoundDuration(");
 
-		// region replace specific calls
-		for (String function : Arrays.asList(
-				"GetLocalPlayer",
-				"GetTriggerPlayer",
-				"GetForceOfPlayer",
-				//"CreateSound",
-				"DialogDisplay",
-				"DialogDisplayBJ",
-				"DialogAddButton",
-				"DialogAddQuitButton",
-				"DialogAddButtonBJ",
-				"DialogAddButtonWithHotkeyBJ",
-				"ClearSelection",
-				"SelectUnitSingle",
-				//"SelectGroupBJ",
-				"ClearSelectionForPlayer",
-				"EnableUserControl",
-				"SetUserControlForceOn",
-				"SetUserControlForceOff",
-				"CinematicModeExBJ",
-				"CinematicModeBJ",
-				"PauseGame",
-				"PauseGameOn",
-				"PauseGameOff",
-				"SuspendTimeOfDay",
-				"UseTimeOfDayBJ",
-				"PauseCompAI",
-				"PauseAllUnitsBJ",
-				"CreateTimer",
-				"CreateTimerBJ",
+		if (line.contains(KEEP_LINE))
+		{
+			line = line.replace(KEEP_LINE, "");
+		}
+		else {
+			// region replace specific calls
+			for (String function : Arrays.asList(
+					"GetLocalPlayer",
+					"GetTriggerPlayer",
+					"GetForceOfPlayer",
+					//"CreateSound",
+					"DialogDisplay",
+					"DialogDisplayBJ",
+					"DialogAddButton",
+					"DialogAddQuitButton",
+					"DialogAddButtonBJ",
+					"DialogAddButtonWithHotkeyBJ",
+					"ClearSelection",
+					"SelectUnitSingle",
+					//"SelectGroupBJ",
+					"ClearSelectionForPlayer",
+					"EnableUserControl",
+					"SetUserControlForceOn",
+					"SetUserControlForceOff",
+					"CinematicModeExBJ",
+					"CinematicModeBJ",
+					"PauseGame",
+					"PauseGameOn",
+					"PauseGameOff",
+					"SuspendTimeOfDay",
+					"UseTimeOfDayBJ",
+					"PauseCompAI",
+					"PauseAllUnitsBJ",
+					"CreateTimer",
+					"CreateTimerBJ",
 //				"DestroyTimer",
 //				"DestroyTimerBJ",
-				"TimerStart",
-				"StartTimerBJ",
-				"TimerGetElapsed",
-				"TimerGetRemaining",
-				"TimerGetTimeout",
-				"PauseTimer",
-				"ResumeTimer",
-				"PauseTimerBJ",
-				"SetReservedLocalHeroButtons",
-				"ChangeLevel",
-				"LoadGame",
-				"SaveGame",
-				"LoadGameBJ",
-				"SaveAndChangeLevelBJ",
-				"SaveAndLoadGameBJ",
-				"CopySaveGame",
-				"SaveGameExists",
-				"CopySaveGameBJ",
-				"GetCameraTargetPositionX",
-				"GetCameraTargetPositionY",
-				"SelectHeroSkill",
-				"SetPlayerColor",
-				"SetPlayerColorBJ",
-				"SetMapFlag",
-				"IsMapFlagSet"
-		))
-			for (String prefix : Arrays.asList("(", " ", ",", "="))
-				for (String suffix : Arrays.asList("(", " ")) {
-					String call = function + suffix;
-					line = line.replace(prefix + call, prefix + ARCHON_PREFIX + call);
-				}
+					"TimerStart",
+					"StartTimerBJ",
+					"TimerGetElapsed",
+					"TimerGetRemaining",
+					"TimerGetTimeout",
+					"PauseTimer",
+					"ResumeTimer",
+					"PauseTimerBJ",
+					"SetReservedLocalHeroButtons",
+					"ChangeLevel",
+					"LoadGame",
+					"SaveGame",
+					"LoadGameBJ",
+					"SaveAndChangeLevelBJ",
+					"SaveAndLoadGameBJ",
+					"CopySaveGame",
+					"SaveGameExists",
+					"CopySaveGameBJ",
+					"SelectHeroSkill",
+					"SetPlayerColor",
+					"SetPlayerColorBJ",
+					"SetMapFlag",
+					"IsMapFlagSet",
+					"DialogCreate"
+			))
+				for (String prefix : Arrays.asList("(", " ", ",", "="))
+					for (String suffix : Arrays.asList("(", " ")) {
+						String call = function + suffix;
+						line = line.replace(prefix + call, prefix + ARCHON_PREFIX + call);
+					}
+		}
 		// endregion
 
 		if (WITH_CUSTOM_GAMECACHE) {
@@ -2524,22 +2525,17 @@ public class CoopRewriter extends ScriptRewriter {
 		}
 
 		// variable declarations
-		{
-			boolean local = false;
-			String trimmedLine = line.trim();
-			if (trimmedLine.startsWith(LOCAL_DECLARATION)) {
-				local = true;
-				trimmedLine = trimmedLine.substring(LOCAL_DECLARATION.length()).trim();
-			}
-			String declaredObject = trimmedLine.substring(trimmedLine.indexOf(' ') + 1).trim();
-			if (declaredObject.contains("="))
-				declaredObject = declaredObject.substring(0, declaredObject.indexOf('=')).trim();
-				// todo replace this with a function that works with dialog arrays
-			else if (trimmedLine.startsWith(DIALOG_DECLARATION)) {
-				if (!local)
-					dialogNames.add(declaredObject);
-			}
-		}
+//		{
+//			boolean local = false;
+//			String trimmedLine = line.trim();
+//			if (trimmedLine.startsWith(LOCAL_DECLARATION)) {
+//				local = true;
+//				trimmedLine = trimmedLine.substring(LOCAL_DECLARATION.length()).trim();
+//			}
+//			String declaredObject = trimmedLine.substring(trimmedLine.indexOf(' ') + 1).trim();
+//			if (declaredObject.contains("="))
+//				declaredObject = declaredObject.substring(0, declaredObject.indexOf('=')).trim();
+//		}
 
 		boolean appendLine = true;
 
@@ -2613,7 +2609,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select",
 					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "BF", // Building Food selection
 					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP", // Building Food periodic
-					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DS", // Dialog Sync
+					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DS=CreateTrigger()", // Dialog Sync
 					"boolean " + ARCHON_PREFIX + "AlliesMenuAvail=false",
 					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PLG", // player left game
 					"boolean " + ARCHON_PREFIX + "GIP=false", // game is paused
