@@ -92,17 +92,24 @@ public class SplitterFrame extends JFrame {
 		return panel;
 	}
 
-	private static void addTooltips(String labelTag, JLabel label, JComponent component) {
+	private static void addTooltip(String labelTag, JComponent component) {
 		String tooltipText = getLocalizedString(labelTag + "_tooltip");
-		label.setToolTipText(tooltipText);
 		component.setToolTipText(tooltipText);
 	}
 
-	private static JLabel addLabelAndComponent(JPanel panel, String labelTag, JComponent component) {
-		JLabel label = new JLabel(getLocalizedString(labelTag));
-		panel.add(label);
+	private static String addLabelAndComponent(JPanel panel, String labelTag, JComponent component) {
+		String label = getLocalizedString(labelTag);
+		if (label != null) {
+			if (component instanceof AbstractButton) {
+				AbstractButton abstractButton = (AbstractButton) component;
+				abstractButton.setText(label);
+				//abstractButton.setHorizontalTextPosition(-1);
+			} else {
+				panel.add(new JLabel(label));
+			}
+		}
 		panel.add(component);
-		addTooltips(labelTag, label, component);
+		addTooltip(labelTag, component);
 		return label;
 	}
 
@@ -158,14 +165,14 @@ public class SplitterFrame extends JFrame {
 		upkeepRemovalCheck.setSelected(false);
 
 		panel = createPanel(optionsPanel);
-		addLabelAndComponent(panel, "archon_mode_dropdown", archonModeAddedSlotsDropdown);
+		addLabelAndComponent(panel, null, archonModeAddedSlotsDropdown);
 		for (int i = 0; i < 24; i++)
 			archonModeAddedSlotsDropdown.addItem(new ArchonModeAddedSlotsVariant(i));
 		archonModeAddedSlotsDropdown.addItemListener(e -> {
 			enableDisableArchonModeFields();
 		});
-		JLabel toDownloadFolderLabel = addLabelAndComponent(panel, "to_download_folder_check", toDownloadFolderCheck);
-		JLabel archonArrowLabel = addLabelAndComponent(panel, "archon_arrow_check", archonsArrowCheck);
+		String toDownloadFolderLabelText = addLabelAndComponent(panel, "to_download_folder_check", toDownloadFolderCheck);
+		addLabelAndComponent(panel, "archon_arrow_check", archonsArrowCheck);
 		enableDisableArchonModeFields();
 
 		openButton.addActionListener(this::openAction);
@@ -259,9 +266,9 @@ public class SplitterFrame extends JFrame {
 			languagePanel.add(languageDropdown);
 			panel2.add(languagePanel);
 			
-//			JPanel darkModePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-//			darkModePanel.add(darkModeCheckBox);
-//			panel2.add(darkModePanel);
+			JPanel darkModePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			darkModePanel.add(darkModeCheckBox);
+			panel2.add(darkModePanel);
 
 			int result = JOptionPane.showConfirmDialog(null, panel2, getLocalizedString("menu_item_preferences"),
 					JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -328,7 +335,7 @@ public class SplitterFrame extends JFrame {
 				JOptionPane.showMessageDialog(null,
 						getLocalizedString("help_text_splitter").formatted(openButton.getText(), splitButton.getText()) +
 								"\n\n" +
-								getLocalizedString("help_text_archon_mode").formatted(toDownloadFolderLabel.getText(), toDownloadFolderLabel.getText()),
+								getLocalizedString("help_text_archon_mode").formatted(toDownloadFolderLabelText, toDownloadFolderLabelText),
 						APP_TITLE + " - " + getLocalizedString("menu_item_help"), JOptionPane.QUESTION_MESSAGE))
 		);
 		menu.add(menuItem);
