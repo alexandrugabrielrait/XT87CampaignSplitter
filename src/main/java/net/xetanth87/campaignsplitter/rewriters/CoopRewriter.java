@@ -20,11 +20,9 @@ import static net.xetanth87.campaignsplitter.util.BlockUtils.bFunc;
 import static net.xetanth87.campaignsplitter.util.BlockUtils.bIf;
 import static net.xetanth87.campaignsplitter.util.BlockUtils.bNot;
 import static net.xetanth87.campaignsplitter.util.BlockUtils.bSet;
-import static net.xetanth87.campaignsplitter.util.XT87Utils.DIALOG_DECLARATION;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.END_FUNCTION;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.END_IF;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.JASS_DELIM;
-import static net.xetanth87.campaignsplitter.util.XT87Utils.LOCAL_DECLARATION;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.STRING_PREFIX;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_PREFIX;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_VAR_REPLACE;
@@ -40,7 +38,6 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final String FORCE_NAME = ARCHON_PREFIX + "Force";
 	private static final String TEMP_POINT_NAME = ARCHON_PREFIX + "TempPoint";
 	private static final String ENFORCE_ARCHON = ARCHON_PREFIX + "EnforceArchon";
-	//private static final String LAST_CREATED_COOP_CACHE = ARCHON_PREFIX + "_lastCreatedGameCache";
 	private static final String PLAYER_ID_ARRAY = ARCHON_PREFIX + "IDA";
 	private static final String PLAYER_INDEX_ARRAY = ARCHON_PREFIX + "PIA";
 	private static final String AUX_PLAYER = ARCHON_PREFIX + "AXP";
@@ -49,8 +46,7 @@ public class CoopRewriter extends ScriptRewriter {
 	private static final String SELECTION_HASHTABLE = ARCHON_PREFIX + "FXT";
 	private static final String ABILITY_ARRAY = ARCHON_PREFIX + "AbilityArray";
 	private static final String ABILITY_ARRAY_SIZE = ABILITY_ARRAY + "SIZE";
-	private static final String SYNC_FUNC_NAME = "SyncX";
-	public static final String KEEP_LINE = "//" +  ARCHON_PREFIX + "KL";
+	public static final String KEEP_LINE = "//" + ARCHON_PREFIX + "KL";
 
 	private static final int FILE_LIBRARY_ABILITY_COUNT = 10;
 	private static final int FILE_LIBRARY_PRELOAD_LIMIT = 200;
@@ -880,38 +876,42 @@ public class CoopRewriter extends ScriptRewriter {
 					END_FUNCTION);
 			// endregion
 			// region selection functions
-			append(sb, "function " + ARCHON_PREFIX + "ShowSelection takes boolean b returns nothing",
-					"local integer c",
-					"local integer i",
-					"local integer j=0",
-					"local real a=0",
-					"if b then",
-					"set a=1",
-					END_IF,
-					DebugOnly("call BJDebugMsg(\"ShowSelection \"+R2S(a))" + JASS_DELIM) +
-							loopOverPlayers("j",
-									"set c=LoadInteger(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],0)" + JASS_DELIM +
-											"set i=1",
-									"loop",
-									"exitwhen i>c",
-									"call BlzSetSpecialEffectScale(LoadEffectHandle(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],i),a)",
-									"set i=i+1",
-									"endloop" + JASS_DELIM),
-					END_FUNCTION);
-			append(sb, "function " + ARCHON_PREFIX + "ClearSelection takes nothing returns nothing",
-					"local integer c",
-					"local integer i",
-					"local integer j=0",
-					loopOverPlayers("j",
-							"set c=LoadInteger(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],0)",
-							"set i=1",
-							"loop",
-							"exitwhen i>c",
-							"call DestroyEffect(LoadEffectHandle(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],i))",
-							"set i=i+1",
-							"endloop",
-							"call SaveInteger(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],0,0)"),
-					"call ClearSelection()",
+			if (selectionArrows) {
+				append(sb, "function " + ARCHON_PREFIX + "ShowSelection takes boolean b returns nothing",
+						"local integer c",
+						"local integer i",
+						"local integer j=0",
+						"local real a=0",
+						"if b then",
+						"set a=1",
+						END_IF,
+						DebugOnly("call BJDebugMsg(\"ShowSelection \"+R2S(a))" + JASS_DELIM) +
+								loopOverPlayers("j",
+										"set c=LoadInteger(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],0)" + JASS_DELIM +
+												"set i=1",
+										"loop",
+										"exitwhen i>c",
+										"call BlzSetSpecialEffectScale(LoadEffectHandle(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],i),a)",
+										"set i=i+1",
+										"endloop" + JASS_DELIM),
+						END_FUNCTION);
+			}
+			append(sb, "function " + ARCHON_PREFIX + "ClearSelection takes nothing returns nothing");
+			if (selectionArrows) {
+				append(sb, "local integer c",
+						"local integer i",
+						"local integer j=0",
+						loopOverPlayers("j",
+								"set c=LoadInteger(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],0)",
+								"set i=1",
+								"loop",
+								"exitwhen i>c",
+								"call DestroyEffect(LoadEffectHandle(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],i))",
+								"set i=i+1",
+								"endloop",
+								"call SaveInteger(" + SELECTION_HASHTABLE + "," + PLAYER_ID_ARRAY + "[j],0,0)"));
+			}
+			append(sb, "call ClearSelection()",
 					END_FUNCTION);
 			append(sb, "function " + ARCHON_PREFIX + "SelectUnitSingle takes unit u returns nothing",
 					"call " + ARCHON_PREFIX + "ClearSelection()",
@@ -927,7 +927,7 @@ public class CoopRewriter extends ScriptRewriter {
 					END_IF,
 					END_FUNCTION);
 			append(sb, "function " + ARCHON_PREFIX + "EnableUserControl takes boolean b returns nothing",
-					"call " + ARCHON_PREFIX + "ShowSelection(b)",
+					(selectionArrows ? ("call " + ARCHON_PREFIX + "ShowSelection(b)" + JASS_DELIM) : "") +
 					"call EnableUserControl(b)",
 					END_FUNCTION);
 			append(sb, "function " + ARCHON_PREFIX + "SetUserControlForceOn takes force f returns nothing",
@@ -941,9 +941,9 @@ public class CoopRewriter extends ScriptRewriter {
 					END_IF,
 					END_FUNCTION);
 			append(sb, "function " + ARCHON_PREFIX + "CinematicModeExBJ takes boolean b,force f,real t returns nothing",
-					"if IsPlayerInForce(" + toMainPlayerFunc() + ",f) then",
-					"call " + ARCHON_PREFIX + "ShowSelection(not b)",
-					END_IF,
+					(selectionArrows ? "if IsPlayerInForce(" + toMainPlayerFunc() + ",f) then" + JASS_DELIM +
+					"call " + ARCHON_PREFIX + "ShowSelection(not b)" + JASS_DELIM +
+					END_IF + JASS_DELIM : "") +
 					"call CinematicModeExBJ(b,f,t)",
 					END_FUNCTION);
 			append(sb, "function " + ARCHON_PREFIX + "CinematicModeBJ takes boolean b,force f returns nothing",
@@ -2094,55 +2094,57 @@ public class CoopRewriter extends ScriptRewriter {
 				"    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "UnitShare,function t_" + ARCHON_PREFIX + "UnitShare_Ac)",
 				END_FUNCTION);
 		// endregion
-		// region selection effects
-		append(sb, "function " + ARCHON_PREFIX + "OnSelect takes nothing returns nothing",
-				"local integer p=GetPlayerId(" + AUX_PLAYER + ")",
-				"local integer c=LoadInteger(" + SELECTION_HASHTABLE + ",p,0)+1",
-				"local effect f=AddSpecialEffectTarget(\"" + XT87Utils.PATH_PREFIX + "\\\\" + SELECTION_INDICATOR_PATH + ".mdx\",GetEnumUnit(),\"overhead\")",
-				"local real a=1",
-				"if bj_cineModeAlreadyIn then",
-				"set a=0",
-				END_IF,
-				"call BlzSetSpecialEffectColorByPlayer(f,Player(p))",
-				"call BlzSetSpecialEffectScale(f,a)",
-				"call SaveEffectHandle(" + SELECTION_HASHTABLE + ",p,c,f)",
-				"call SaveInteger(" + SELECTION_HASHTABLE + ",p,0,c)",
-				END_FUNCTION);
-		append(sb, "function t_" + ARCHON_PREFIX + "Select_Ac takes nothing returns nothing",
-				"local integer i=0",
-				"local integer p=GetPlayerId(GetTriggerPlayer())",
-				// selection count
-				"local integer c",
-				// stop bool
-				"local boolean b=LoadBoolean(" + SELECTION_HASHTABLE + ",p,0)",
-				"local group g",
-				"if b then",
-				"return",
-				END_IF,
-				"call SaveBoolean(" + SELECTION_HASHTABLE + ",p,0,true)",
-				"call TriggerSleepAction(0.01)",
-				"set c=LoadInteger(" + SELECTION_HASHTABLE + ",p,0)",
-				"loop",
-				"exitwhen i>c",
-				"set i=i+1",
-				"call DestroyEffect(LoadEffectHandle(" + SELECTION_HASHTABLE + ",p,i))",
-				"endloop",
-				"call SaveInteger(" + SELECTION_HASHTABLE + ",p,0,0)",
-				"set g=CreateGroup()",
-				"set " + AUX_PLAYER + "=GetTriggerPlayer()",
-				"call GroupEnumUnitsSelected(g," + AUX_PLAYER + ",null)",
-				"call ForGroup(g,function " + ARCHON_PREFIX + "OnSelect)",
-				"call DestroyGroup(g)",
-				"call SaveBoolean(" + SELECTION_HASHTABLE + ",p,0,false)",
-				END_FUNCTION,
-				"function it_" + ARCHON_PREFIX + "Select takes nothing returns nothing",
-				"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select=CreateTrigger()");
-		for (int playerNumber : allPlayerNumbers)
-			for (String selectBool : Arrays.asList("false", "true"))
-				append(sb, "    call TriggerRegisterPlayerSelectionEventBJ(" + TRIGGER_PREFIX + ARCHON_PREFIX + "Select," + toPlayerFunc(playerNumber) + "," + selectBool + ")");
-		append(sb, "    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "Select, function t_" + ARCHON_PREFIX + "Select_Ac)",
-				END_FUNCTION);
-		// endregion
+		if (selectionArrows) {
+			// region selection effects
+			append(sb, "function " + ARCHON_PREFIX + "OnSelect takes nothing returns nothing",
+					"local integer p=GetPlayerId(" + AUX_PLAYER + ")",
+					"local integer c=LoadInteger(" + SELECTION_HASHTABLE + ",p,0)+1",
+					"local effect f=AddSpecialEffectTarget(\"" + XT87Utils.PATH_PREFIX + "\\\\" + SELECTION_INDICATOR_PATH + ".mdx\",GetEnumUnit(),\"overhead\")",
+					"local real a=1",
+					"if bj_cineModeAlreadyIn then",
+					"set a=0",
+					END_IF,
+					"call BlzSetSpecialEffectColorByPlayer(f,Player(p))",
+					"call BlzSetSpecialEffectScale(f,a)",
+					"call SaveEffectHandle(" + SELECTION_HASHTABLE + ",p,c,f)",
+					"call SaveInteger(" + SELECTION_HASHTABLE + ",p,0,c)",
+					END_FUNCTION);
+			append(sb, "function t_" + ARCHON_PREFIX + "Select_Ac takes nothing returns nothing",
+					"local integer i=0",
+					"local integer p=GetPlayerId(GetTriggerPlayer())",
+					// selection count
+					"local integer c",
+					// stop bool
+					"local boolean b=LoadBoolean(" + SELECTION_HASHTABLE + ",p,0)",
+					"local group g",
+					"if b then",
+					"return",
+					END_IF,
+					"call SaveBoolean(" + SELECTION_HASHTABLE + ",p,0,true)",
+					"call TriggerSleepAction(0.01)",
+					"set c=LoadInteger(" + SELECTION_HASHTABLE + ",p,0)",
+					"loop",
+					"exitwhen i>c",
+					"set i=i+1",
+					"call DestroyEffect(LoadEffectHandle(" + SELECTION_HASHTABLE + ",p,i))",
+					"endloop",
+					"call SaveInteger(" + SELECTION_HASHTABLE + ",p,0,0)",
+					"set g=CreateGroup()",
+					"set " + AUX_PLAYER + "=GetTriggerPlayer()",
+					"call GroupEnumUnitsSelected(g," + AUX_PLAYER + ",null)",
+					"call ForGroup(g,function " + ARCHON_PREFIX + "OnSelect)",
+					"call DestroyGroup(g)",
+					"call SaveBoolean(" + SELECTION_HASHTABLE + ",p,0,false)",
+					END_FUNCTION,
+					"function it_" + ARCHON_PREFIX + "Select takes nothing returns nothing",
+					"    set " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select=CreateTrigger()");
+			for (int playerNumber : allPlayerNumbers)
+				for (String selectBool : Arrays.asList("false", "true"))
+					append(sb, "    call TriggerRegisterPlayerSelectionEventBJ(" + TRIGGER_PREFIX + ARCHON_PREFIX + "Select," + toPlayerFunc(playerNumber) + "," + selectBool + ")");
+			append(sb, "    call TriggerAddAction(" + TRIGGER_PREFIX + ARCHON_PREFIX + "Select, function t_" + ARCHON_PREFIX + "Select_Ac)",
+					END_FUNCTION);
+			// endregion
+		}
 		// region show food on allied buildings
 		append(sb, "function t_" + ARCHON_PREFIX + "BFP_Ac takes nothing returns nothing",
 				//"local integer f=" + ARCHON_PREFIX + "LBF[GetPlayerId(GetLocalPlayer())]",
@@ -2310,8 +2312,11 @@ public class CoopRewriter extends ScriptRewriter {
 		//if (line.contains(END_FUNCTION)) {
 		for (String resourceName : getAllResourceNames())
 			append(sb, "call it_" + ARCHON_PREFIX + resourceName + "Sync()");
-		for (String triggerName : Arrays.asList("UnitShare", "Select", "PLG")) //, "Deselect", "DeselectOnDeath"))
+		for (String triggerName : Arrays.asList("UnitShare", "PLG")) //, "Deselect", "DeselectOnDeath"))
 			append(sb, "call it_" + ARCHON_PREFIX + triggerName + "()");
+		if (selectionArrows) {
+			append(sb, "call it_" + ARCHON_PREFIX + "Select()");
+		}
 		for (String triggerName : Arrays.asList("BF", "BFP"))
 			append(sb, "call it_" + ARCHON_PREFIX + triggerName + "()");
 		append(sb, bCall("it_" + ARCHON_PREFIX + "GIL"));
@@ -2362,11 +2367,9 @@ public class CoopRewriter extends ScriptRewriter {
 		line = line.replace("bj_FORCE_PLAYER[" + mainPlayer.getNum() + "]", FORCE_NAME);
 		line = line.replace("call SetSoundDuration(", "//call SetSoundDuration(");
 
-		if (line.contains(KEEP_LINE))
-		{
+		if (line.contains(KEEP_LINE)) {
 			line = line.replace(KEEP_LINE, "");
-		}
-		else {
+		} else {
 			// region replace specific calls
 			for (String function : Arrays.asList(
 					"GetLocalPlayer",
@@ -2604,9 +2607,7 @@ public class CoopRewriter extends ScriptRewriter {
 					"integer array " + PLAYER_INDEX_ARRAY,
 					"player " + AUX_PLAYER,
 					"hashtable " + GENERAL_HASHTABLE + "=InitHashtable()",
-					"hashtable " + SELECTION_HASHTABLE + "=InitHashtable()",
 					"gamecache " + SYNC_CACHE + "=InitGameCache(\"" + SYNC_CACHE + "\")",
-					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select",
 					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "BF", // Building Food selection
 					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "BFP", // Building Food periodic
 					"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "DS=CreateTrigger()", // Dialog Sync
@@ -2624,6 +2625,13 @@ public class CoopRewriter extends ScriptRewriter {
 					"group " + ARCHON_PREFIX + "UNT=CreateGroup()" // untouchable archon units
 					//"gamespeed " + ARCHON_PREFIX + "RGS=MAP_SPEED_NORMAL" // real game speed
 			);
+
+			if (selectionArrows)
+			{
+				append(sb,"trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "Select",
+						"hashtable " + SELECTION_HASHTABLE + "=InitHashtable()");
+			}
+
 			append(sb, "trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "GIL");
 			if (WITH_PAUSE_COMMAND)
 				append(sb, "trigger " + TRIGGER_PREFIX + ARCHON_PREFIX + "PauseTest");

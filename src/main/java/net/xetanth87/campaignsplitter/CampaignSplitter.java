@@ -193,8 +193,8 @@ public class CampaignSplitter {
 		}
 
 		List<Pair<ImportsMerger.AssetListType, String>> listTypes = new ArrayList<>();
-		if (archonModeAddedSlots > 0)
-			listTypes.add(new Pair<>(ImportsMerger.AssetListType.ARCHON, "Archon Mode"));
+		if (archonModeAddedSlots > 0 && archonArrows)
+			listTypes.add(new Pair<>(ImportsMerger.AssetListType.ARCHON_ARROWS, "Archon Arrows"));
 		if (withLegacyAssetsSD)
 			listTypes.add(new Pair<>(ImportsMerger.AssetListType.SD, "SD Legacy"));
 		if (withLegacyAssetsHD)
