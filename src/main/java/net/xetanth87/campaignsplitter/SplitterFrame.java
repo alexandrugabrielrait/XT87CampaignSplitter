@@ -103,9 +103,10 @@ public class SplitterFrame extends JFrame {
 			if (component instanceof AbstractButton) {
 				AbstractButton abstractButton = (AbstractButton) component;
 				abstractButton.setText(label);
-				//abstractButton.setHorizontalTextPosition(-1);
 			} else {
-				panel.add(new JLabel(label));
+				JLabel labelComponent = new JLabel(label);
+				panel.add(labelComponent);
+				addTooltip(labelTag, labelComponent);
 			}
 		}
 		panel.add(component);
