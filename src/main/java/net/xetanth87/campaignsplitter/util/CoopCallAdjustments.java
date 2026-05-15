@@ -72,6 +72,7 @@ public class CoopCallAdjustments {
 //		addCallParameters("TriggerRegisterPlayerAllianceChange", Arrays.asList(0, 1));
 //		addCallParameters("TriggerRegisterPlayerStateEvent", 0);
 		addCallParameters("TriggerRegisterPlayerChatEvent", 1);
+		addCallParameters("BlzTriggerRegisterPlayerSyncEvent", 1);
 		addCallParameters("IsUnitSelected", 0).setBool();
 		addCallParameters("UnitShareVision", 1);
 		addCallParameters("SetPlayerState", 0);

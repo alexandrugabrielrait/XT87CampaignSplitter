@@ -1,5 +1,8 @@
 package net.xetanth87.campaignsplitter;
 
+import net.xetanth87.campaignsplitter.ui.AppTheme;
+import net.xetanth87.campaignsplitter.ui.AppThemeHandler;
+import net.xetanth87.campaignsplitter.ui.SplitterLanguage;
 import net.xetanth87.campaignsplitter.util.XT87Utils;
 
 import javax.swing.*;
@@ -45,13 +48,16 @@ public class SplitterFrame extends JFrame {
 	private final JCheckBox legacyAssetsHDCheck = new JCheckBox();
 	private final JCheckBox upkeepRemovalCheck = new JCheckBox();
 	private final JCheckBox toDownloadFolderCheck = new JCheckBox();
-	private final JComboBox<ArchonModeAddedSlotsVariant> archonModeAddedSlotsDropdown = new JComboBox<>();
-	private final List<? extends JComponent> componentList = Arrays.asList(openButton, campaignPreviewCheck, nextLevelCheck, legacyAssetsSDCheck, legacyAssetsHDCheck, upkeepRemovalCheck, toDownloadFolderCheck);
+	private final JCheckBox archonsArrowCheck = new JCheckBox();
+	private final JComboBox<ArchonModeAddedSlotsOption> archonModeAddedSlotsDropdown = new JComboBox<>();
+	private final List<? extends JComponent> componentList
+			= Arrays.asList(openButton, campaignPreviewCheck, nextLevelCheck, legacyAssetsSDCheck, legacyAssetsHDCheck,
+			upkeepRemovalCheck, toDownloadFolderCheck, archonsArrowCheck);
 
-	private static class ArchonModeAddedSlotsVariant {
+	private static class ArchonModeAddedSlotsOption {
 		private final int value;
 
-		private ArchonModeAddedSlotsVariant(int value) {
+		private ArchonModeAddedSlotsOption(int value) {
 			this.value = value;
 		}
 
@@ -66,10 +72,10 @@ public class SplitterFrame extends JFrame {
 		}
 	}
 
-	private static class LanguageVariant {
+	private static class LanguageOption {
 		private final SplitterLanguage language;
 
-		private LanguageVariant(SplitterLanguage language) {
+		private LanguageOption(SplitterLanguage language) {
 			this.language = language;
 		}
 
@@ -82,6 +88,22 @@ public class SplitterFrame extends JFrame {
 		}
 	}
 
+	private static class ThemeOption {
+		private final AppTheme theme;
+
+		private ThemeOption(AppTheme theme) {
+			this.theme = theme;
+		}
+
+		public AppTheme getValue() {
+			return theme;
+		}
+
+		public String toString() {
+			return theme.getDisplayName();
+		}
+	}
+
 	private static JPanel createPanel(Container parent) {
 		JPanel panel = new JPanel();
 		parent.add(panel);
@@ -89,18 +111,31 @@ public class SplitterFrame extends JFrame {
 		return panel;
 	}
 
-	private static void addTooltips(String labelTag, JLabel label, JComponent component) {
+	private static void addTooltip(String labelTag, JComponent component) {
 		String tooltipText = getLocalizedString(labelTag + "_tooltip");
-		label.setToolTipText(tooltipText);
 		component.setToolTipText(tooltipText);
 	}
 
-	private static JLabel addLabelAndComponent(JPanel panel, String labelTag, JComponent component) {
-		JLabel label = new JLabel(getLocalizedString(labelTag));
-		panel.add(label);
+	private static String addLabelAndComponent(JPanel panel, String labelTag, JComponent component) {
+		String label = getLocalizedString(labelTag);
+		if (label != null) {
+			if (component instanceof AbstractButton) {
+				AbstractButton abstractButton = (AbstractButton) component;
+				abstractButton.setText(label);
+			} else {
+				JLabel labelComponent = new JLabel(label);
+				panel.add(labelComponent);
+				addTooltip(labelTag, labelComponent);
+			}
+			addTooltip(labelTag, component);
+		}
 		panel.add(component);
-		addTooltips(labelTag, label, component);
 		return label;
+	}
+
+	private static void addComponentAndToolip(JPanel panel, JComponent component, String tooltipTag) {
+		panel.add(component);
+		component.setToolTipText(getLocalizedString(tooltipTag));
 	}
 
 	public SplitterFrame() {
@@ -108,10 +143,10 @@ public class SplitterFrame extends JFrame {
 		setSize(700, 700);
 		setResizable(false);
 		setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-		setLayout(new FlowLayout());
+		setLayout(new BorderLayout());
 
 		JPanel optionsPanel = new JPanel(new GridLayout(0, 1));
-		add(optionsPanel);
+		add(optionsPanel, BorderLayout.NORTH);
 
 		JPanel panel = new JPanel();
 		optionsPanel.add(panel);
@@ -155,18 +190,20 @@ public class SplitterFrame extends JFrame {
 		upkeepRemovalCheck.setSelected(false);
 
 		panel = createPanel(optionsPanel);
-		addLabelAndComponent(panel, "archon_mode_dropdown", archonModeAddedSlotsDropdown);
+		addComponentAndToolip(panel, archonModeAddedSlotsDropdown, "archon_mode_dropdown_tooltip");
 		for (int i = 0; i < 24; i++)
-			archonModeAddedSlotsDropdown.addItem(new ArchonModeAddedSlotsVariant(i));
+			archonModeAddedSlotsDropdown.addItem(new ArchonModeAddedSlotsOption(i));
 		archonModeAddedSlotsDropdown.addItemListener(e -> {
-			enableDisableToDownloadFolderCheck();
+			enableDisableArchonModeFields();
 		});
-		JLabel toDownloadFolderLabel = addLabelAndComponent(panel, "to_download_folder_check", toDownloadFolderCheck);
-		enableDisableToDownloadFolderCheck();
+
+		String toDownloadFolderLabelText = addLabelAndComponent(panel, "to_download_folder_check", toDownloadFolderCheck);
+		addLabelAndComponent(panel, "archon_arrow_check", archonsArrowCheck);
+		enableDisableArchonModeFields();
 
 		openButton.addActionListener(this::openAction);
 		splitButton.addActionListener(this::splitAction);
-		panel = createPanel(this);
+		panel = createPanel(optionsPanel);
 		panel.add(filePathField);
 		panel.add(openButton);
 		openButton.setFocusPainted(false);
@@ -177,20 +214,17 @@ public class SplitterFrame extends JFrame {
 		splitButton.setFocusable(false);
 		splitButton.setBackground(Color.ORANGE);
 
-		panel = new JPanel();
-		add(panel);
+		panel = createPanel(optionsPanel);
+		//add(panel, BorderLayout.NORTH);
 		bar = new JProgressBar();
 		bar.setValue(0);
 		bar.setMaximum(100);
 		bar.setStringPainted(true);
 		panel.add(bar);
 
-		panel = new JPanel();
-		add(panel);
 		taskOutput = new JTextArea(20, 80);
-		taskOutput.setMargin(new Insets(5, 5, 5, 5));
 		taskOutput.setEditable(false);
-		panel.add(new JScrollPane(taskOutput), BorderLayout.CENTER);
+		add(new JScrollPane(taskOutput), BorderLayout.CENTER);
 
 		bar.setPreferredSize(new Dimension((int) (0.95f * getWidth()), bar.getPreferredSize().height));
 
@@ -234,28 +268,56 @@ public class SplitterFrame extends JFrame {
 		{
 			if (running)
 				return;
-			JComboBox<LanguageVariant> languageDropdown = new JComboBox<>();
+			JComboBox<LanguageOption> languageDropdown = new JComboBox<>();
 			Arrays.stream(SplitterLanguage.values()).forEach(x ->
 			{
-				LanguageVariant variant = new LanguageVariant(x);
-				languageDropdown.addItem(variant);
+				LanguageOption option = new LanguageOption(x);
+				languageDropdown.addItem(option);
 				if (x == SplitterLanguage.selectedLanguage)
-					languageDropdown.setSelectedItem(variant);
+					languageDropdown.setSelectedItem(option);
+			});
+
+			JComboBox<ThemeOption> themeDropdown = new JComboBox<>();
+			Arrays.stream(AppTheme.values()).forEach(x ->
+			{
+				ThemeOption option = new ThemeOption(x);
+				themeDropdown.addItem(option);
+				if (x == AppThemeHandler.selectedTheme)
+					themeDropdown.setSelectedItem(option);
 			});
 
 			JPanel panel2 = new JPanel();
-			panel2.add(new JLabel(getLocalizedString("pref_language_dropdown")));
-			panel2.add(languageDropdown);
+			panel2.setLayout(new BoxLayout(panel2, BoxLayout.Y_AXIS));
+
+			JPanel languagePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			languagePanel.add(new JLabel(getLocalizedString("pref_language_dropdown")));
+			languagePanel.add(languageDropdown);
+			panel2.add(languagePanel);
+
+			JPanel themePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			themePanel.add(new JLabel(getLocalizedString("pref_theme_dropdown")));
+			themePanel.add(themeDropdown);
+			panel2.add(themePanel);
 
 			int result = JOptionPane.showConfirmDialog(null, panel2, getLocalizedString("menu_item_preferences"),
 					JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
 			if (result == JOptionPane.OK_OPTION) {
-				SplitterLanguage selectedLanguage = ((LanguageVariant) Objects.requireNonNull(languageDropdown.getSelectedItem())).language;
+				SplitterLanguage selectedLanguage = ((LanguageOption) Objects.requireNonNull(languageDropdown.getSelectedItem())).language;
 				SplitterLanguage.selectedLanguage = selectedLanguage;
-				JOptionPane.showMessageDialog(null, getLocalizedString("pref_language_selected_message").formatted(selectedLanguage.getDisplayName()),
+
+				AppTheme selectedTheme = ((ThemeOption) Objects.requireNonNull(themeDropdown.getSelectedItem())).theme;
+				AppThemeHandler.selectedTheme = selectedTheme;
+
+				StringBuilder message = new StringBuilder();
+				message.append(getLocalizedString("pref_language_selected_message").formatted(selectedLanguage.getDisplayName()));
+				message.append("\n");
+				message.append(getLocalizedString("pref_theme_selected_message").formatted(selectedTheme.getDisplayName()));
+
+				JOptionPane.showMessageDialog(null, message.toString(),
 						getLocalizedString("pref_saved_title"), JOptionPane.INFORMATION_MESSAGE);
 				SplitterLanguage.saveLanguage(selectedLanguage);
+				AppThemeHandler.saveStyle(selectedTheme);
 				dispose();
 				startFrame();
 			}
@@ -288,6 +350,7 @@ public class SplitterFrame extends JFrame {
 			upkeepRemovalCheck.setSelected(false);
 			archonModeAddedSlotsDropdown.setSelectedIndex(0);
 			toDownloadFolderCheck.setSelected(false);
+			toDownloadFolderCheck.setSelected(false);
 		});
 		menu.add(menuItem);
 
@@ -300,7 +363,7 @@ public class SplitterFrame extends JFrame {
 				JOptionPane.showMessageDialog(null,
 						getLocalizedString("help_text_splitter").formatted(openButton.getText(), splitButton.getText()) +
 								"\n\n" +
-								getLocalizedString("help_text_archon_mode").formatted(toDownloadFolderLabel.getText(), toDownloadFolderLabel.getText()),
+								getLocalizedString("help_text_archon_mode").formatted(toDownloadFolderLabelText, toDownloadFolderLabelText),
 						APP_TITLE + " - " + getLocalizedString("menu_item_help"), JOptionPane.QUESTION_MESSAGE))
 		);
 		menu.add(menuItem);
@@ -346,7 +409,9 @@ public class SplitterFrame extends JFrame {
 	public void openAction(ActionEvent e, String overridePath) {
 		if (running)
 			return;
+		AppThemeHandler.applySystemMode();
 		JFileChooser c = new JFileChooser();
+		SwingUtilities.updateComponentTreeUI(c);
 		try {
 			File directory;
 			if (overridePath == null) {
@@ -375,6 +440,7 @@ public class SplitterFrame extends JFrame {
 		}
 		if (rVal == JFileChooser.CANCEL_OPTION) {
 		}
+		AppThemeHandler.applyPreference();
 	}
 
 	public void openAction(ActionEvent e) {
@@ -489,15 +555,18 @@ public class SplitterFrame extends JFrame {
 	}
 
 	private int getArchonModeAddedSlotsVariant() {
-		return ((ArchonModeAddedSlotsVariant) Objects.requireNonNull(archonModeAddedSlotsDropdown.getSelectedItem())).getValue();
+		return ((ArchonModeAddedSlotsOption) Objects.requireNonNull(archonModeAddedSlotsDropdown.getSelectedItem())).getValue();
 	}
 
-	private void enableDisableToDownloadFolderCheck() {
-		if (getArchonModeAddedSlotsVariant() > 0)
+	private void enableDisableArchonModeFields() {
+		if (getArchonModeAddedSlotsVariant() > 0) {
 			toDownloadFolderCheck.setEnabled(!running);
-		else {
+			archonsArrowCheck.setEnabled(!running);
+		} else {
 			toDownloadFolderCheck.setEnabled(false);
 			toDownloadFolderCheck.setSelected(false);
+			archonsArrowCheck.setEnabled(false);
+			archonsArrowCheck.setSelected(true);
 		}
 	}
 
@@ -520,6 +589,7 @@ public class SplitterFrame extends JFrame {
 				cs.withLegacyAssetsHD = legacyAssetsHDCheck.isSelected();
 				cs.archonModeAddedSlots = getArchonModeAddedSlotsVariant();
 				cs.toDownloadFolder = toDownloadFolderCheck.isSelected() && cs.archonModeAddedSlots > 0;
+				cs.archonArrows = archonsArrowCheck.isSelected() && cs.archonModeAddedSlots > 0;
 				cs.splitCampaign();
 				String timeSpan = formatDuration(Duration.between(startTime, Instant.now()));
 				JOptionPane.showMessageDialog(null, getLocalizedString("message_campaign_split_success").formatted(file.getName()) + " (" + timeSpan + ")", APP_TITLE + " - " + getLocalizedString("title_success"), JOptionPane.INFORMATION_MESSAGE);
@@ -570,6 +640,8 @@ public class SplitterFrame extends JFrame {
 
 	private static void startFrame() {
 		SplitterLanguage.loadLanguage();
+		AppThemeHandler.loadTheme();
+		AppThemeHandler.applyPreference();
 		SplitterFrame frame = new SplitterFrame();
 		PrintStream origOut = System.out;
 		PrintStream areaOut = new AreaPrintStream(origOut, frame, "");
@@ -582,7 +654,6 @@ public class SplitterFrame extends JFrame {
 	public static void main(String[] args) {
 		try {
 			ToolTipManager.sharedInstance().setDismissDelay(Integer.MAX_VALUE);
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}

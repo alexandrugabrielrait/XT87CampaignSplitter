@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Scanner;
 
 import static net.xetanth87.campaignsplitter.util.XT87Utils.END_FUNCTION;
+import static net.xetanth87.campaignsplitter.util.XT87Utils.END_IF;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.JASS_DELIM;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_PREFIX;
 import static net.xetanth87.campaignsplitter.util.XT87Utils.TRIGGER_VAR_REPLACE;
@@ -26,7 +27,7 @@ public class CheatsRewriter extends ScriptRewriter {
 		PauseVar = rewriterPrefix + "P";
 		FogVar = rewriterPrefix + "F";
 
-		var checkCheatMode = "if not " + CheatModeVar + " then" + JASS_DELIM + "return" + JASS_DELIM + "endif";
+		var checkCheatMode = "if not " + CheatModeVar + " then" + JASS_DELIM + "return" + JASS_DELIM + END_IF;
 
 		addFunctionConfiguration("M", "string s", "nothing",
 				"call DisplayTextToPlayer(GetLocalPlayer(),0,0,s)"); // message
@@ -47,9 +48,9 @@ public class CheatsRewriter extends ScriptRewriter {
 		addTriggerConfiguration("P", // pause
 				checkCheatMode + JASS_DELIM +
 						"set " + PauseVar + "=not " + PauseVar + JASS_DELIM +
-						"call " + rewriterPrefix + "E(" + PauseVar + ")",
-				"call PauseGame(" + PauseVar + ")" + JASS_DELIM +
-						"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xp\",true)");
+						"call " + rewriterPrefix + "E(" + PauseVar + ")" + JASS_DELIM +
+						"call PauseGame(" + PauseVar + ")",
+				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xp\",true)");
 		addTriggerConfiguration("I", // iseedeadpeople
 				checkCheatMode + JASS_DELIM +
 						"call " + rewriterPrefix + "E(" + FogVar + ")" + JASS_DELIM +
@@ -74,21 +75,106 @@ public class CheatsRewriter extends ScriptRewriter {
 		addTriggerConfiguration("W", // whosyourdaddy
 				"local boolean b=not IsTriggerEnabled(" + TRIGGER_PREFIX + rewriterPrefix + "WE)" + JASS_DELIM +
 						checkCheatMode + JASS_DELIM +
-						"call " + rewriterPrefix + "E(" + FogVar + ")" + JASS_DELIM +
+						"call " + rewriterPrefix + "E(b)" + JASS_DELIM +
 						"if b then" + JASS_DELIM +
 						"call EnableTrigger(" + TRIGGER_PREFIX + rewriterPrefix + "WE)" + JASS_DELIM +
 						"else" + JASS_DELIM +
 						"call DisableTrigger(" + TRIGGER_PREFIX + rewriterPrefix + "WE)" + JASS_DELIM +
-						"endif",
+						END_IF,
 				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xw\",true)");
-		addTriggerConfiguration("GG", // greed gold
+		addTriggerConfiguration("GG", // set gold
+				"local string s=GetEventPlayerChatString()" + JASS_DELIM +
+						"local integer i=1000" + JASS_DELIM +
 						checkCheatMode + JASS_DELIM +
-						"call AdjustPlayerStateSimpleBJ(" + toMainPlayerFunc() + ",PLAYER_STATE_RESOURCE_GOLD,1000)",
-				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xg\",true)");
-		addTriggerConfiguration("GL", // greed lumber
+						"if StringLength(s)>4 then" + JASS_DELIM +
+						"set s=SubString(s,4,StringLength(s))" + JASS_DELIM +
+						"set i=S2I(s)" + JASS_DELIM +
+						"endif" + JASS_DELIM +
+						"if i==0 then" + JASS_DELIM +
+						"call SetPlayerState(" + toMainPlayerFunc() + ",PLAYER_STATE_RESOURCE_GOLD,0)" + JASS_DELIM +
+						"else" + JASS_DELIM +
+						"call AdjustPlayerStateSimpleBJ(" + toMainPlayerFunc() + ",PLAYER_STATE_RESOURCE_GOLD,i)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"call " + rewriterPrefix + "E(true)",
+				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xg \",false)"
+		);
+		addTriggerConfiguration("GL", // set lumber
+				"local string s=GetEventPlayerChatString()" + JASS_DELIM +
+						"local integer i=1000" + JASS_DELIM +
 						checkCheatMode + JASS_DELIM +
-						"call AdjustPlayerStateSimpleBJ(" + toMainPlayerFunc() + ",PLAYER_STATE_RESOURCE_LUMBER,1000)",
-				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xl\",true)");
+						"if StringLength(s)>4 then" + JASS_DELIM +
+						"set s=SubString(s,4,StringLength(s))" + JASS_DELIM +
+						"set i=S2I(s)" + JASS_DELIM +
+						"endif" + JASS_DELIM +
+						"if i==0 then" + JASS_DELIM +
+						"call SetPlayerState(" + toMainPlayerFunc() + ",PLAYER_STATE_RESOURCE_LUMBER,0)" + JASS_DELIM +
+						"else" + JASS_DELIM +
+						"call AdjustPlayerStateSimpleBJ(" + toMainPlayerFunc() + ",PLAYER_STATE_RESOURCE_LUMBER,i)" + JASS_DELIM +
+						END_IF + JASS_DELIM +
+						"call " + rewriterPrefix + "E(true)",
+				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xl \",false)"
+		);
+		addTriggerConfiguration("BS", // blink sync
+				"local string s=BlzGetTriggerSyncData()" + JASS_DELIM +
+						"local integer i=0" + JASS_DELIM +
+						"local real x" + JASS_DELIM +
+						"local real y" + JASS_DELIM +
+						"local group g=CreateGroup()" + JASS_DELIM +
+						"local unit u" + JASS_DELIM +
+						"loop" + JASS_DELIM +
+						"exitwhen SubString(s,i,i+1)==\"|\"" + JASS_DELIM +
+						"set i=i+1" + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						"set x=S2R(SubString(s,0,i))" + JASS_DELIM +
+						"set y=S2R(SubString(s,i+1,StringLength(s)))" + JASS_DELIM +
+						"call GroupEnumUnitsSelected(g,GetTriggerPlayer(),null)" + CoopRewriter.KEEP_LINE + JASS_DELIM +
+						"loop" + JASS_DELIM +
+						"set u=FirstOfGroup(g)" + JASS_DELIM +
+						"exitwhen u==null" + JASS_DELIM +
+						"call GroupRemoveUnit(g,u)" + JASS_DELIM +
+						"call SetUnitPosition(u,x,y)" + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						"call DestroyGroup(g)" + JASS_DELIM +
+						"call " + rewriterPrefix + "E(true)",
+				"call BlzTriggerRegisterPlayerSyncEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"x87blink\",false)");
+		addTriggerConfiguration("B", // blink selected units to camera
+				"local real x" + JASS_DELIM +
+						"local real y" + JASS_DELIM +
+						checkCheatMode + JASS_DELIM +
+						"if GetLocalPlayer()==GetTriggerPlayer() then" + CoopRewriter.KEEP_LINE + JASS_DELIM +
+						"set x=GetCameraTargetPositionX()" + JASS_DELIM +
+						"set y=GetCameraTargetPositionY()" + JASS_DELIM +
+						"call BlzSendSyncData(\"x87blink\",R2S(x)+\"|\"+R2S(y))" + JASS_DELIM +
+						END_IF,
+				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xb\",true)");
+		addTriggerConfiguration("K", // kill unit
+				"local group g" + JASS_DELIM +
+						"local unit u" + JASS_DELIM +
+						checkCheatMode + JASS_DELIM +
+						"set g=CreateGroup()" + JASS_DELIM +
+						"call GroupEnumUnitsSelected(g,GetTriggerPlayer(),null)" + CoopRewriter.KEEP_LINE + JASS_DELIM +
+						"loop" + JASS_DELIM +
+						"set u=FirstOfGroup(g)" + JASS_DELIM +
+						"exitwhen u==null" + JASS_DELIM +
+						"call GroupRemoveUnit(g,u)" + JASS_DELIM +
+						"call KillUnit(u)" + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						"call DestroyGroup(g)",
+				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xk\",true)");
+		addTriggerConfiguration("R", // remove unit
+				"local group g" + JASS_DELIM +
+						"local unit u" + JASS_DELIM +
+						checkCheatMode + JASS_DELIM +
+						"set g=CreateGroup()" + JASS_DELIM +
+						"call GroupEnumUnitsSelected(g,GetTriggerPlayer(),null)" + CoopRewriter.KEEP_LINE + JASS_DELIM +
+						"loop" + JASS_DELIM +
+						"set u=FirstOfGroup(g)" + JASS_DELIM +
+						"exitwhen u==null" + JASS_DELIM +
+						"call GroupRemoveUnit(g,u)" + JASS_DELIM +
+						"call RemoveUnit(u)" + JASS_DELIM +
+						"endloop" + JASS_DELIM +
+						"call DestroyGroup(g)",
+				"call TriggerRegisterPlayerChatEvent(" + TRIGGER_VAR_REPLACE + "," + toMainPlayerFunc() + ",\"-xr\",true)");
 	}
 
 	public String toMainPlayerFunc() {
@@ -101,21 +187,13 @@ public class CheatsRewriter extends ScriptRewriter {
 
 	@Override
 	public void onEnterGlobals(StringBuffer sb) {
-		append("boolean " + CheatModeVar + "=false" + JASS_DELIM +
-				"boolean " + PauseVar + "=false" + JASS_DELIM +
-				"boolean " + FogVar + "=true", sb); // cheat mode
-	}
-
-	@Override
-	public void onExitGlobals(StringBuffer sb) {
-	}
-
-	@Override
-	public void onMainAfterLocals(StringBuffer sb) {
+		append(sb, "boolean " + CheatModeVar + "=false",
+				"boolean " + PauseVar + "=false",
+				"boolean " + FogVar + "=true"); // cheat mode
 	}
 
 	@Override
 	public void onReadLine(String line, StringBuffer sb) {
-		append(line, sb);
+		append(sb, line);
 	}
 }

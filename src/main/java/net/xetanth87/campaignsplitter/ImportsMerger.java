@@ -16,7 +16,7 @@ public class ImportsMerger {
 	private static final String PORTRAIT_SUFFIX = "_portrait";
 	private static final String HD_PREFIX = "_hd.w3mod\\";
 
-	public static List<String> newArchonAssetList() {
+	public static List<String> newArchonArrowsAssetList() {
 		return Stream.of(
 				XT87Utils.PATH_PREFIX + "\\" + CoopRewriter.SELECTION_INDICATOR_PATH + ".mdx"
 		).sorted().collect(Collectors.toList());
@@ -52,7 +52,7 @@ public class ImportsMerger {
 	}
 
 	public enum AssetListType {
-		ARCHON("archon", true),
+		ARCHON_ARROWS("aa", true),
 		SD("sd", true),
 		HD("hd", true);
 
@@ -66,7 +66,7 @@ public class ImportsMerger {
 
 		List<String> newAssetList() {
 			return switch (this) {
-				case ARCHON -> newArchonAssetList();
+				case ARCHON_ARROWS -> newArchonArrowsAssetList();
 				case SD -> newLegacyAssetList(false);
 				case HD -> newLegacyAssetList(true);
 			};

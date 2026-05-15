@@ -1,4 +1,4 @@
-package net.xetanth87.campaignsplitter;
+package net.xetanth87.campaignsplitter.ui;
 
 import net.xetanth87.campaignsplitter.util.XT87Utils;
 

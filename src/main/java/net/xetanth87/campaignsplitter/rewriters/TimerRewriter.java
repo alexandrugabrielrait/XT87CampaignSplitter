@@ -73,14 +73,14 @@ public class TimerRewriter extends ScriptRewriter {
 //			append("call TimerStart(" + ELAPSED_TIMER_PREFIX + elapsedTimeIndices.get(elapsedTime) + "," + elapsedTime + ",false,null)", sb);
 //		for (String periodicTime : periodicTimeIndices.keySet())
 //			append("call TimerStart(" + PERIODIC_TIMER_PREFIX + periodicTimeIndices.get(periodicTime) + "," + periodicTime + ",true,null)", sb);
-		append("timer array " + rewriterPrefix + "ETA" + JASS_DELIM + // Event Timer Array
+		append(sb, "timer array " + rewriterPrefix + "ETA" + JASS_DELIM + // Event Timer Array
 				"integer " + TIMER_PREFIX + "ETL=0" + JASS_DELIM + // Event Timer Array Length
-				"boolean " + TIMER_PREFIX + "TSP=false", sb); // Timers Start Paused
+				"boolean " + TIMER_PREFIX + "TSP=false"); // Timers Start Paused
 	}
 
 	@Override
 	public void onExitGlobals(StringBuffer sb) {
-		append("function " + TIMER_PREFIX + "TriggerRegisterTimerEvent takes trigger t, real r, boolean b returns event" + JASS_DELIM +
+		append(sb, "function " + TIMER_PREFIX + "TriggerRegisterTimerEvent takes trigger t, real r, boolean b returns event" + JASS_DELIM +
 				"local integer i=" + TIMER_PREFIX + "ETL" + JASS_DELIM +
 				"local event e" + JASS_DELIM +
 				"set " + TIMER_PREFIX + "ETL=i+1" + JASS_DELIM +
@@ -88,17 +88,17 @@ public class TimerRewriter extends ScriptRewriter {
 				"set e=TriggerRegisterTimerExpireEvent(t," + TIMER_PREFIX + "ETA[i])" + JASS_DELIM +
 				"call TimerStart(" + TIMER_PREFIX + "ETA[i],r,b,null)" + JASS_DELIM +
 				"return e" + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + TIMER_PREFIX + "TriggerRegisterTimerEventPeriodic takes trigger t, real r returns event" + JASS_DELIM +
+				END_FUNCTION);
+		append(sb, "function " + TIMER_PREFIX + "TriggerRegisterTimerEventPeriodic takes trigger t, real r returns event" + JASS_DELIM +
 				"return " + TIMER_PREFIX + "TriggerRegisterTimerEvent(t,r,true)" + JASS_DELIM +
-				END_FUNCTION, sb);
-		append("function " + TIMER_PREFIX + "TriggerRegisterTimerEventSingle takes trigger t, real r returns event" + JASS_DELIM +
+				END_FUNCTION);
+		append(sb, "function " + TIMER_PREFIX + "TriggerRegisterTimerEventSingle takes trigger t, real r returns event" + JASS_DELIM +
 				"return " + TIMER_PREFIX + "TriggerRegisterTimerEvent(t,r,false)" + JASS_DELIM +
-				END_FUNCTION, sb);
+				END_FUNCTION);
 	}
 
 	@Override
-	public void onMainAfterLocals(StringBuffer sb) {
+	public void onMainLocals(StringBuffer sb) {
 //		for (int i = 0; i < elapsedTimeIndices.size(); i++)
 //			append("    set " + ELAPSED_TIMER_PREFIX + i + "=CreateTimer()", sb);
 //		for (int i = 0; i < periodicTimeIndices.size(); i++)
@@ -132,6 +132,6 @@ public class TimerRewriter extends ScriptRewriter {
 					line = "call TriggerRegisterTimerExpireEvent(" + params[0] + "," + PERIODIC_TIMER_PREFIX + periodicTimeIndices.get(params[1]) + " )";
 			}
 		}
-		append(line, sb);
+		append(sb, line);
 	}
 }

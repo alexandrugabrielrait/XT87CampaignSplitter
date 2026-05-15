@@ -434,10 +434,16 @@ public class MapInjector {
 		if (campaignPreviewPath == null || campaignPreviewPath.isEmpty())
 			return;
 		File campaignPreviewFile = new File(cs.getImportsPath() + "/" + campaignPreviewPath);
-		if (campaignPreviewFile.exists()) {
+		String previewImagePath = null;
+		boolean hasPreviewImage = false;
+		if (mapEditor.hasFile(previewImagePath = Minimap.PREVIEW_BLP_GAME_PATH.getPath()))
+			hasPreviewImage = true;
+		else if (mapEditor.hasFile(previewImagePath = Minimap.PREVIEW_TGA_GAME_PATH.getPath()))
+			hasPreviewImage = true;
+		if (hasPreviewImage || campaignPreviewFile.exists()) {
 			System.out.println("Changing preview for map \"" + mapFile.getName() + "\".");
 			String minimapImagePath = null;
-			boolean hasMinimapImage = false, isTGA = false;
+			boolean hasMinimapImage = false;
 			if (mapEditor.hasFile(minimapImagePath = Minimap.BACKGROUND_BLP_GAME_PATH.getPath()))
 				hasMinimapImage = true;
 			else if (mapEditor.hasFile(minimapImagePath = Minimap.BACKGROUND_TGA_GAME_PATH.getPath()))
@@ -451,8 +457,12 @@ public class MapInjector {
 				mapEditor.insertFile(MinimapRewriter.getNewPath(minimapImagePath), tempFile, true);
 				new MinimapRewriter(this, minimapImagePath).modifyScript();
 			}
-			minimapImagePath = XT87Utils.getExtension(campaignPreviewPath).equals("tga") ? Minimap.BACKGROUND_TGA_GAME_PATH.getPath() : Minimap.BACKGROUND_BLP_GAME_PATH.getPath();
-			mapEditor.insertFile(minimapImagePath, campaignPreviewFile, true);
+			minimapImagePath = XT87Utils.getExtension(hasPreviewImage ? previewImagePath : campaignPreviewPath).equals("tga") ? Minimap.BACKGROUND_TGA_GAME_PATH.getPath() : Minimap.BACKGROUND_BLP_GAME_PATH.getPath();
+			if (hasPreviewImage) {
+				mapEditor.extractFile(previewImagePath, tempFile);
+				mapEditor.deleteFile(previewImagePath);
+			}
+			mapEditor.insertFile(minimapImagePath, hasPreviewImage ? tempFile : campaignPreviewFile, true);
 			System.out.println("Finished changing preview for map \"" + mapFile.getName() + "\".");
 			cs.IncrementValueProgressBar(1);
 		}
@@ -612,7 +622,7 @@ public class MapInjector {
 			if (addedCoopPlayers > 0) {
 				System.out.println("Adding coop support to map \"" + mapFile.getName() + "\".");
 				new CallbackRewriter(this).modifyScript();
-				new CoopRewriter(this, mapInfo.info, mapInfo.mainPlayer, mapInfo.secondaryPlayers).modifyScript();
+				new CoopRewriter(this, mapInfo.info, mapInfo.mainPlayer, mapInfo.secondaryPlayers, offsets.campaignKeyOffset, cs.archonArrows).modifyScript();
 				System.out.println("Finished adding coop support to map \"" + mapFile.getName() + "\".");
 				cs.IncrementValueProgressBar(1);
 			}

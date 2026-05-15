@@ -21,11 +21,12 @@ import static net.xetanth87.campaignsplitter.util.XT87Utils.NATIVE_DECLARATION;
 
 public abstract class ScriptRewriter {
 	protected static final String PLAYER_FUNC = "Player(";
-	public static final String INIT_CALL = "call ConditionalTriggerExecute(";
+	public static final String TRIGGER_EXECUTE = "call ConditionalTriggerExecute(";
+
 	private static final boolean IS_DEBUG = false;
 	private static final boolean REMOVE_USELESS = true;
 	public MapInjector mi;
-	public boolean first = true, insideGlobals, isReading;
+	public boolean first = true, insideGlobals, insideMain, insideConfig, isReading;
 	public String insideFunction;
 	public String rewriterPrefix;
 	private final List<FunctionConfiguration> functionConfig = new ArrayList<>();
@@ -36,7 +37,7 @@ public abstract class ScriptRewriter {
 		this.rewriterPrefix = "XT87" + rewriterPrefix;
 	}
 
-	public void addFunctionConfiguration(String functionName, String functionParams, String functionReturn, String functionCode) {
+	public void addFunctionConfiguration(String functionName, String functionParams, String functionReturn, String... functionCode) {
 		functionConfig.add(new FunctionConfiguration(rewriterPrefix + functionName, functionParams, functionReturn, functionCode));
 	}
 
@@ -59,7 +60,7 @@ public abstract class ScriptRewriter {
 	}
 
 	public String initializationTriggerFromCall(String line) {
-		String s = line.trim().replace(INIT_CALL, "");
+		String s = line.trim().replace(TRIGGER_EXECUTE, "");
 		s = s.substring(0, s.indexOf(')')).trim();
 		return s;
 	}
@@ -82,29 +83,55 @@ public abstract class ScriptRewriter {
 
 	public abstract void onReadLine(String line, StringBuffer sb);
 
-	public void onEnterGlobals(StringBuffer sb) {
+	protected void onEnterGlobals(StringBuffer sb) {
 	}
 
-	public void onExitGlobals(StringBuffer sb) {
+	protected void onExitGlobals(StringBuffer sb) {
 	}
 
-	public void onMainAfterLocals(StringBuffer sb) {
+	protected void onFunctionStart(StringBuffer sb) {
 	}
 
-	public void append(String block, StringBuffer sb) {
-		if (block == null)
+	protected void onFunctionLocals(StringBuffer sb) {
+	}
+
+	protected void onFunctionEnd(StringBuffer sb) {
+	}
+
+	protected void onMainStart(StringBuffer sb) {
+	}
+
+	protected void onMainLocals(StringBuffer sb) {
+	}
+
+	protected void onMainEnd(StringBuffer sb) {
+	}
+
+	protected void onConfigStart(StringBuffer sb) {
+	}
+
+	protected void onConfigLocals(StringBuffer sb) {
+	}
+
+	protected void onConfigEnd(StringBuffer sb) {
+	}
+
+	public void append(StringBuffer sb, String... blocks) {
+		if (blocks == null)
 			return;
-		for (String line : block.split(JASS_DELIM)) {
-			if (REMOVE_USELESS) {
-				line = line.trim();
-				if (line.isEmpty() || line.startsWith("//"))
-					continue;
+		for (String block : blocks) {
+			for (String line : block.split(JASS_DELIM)) {
+				if (REMOVE_USELESS) {
+					line = line.trim();
+					if (line.isEmpty() || line.startsWith("//"))
+						continue;
+				}
+				if (first)
+					first = false;
+				else
+					sb.append(JASS_DELIM);
+				sb.append(line);
 			}
-			if (first)
-				first = false;
-			else
-				sb.append(JASS_DELIM);
-			sb.append(line);
 		}
 	}
 
@@ -147,14 +174,14 @@ public abstract class ScriptRewriter {
 		onStartReadAux(text, sb);
 		first = true;
 		boolean doGlobals = false;
-		boolean doMain = false;
+		boolean afterLocals = false;
 		int doExitGlobals = 0;
 		while (isReading && sc.hasNextLine()) {
 			String line = sc.nextLine();
 			line = line.trim();
 			if (doGlobals) {
 				for (var configuration : triggerConfig) {
-					append(configuration.getDeclaration(), sb);
+					append(sb, configuration.getDeclaration());
 				}
 				onEnterGlobals(sb);
 				doGlobals = false;
@@ -164,22 +191,48 @@ public abstract class ScriptRewriter {
 			if (line.startsWith(FUNCTION_DECLARATION)) {
 				insideFunction = line.substring(FUNCTION_DECLARATION.length()).trim();
 				insideFunction = insideFunction.substring(0, insideFunction.indexOf(' '));
-				if ("main".equals(insideFunction))
-					doMain = true;
-			} else if (doMain && !line.startsWith(LOCAL_DECLARATION)) {
-				for (var configuration : triggerConfig) {
-					append(configuration.getInitCall(), sb);
-				}
-				onMainAfterLocals(sb);
-				doMain = false;
+				afterLocals = false;
+				insideMain = "main".equals(insideFunction);
+				insideConfig = "config".equals(insideFunction);
+				if (insideMain)
+					onMainStart(sb);
+				else if (insideConfig)
+					onConfigStart(sb);
+				else
+					onFunctionStart(sb);
 			}
+			else if (insideFunction != null) {
+				if (!afterLocals && !line.startsWith(LOCAL_DECLARATION))
+				{
+					afterLocals = true;
+					if (insideMain) {
+						onMainLocals(sb);
+						for (var configuration : triggerConfig)
+							append(sb, configuration.getInitCall());
+					}
+					else if (insideConfig)
+						onFunctionLocals(sb);
+					else
+						onFunctionLocals(sb);
+				}
+				if (line.equals(END_FUNCTION))
+				{
+					if (insideMain)
+						onMainEnd(sb);
+					else if (insideConfig)
+						onConfigEnd(sb);
+					else
+						onFunctionEnd(sb);
+				}
+			}
+
 			if (doExitGlobals == 1 && !line.startsWith(NATIVE_DECLARATION)) {
 				for (var configuration : functionConfig) {
-					append(configuration.getDefinitionCode(), sb);
+					append(sb, configuration.getDefinitionCode());
 				}
 				onExitGlobals(sb);
 				for (var configuration : triggerConfig) {
-					append(configuration.getDefinitionCode(), sb);
+					append(sb, configuration.getDefinitionCode());
 				}
 				doExitGlobals = 2;
 			}
@@ -188,8 +241,11 @@ public abstract class ScriptRewriter {
 			onReadLine(line, sb);
 			if (line.equals("globals"))
 				insideGlobals = true;
-			else if (line.equals(END_FUNCTION))
+			else if (line.equals(END_FUNCTION)) {
 				insideFunction = null;
+				insideMain = false;
+				insideConfig = false;
+			}
 			else if (doExitGlobals == 0 && line.equals("endglobals"))
 				doExitGlobals = 1;
 		}

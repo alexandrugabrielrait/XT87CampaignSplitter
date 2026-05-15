@@ -28,6 +28,6 @@ public class CallbackRewriter extends ScriptRewriter {
 				}
 			}
 		}
-		append(line, sb);
+		append(sb, line);
 	}
 }

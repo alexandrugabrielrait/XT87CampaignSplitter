@@ -33,6 +33,6 @@ public class FakeUserPlayerRewriter extends ScriptRewriter {
 				}
 			}
 		}
-		append(line, sb);
+		append(sb, line);
 	}
 }

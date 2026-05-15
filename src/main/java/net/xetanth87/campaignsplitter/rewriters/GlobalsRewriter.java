@@ -48,12 +48,12 @@ public class GlobalsRewriter extends ScriptRewriter {
 				line = line.substring(0, line.lastIndexOf('='));
 			}
 		}
-		append(line, sb);
+		append(sb, line);
 	}
 
 	@Override
-	public void onMainAfterLocals(StringBuffer sb) {
+	public void onMainLocals(StringBuffer sb) {
 		for (String line : setList)
-			append(line, sb);
+			append(sb, line);
 	}
 }
