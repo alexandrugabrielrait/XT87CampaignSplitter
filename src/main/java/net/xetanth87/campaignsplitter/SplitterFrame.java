@@ -274,22 +274,20 @@ public class SplitterFrame extends JFrame {
 			JComboBox<ThemeOption> themeDropdown = new JComboBox<>();
 			Arrays.stream(AppTheme.values()).forEach(x ->
 			{
-				if (x != AppTheme.NIMBUS) {
-					ThemeOption option = new ThemeOption(x);
-					themeDropdown.addItem(option);
-					if (x == AppThemeHandler.selectedTheme)
-						themeDropdown.setSelectedItem(option);
-				}
+				ThemeOption option = new ThemeOption(x);
+				themeDropdown.addItem(option);
+				if (x == AppThemeHandler.selectedTheme)
+					themeDropdown.setSelectedItem(option);
 			});
 
 			JPanel panel2 = new JPanel();
 			panel2.setLayout(new BoxLayout(panel2, BoxLayout.Y_AXIS));
-			
+
 			JPanel languagePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			languagePanel.add(new JLabel(getLocalizedString("pref_language_dropdown")));
 			languagePanel.add(languageDropdown);
 			panel2.add(languagePanel);
-			
+
 			JPanel themePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 			themePanel.add(new JLabel(getLocalizedString("pref_theme_dropdown")));
 			themePanel.add(themeDropdown);
@@ -301,7 +299,7 @@ public class SplitterFrame extends JFrame {
 			if (result == JOptionPane.OK_OPTION) {
 				SplitterLanguage selectedLanguage = ((LanguageOption) Objects.requireNonNull(languageDropdown.getSelectedItem())).language;
 				SplitterLanguage.selectedLanguage = selectedLanguage;
-				
+
 				AppTheme selectedTheme = ((ThemeOption) Objects.requireNonNull(themeDropdown.getSelectedItem())).theme;
 				AppThemeHandler.selectedTheme = selectedTheme;
 
@@ -309,7 +307,7 @@ public class SplitterFrame extends JFrame {
 				message.append(getLocalizedString("pref_language_selected_message").formatted(selectedLanguage.getDisplayName()));
 				message.append("\n");
 				message.append(getLocalizedString("pref_theme_selected_message").formatted(selectedTheme.getDisplayName()));
-				
+
 				JOptionPane.showMessageDialog(null, message.toString(),
 						getLocalizedString("pref_saved_title"), JOptionPane.INFORMATION_MESSAGE);
 				SplitterLanguage.saveLanguage(selectedLanguage);
@@ -426,7 +424,6 @@ public class SplitterFrame extends JFrame {
 		c.setFileFilter(new FileNameExtensionFilter("Warcraft III Campaign (*.w3n)", "w3n"));
 		c.setAcceptAllFileFilterUsed(false);
 		int rVal = c.showOpenDialog(SplitterFrame.this);
-		AppThemeHandler.applyPreference();
 		if (rVal == JFileChooser.APPROVE_OPTION) {
 			String absolutePath = c.getSelectedFile().getAbsolutePath();
 			if (!absolutePath.equals(filePathField.getText())) {
@@ -437,6 +434,7 @@ public class SplitterFrame extends JFrame {
 		}
 		if (rVal == JFileChooser.CANCEL_OPTION) {
 		}
+		AppThemeHandler.applyPreference();
 	}
 
 	public void openAction(ActionEvent e) {
@@ -558,8 +556,7 @@ public class SplitterFrame extends JFrame {
 		if (getArchonModeAddedSlotsVariant() > 0) {
 			toDownloadFolderCheck.setEnabled(!running);
 			archonsArrowCheck.setEnabled(!running);
-		}
-		else {
+		} else {
 			toDownloadFolderCheck.setEnabled(false);
 			toDownloadFolderCheck.setSelected(false);
 			archonsArrowCheck.setEnabled(false);
