@@ -43,7 +43,6 @@ import static net.xetanth87.campaignsplitter.util.XT87Utils.stringIndexToInt;
 public class CampaignSplitter {
 	public static final String IMPORTS_DIR_NAME = "imports";
 	private static final int STEPS_CAMP_DATA = 4;
-	public static final String MAP_COUNT_FORMAT = "Maps converted: {0}/{1}.";
 	public final File campFile;
 	public final String splitPath;
 	public final String tempDirName;
@@ -139,6 +138,14 @@ public class CampaignSplitter {
 		return featureDescription;
 	}
 
+	private String getAssetTypeKey(ImportsMerger.AssetListType assetType) {
+		return switch (assetType) {
+			case ARCHON_ARROWS -> "asset_type_archon_arrows";
+			case SD -> "asset_type_sd_legacy";
+			case HD -> "asset_type_hd_legacy";
+		};
+	}
+
 	public void extractCampaignFiles(JMpqEditor campEditor) throws IOException {
 		File importsDir = new File(getImportsPath());
 		importsDir.mkdirs();
@@ -146,7 +153,7 @@ public class CampaignSplitter {
 						SkinTXT.GAME_PATH, W3U.GAME_PATH, W3T.GAME_PATH, W3B.GAME_PATH,
 						W3D.GAME_PATH, W3A.GAME_PATH, W3H.GAME_PATH, W3Q.GAME_PATH)
 				.map(x -> XT87Utils.toCampaignPath(x.getName())).collect(Collectors.toList());
-		System.out.println("Extracting campaign configuration files.");
+		System.out.println(XT87Utils.getLocalizedString("output_extracting_campaign_config"));
 		for (String fileName : extractedFileNames) {
 			List<String> subfileNames = new ArrayList<>(Collections.singletonList(fileName));
 			if (fileName.contains(".w3"))
@@ -176,12 +183,12 @@ public class CampaignSplitter {
 			campEditor.extractFile(IMP.CAMPAIGN_PATH.getName(), importsListFile);
 			XT87Utils.fixImportFile(importsListFile, true);
 			imports = new IMP(importsListFile);
-			System.out.println("Extracting campaign imported files.");
+			System.out.println(XT87Utils.getLocalizedString("output_extracting_imports"));
 			for (IMP.Obj o : imports.getObjs()) {
 				if (o.getPath().isEmpty())
 					continue;
 				if (!campEditor.hasFile(o.getPath())) {
-					System.err.println("Missing campaign import with path \"" + o.getPath() + "\"!");
+					System.err.println(String.format(XT87Utils.getLocalizedString("output_missing_import"), o.getPath()));
 					continue;
 				}
 				File importedFile = new File(getImportsPath() + "/" + o.getPath().trim());
@@ -189,7 +196,7 @@ public class CampaignSplitter {
 				importedFile.createNewFile();
 				campEditor.extractFile(o.getPath(), importedFile);
 			}
-			System.out.println("Finished extracting campaign imported files.");
+			System.out.println(XT87Utils.getLocalizedString("output_finished_extracting_imports"));
 		}
 
 		List<Pair<ImportsMerger.AssetListType, String>> listTypes = new ArrayList<>();
@@ -201,7 +208,9 @@ public class CampaignSplitter {
 			listTypes.add(new Pair<>(ImportsMerger.AssetListType.HD, "HD Legacy"));
 
 		for (Pair<ImportsMerger.AssetListType, String> pair : listTypes) {
-			System.out.println("Extracting %s asset files.".formatted(pair.b));
+			String assetTypeKey = getAssetTypeKey(pair.a);
+			String assetTypeName = XT87Utils.getLocalizedString(assetTypeKey);
+			System.out.println(String.format(XT87Utils.getLocalizedString("output_extracting_assets"), assetTypeName));
 			boolean noCampaignImports = importsListFile == null;
 			if (noCampaignImports) {
 				importsListFile = new File(getTempPath() + "/" + IMP.CAMPAIGN_PATH);
@@ -212,7 +221,7 @@ public class CampaignSplitter {
 				imports = new IMP();
 
 			if (ImportsMerger.AddAssets(pair.a, this, imports)) {
-				System.out.println("Finished extracting %s asset files.".formatted(pair.b));
+				System.out.println(String.format(XT87Utils.getLocalizedString("output_finished_extracting_assets"), assetTypeName));
 				imports.write(importsListFile);
 			} else if (noCampaignImports) {
 				importsListFile.delete();
@@ -243,7 +252,8 @@ public class CampaignSplitter {
 		{
 			JMpqEditor campEditor = new JMpqEditor(campFile, MPQOpenOption.READ_ONLY);
 			extractCampaignFiles(campEditor);
-			System.out.println("Difficulty selector: " + (withDifficultySelector ? "enabled" : "disabled") + ".");
+			String difficultyStatus = withDifficultySelector ? XT87Utils.getLocalizedString("output_difficulty_enabled") : XT87Utils.getLocalizedString("output_difficulty_disabled");
+			System.out.println(String.format(XT87Utils.getLocalizedString("output_difficulty_selector"), difficultyStatus));
 			for (int i = 0; i < totalMapCount; i++) {
 				W3F.ListedMapEntry map = orderedMaps.get(i);
 				W3F.MapEntry button = campaignData.getMaps().stream().filter(x -> x.getMapPath().equals(map.getMapPath())).findFirst().orElse(null);
@@ -258,7 +268,7 @@ public class CampaignSplitter {
 				mapFile.createNewFile();
 				campEditor.extractFile(fileName, mapFile);
 				mapFiles.add(mapFile);
-				System.out.println("Extracted map \"" + mapFile.getName() + "\".");
+				System.out.println(String.format(XT87Utils.getLocalizedString("output_extracted_map"), mapFile.getName()));
 				if (archonModeAddedSlots > 0) {
 					Set<Integer> usedPlayerNumbers = XT87Utils.getUsedPlayerNumbers(new MapInjector(this, mapFile, i));
 					archonModeRealAddedSlots = Math.min(archonModeRealAddedSlots, XT87Utils.MAX_PLAYER_COUNT - usedPlayerNumbers.size());
@@ -310,7 +320,7 @@ public class CampaignSplitter {
 		}
 		// endregion
 		if (archonModeAddedSlots > 0)
-			System.out.println("Number of coop slots to be added: " + archonModeRealAddedSlots + " (" + (archonModeRealAddedSlots + 1) + " total slots).");
+			System.out.println(String.format(XT87Utils.getLocalizedString("output_coop_slots"), archonModeRealAddedSlots, archonModeRealAddedSlots + 1));
 		for (int i = 0; i < totalMapCount; i++) {
 			File mapFile = mapFiles.get(i);
 			MapInjector mi = new MapInjector(this, mapFile, i);
@@ -318,7 +328,7 @@ public class CampaignSplitter {
 			mi.addedCoopPlayers = archonModeRealAddedSlots;
 			try {
 				mi.addCampaignData();
-				System.out.println(MessageFormat.format(MAP_COUNT_FORMAT, i + 1, totalMapCount));
+				System.out.println(String.format(XT87Utils.getLocalizedString("output_maps_converted"), i + 1, totalMapCount));
 			} catch (NonReadableChannelException | NonWritableChannelException e) {
 				throw new Exception("Map \"" + mapFile.getName() + "\" is protected and cannot be read/edited.");
 			}
