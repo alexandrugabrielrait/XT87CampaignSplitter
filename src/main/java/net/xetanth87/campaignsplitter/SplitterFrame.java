@@ -1,5 +1,8 @@
 package net.xetanth87.campaignsplitter;
 
+import net.xetanth87.campaignsplitter.ui.AppTheme;
+import net.xetanth87.campaignsplitter.ui.AppThemeHandler;
+import net.xetanth87.campaignsplitter.ui.SplitterLanguage;
 import net.xetanth87.campaignsplitter.util.XT87Utils;
 
 import javax.swing.*;
@@ -46,15 +49,15 @@ public class SplitterFrame extends JFrame {
 	private final JCheckBox upkeepRemovalCheck = new JCheckBox();
 	private final JCheckBox toDownloadFolderCheck = new JCheckBox();
 	private final JCheckBox archonsArrowCheck = new JCheckBox();
-	private final JComboBox<ArchonModeAddedSlotsVariant> archonModeAddedSlotsDropdown = new JComboBox<>();
+	private final JComboBox<ArchonModeAddedSlotsOption> archonModeAddedSlotsDropdown = new JComboBox<>();
 	private final List<? extends JComponent> componentList
 			= Arrays.asList(openButton, campaignPreviewCheck, nextLevelCheck, legacyAssetsSDCheck, legacyAssetsHDCheck,
 			upkeepRemovalCheck, toDownloadFolderCheck, archonsArrowCheck);
 
-	private static class ArchonModeAddedSlotsVariant {
+	private static class ArchonModeAddedSlotsOption {
 		private final int value;
 
-		private ArchonModeAddedSlotsVariant(int value) {
+		private ArchonModeAddedSlotsOption(int value) {
 			this.value = value;
 		}
 
@@ -69,10 +72,10 @@ public class SplitterFrame extends JFrame {
 		}
 	}
 
-	private static class LanguageVariant {
+	private static class LanguageOption {
 		private final SplitterLanguage language;
 
-		private LanguageVariant(SplitterLanguage language) {
+		private LanguageOption(SplitterLanguage language) {
 			this.language = language;
 		}
 
@@ -82,6 +85,22 @@ public class SplitterFrame extends JFrame {
 
 		public String toString() {
 			return language.getDisplayName();
+		}
+	}
+
+	private static class ThemeOption {
+		private final AppTheme theme;
+
+		private ThemeOption(AppTheme theme) {
+			this.theme = theme;
+		}
+
+		public AppTheme getValue() {
+			return theme;
+		}
+
+		public String toString() {
+			return theme.getDisplayName();
 		}
 	}
 
@@ -108,9 +127,9 @@ public class SplitterFrame extends JFrame {
 				panel.add(labelComponent);
 				addTooltip(labelTag, labelComponent);
 			}
+			addTooltip(labelTag, component);
 		}
 		panel.add(component);
-		addTooltip(labelTag, component);
 		return label;
 	}
 
@@ -119,10 +138,10 @@ public class SplitterFrame extends JFrame {
 		setSize(700, 700);
 		setResizable(false);
 		setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-		setLayout(new FlowLayout());
+		setLayout(new BorderLayout());
 
 		JPanel optionsPanel = new JPanel(new GridLayout(0, 1));
-		add(optionsPanel);
+		add(optionsPanel, BorderLayout.NORTH);
 
 		JPanel panel = new JPanel();
 		optionsPanel.add(panel);
@@ -168,7 +187,7 @@ public class SplitterFrame extends JFrame {
 		panel = createPanel(optionsPanel);
 		addLabelAndComponent(panel, null, archonModeAddedSlotsDropdown);
 		for (int i = 0; i < 24; i++)
-			archonModeAddedSlotsDropdown.addItem(new ArchonModeAddedSlotsVariant(i));
+			archonModeAddedSlotsDropdown.addItem(new ArchonModeAddedSlotsOption(i));
 		archonModeAddedSlotsDropdown.addItemListener(e -> {
 			enableDisableArchonModeFields();
 		});
@@ -178,7 +197,7 @@ public class SplitterFrame extends JFrame {
 
 		openButton.addActionListener(this::openAction);
 		splitButton.addActionListener(this::splitAction);
-		panel = createPanel(this);
+		panel = createPanel(optionsPanel);
 		panel.add(filePathField);
 		panel.add(openButton);
 		openButton.setFocusPainted(false);
@@ -189,20 +208,17 @@ public class SplitterFrame extends JFrame {
 		splitButton.setFocusable(false);
 		splitButton.setBackground(Color.ORANGE);
 
-		panel = new JPanel();
-		add(panel);
+		panel = createPanel(optionsPanel);
+		//add(panel, BorderLayout.NORTH);
 		bar = new JProgressBar();
 		bar.setValue(0);
 		bar.setMaximum(100);
 		bar.setStringPainted(true);
 		panel.add(bar);
 
-		panel = new JPanel();
-		add(panel);
 		taskOutput = new JTextArea(20, 80);
-		taskOutput.setMargin(new Insets(5, 5, 5, 5));
 		taskOutput.setEditable(false);
-		panel.add(new JScrollPane(taskOutput), BorderLayout.CENTER);
+		add(new JScrollPane(taskOutput), BorderLayout.CENTER);
 
 		bar.setPreferredSize(new Dimension((int) (0.95f * getWidth()), bar.getPreferredSize().height));
 
@@ -246,18 +262,25 @@ public class SplitterFrame extends JFrame {
 		{
 			if (running)
 				return;
-			JComboBox<LanguageVariant> languageDropdown = new JComboBox<>();
+			JComboBox<LanguageOption> languageDropdown = new JComboBox<>();
 			Arrays.stream(SplitterLanguage.values()).forEach(x ->
 			{
-				LanguageVariant variant = new LanguageVariant(x);
-				languageDropdown.addItem(variant);
+				LanguageOption option = new LanguageOption(x);
+				languageDropdown.addItem(option);
 				if (x == SplitterLanguage.selectedLanguage)
-					languageDropdown.setSelectedItem(variant);
+					languageDropdown.setSelectedItem(option);
 			});
 
-			JCheckBox darkModeCheckBox = new JCheckBox(getLocalizedString("pref_dark_mode_check"));
-			darkModeCheckBox.setSelected(DarkMode.darkModeEnabled);
-			darkModeCheckBox.setToolTipText(getLocalizedString("pref_dark_mode_check_tooltip"));
+			JComboBox<ThemeOption> themeDropdown = new JComboBox<>();
+			Arrays.stream(AppTheme.values()).forEach(x ->
+			{
+				if (x != AppTheme.NIMBUS) {
+					ThemeOption option = new ThemeOption(x);
+					themeDropdown.addItem(option);
+					if (x == AppThemeHandler.selectedTheme)
+						themeDropdown.setSelectedItem(option);
+				}
+			});
 
 			JPanel panel2 = new JPanel();
 			panel2.setLayout(new BoxLayout(panel2, BoxLayout.Y_AXIS));
@@ -267,30 +290,30 @@ public class SplitterFrame extends JFrame {
 			languagePanel.add(languageDropdown);
 			panel2.add(languagePanel);
 			
-			JPanel darkModePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-			darkModePanel.add(darkModeCheckBox);
-			panel2.add(darkModePanel);
+			JPanel themePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+			themePanel.add(new JLabel(getLocalizedString("pref_theme_dropdown")));
+			themePanel.add(themeDropdown);
+			panel2.add(themePanel);
 
 			int result = JOptionPane.showConfirmDialog(null, panel2, getLocalizedString("menu_item_preferences"),
 					JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
 			if (result == JOptionPane.OK_OPTION) {
-				SplitterLanguage selectedLanguage = ((LanguageVariant) Objects.requireNonNull(languageDropdown.getSelectedItem())).language;
+				SplitterLanguage selectedLanguage = ((LanguageOption) Objects.requireNonNull(languageDropdown.getSelectedItem())).language;
 				SplitterLanguage.selectedLanguage = selectedLanguage;
 				
-				boolean darkModeSelected = darkModeCheckBox.isSelected();
-				boolean darkModeChanged = darkModeSelected != DarkMode.darkModeEnabled;
-				DarkMode.darkModeEnabled = darkModeSelected;
+				AppTheme selectedTheme = ((ThemeOption) Objects.requireNonNull(themeDropdown.getSelectedItem())).theme;
+				AppThemeHandler.selectedTheme = selectedTheme;
 
 				StringBuilder message = new StringBuilder();
 				message.append(getLocalizedString("pref_language_selected_message").formatted(selectedLanguage.getDisplayName()));
 				message.append("\n");
-				message.append(getLocalizedString("pref_dark_mode_selected_message").formatted(darkModeSelected ? "On" : "Off"));
+				message.append(getLocalizedString("pref_theme_selected_message").formatted(selectedTheme.getDisplayName()));
 				
 				JOptionPane.showMessageDialog(null, message.toString(),
 						getLocalizedString("pref_saved_title"), JOptionPane.INFORMATION_MESSAGE);
 				SplitterLanguage.saveLanguage(selectedLanguage);
-				DarkMode.saveDarkMode(darkModeSelected);
+				AppThemeHandler.saveStyle(selectedTheme);
 				dispose();
 				startFrame();
 			}
@@ -382,7 +405,9 @@ public class SplitterFrame extends JFrame {
 	public void openAction(ActionEvent e, String overridePath) {
 		if (running)
 			return;
+		AppThemeHandler.applySystemMode();
 		JFileChooser c = new JFileChooser();
+		SwingUtilities.updateComponentTreeUI(c);
 		try {
 			File directory;
 			if (overridePath == null) {
@@ -401,6 +426,7 @@ public class SplitterFrame extends JFrame {
 		c.setFileFilter(new FileNameExtensionFilter("Warcraft III Campaign (*.w3n)", "w3n"));
 		c.setAcceptAllFileFilterUsed(false);
 		int rVal = c.showOpenDialog(SplitterFrame.this);
+		AppThemeHandler.applyPreference();
 		if (rVal == JFileChooser.APPROVE_OPTION) {
 			String absolutePath = c.getSelectedFile().getAbsolutePath();
 			if (!absolutePath.equals(filePathField.getText())) {
@@ -525,7 +551,7 @@ public class SplitterFrame extends JFrame {
 	}
 
 	private int getArchonModeAddedSlotsVariant() {
-		return ((ArchonModeAddedSlotsVariant) Objects.requireNonNull(archonModeAddedSlotsDropdown.getSelectedItem())).getValue();
+		return ((ArchonModeAddedSlotsOption) Objects.requireNonNull(archonModeAddedSlotsDropdown.getSelectedItem())).getValue();
 	}
 
 	private void enableDisableArchonModeFields() {
@@ -611,8 +637,8 @@ public class SplitterFrame extends JFrame {
 
 	private static void startFrame() {
 		SplitterLanguage.loadLanguage();
-		DarkMode.loadDarkMode();
-		DarkMode.applyDarkMode();
+		AppThemeHandler.loadTheme();
+		AppThemeHandler.applyPreference();
 		SplitterFrame frame = new SplitterFrame();
 		PrintStream origOut = System.out;
 		PrintStream areaOut = new AreaPrintStream(origOut, frame, "");

@@ -8,7 +8,7 @@ import net.moonlightflower.wc3libs.port.JMpqPort;
 import net.moonlightflower.wc3libs.port.MpqPort;
 import net.xetanth87.campaignsplitter.MapInjector;
 import net.xetanth87.campaignsplitter.rewriters.ScriptRewriter;
-import net.xetanth87.campaignsplitter.SplitterLanguage;
+import net.xetanth87.campaignsplitter.ui.SplitterLanguage;
 import net.xetanth87.campaignsplitter.rewriters.UsedPlayersScriptReader;
 import systems.crigges.jmpq3.JMpqEditor;
 
