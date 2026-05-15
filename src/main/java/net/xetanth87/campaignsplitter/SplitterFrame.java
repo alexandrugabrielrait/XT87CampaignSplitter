@@ -133,6 +133,11 @@ public class SplitterFrame extends JFrame {
 		return label;
 	}
 
+	private static void addComponentAndToolip(JPanel panel, JComponent component, String tooltipTag) {
+		panel.add(component);
+		component.setToolTipText(getLocalizedString(tooltipTag));
+	}
+
 	public SplitterFrame() {
 		super(APP_TITLE);
 		setSize(700, 700);
@@ -185,12 +190,13 @@ public class SplitterFrame extends JFrame {
 		upkeepRemovalCheck.setSelected(false);
 
 		panel = createPanel(optionsPanel);
-		addLabelAndComponent(panel, null, archonModeAddedSlotsDropdown);
+		addComponentAndToolip(panel, archonModeAddedSlotsDropdown, "archon_mode_dropdown_tooltip");
 		for (int i = 0; i < 24; i++)
 			archonModeAddedSlotsDropdown.addItem(new ArchonModeAddedSlotsOption(i));
 		archonModeAddedSlotsDropdown.addItemListener(e -> {
 			enableDisableArchonModeFields();
 		});
+
 		String toDownloadFolderLabelText = addLabelAndComponent(panel, "to_download_folder_check", toDownloadFolderCheck);
 		addLabelAndComponent(panel, "archon_arrow_check", archonsArrowCheck);
 		enableDisableArchonModeFields();
